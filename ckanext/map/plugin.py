@@ -15,7 +15,7 @@ class MapPlugin(p.SingletonPlugin):
     Theme for the NHM data portal
     """
     p.implements(p.IConfigurer)
-    p.implements(p.IRoutes)
+    p.implements(p.IRoutes, inherit=True)
 
     ## IConfigurer
     def update_config(self, config):
@@ -28,6 +28,6 @@ class MapPlugin(p.SingletonPlugin):
     def before_map(self, map):
 
         # Add map controller
-        map.connect('map', '/map/{resource_id}', controller='ckanext.map.controllers.map:MapController', action='get')
+        map.connect('/map-tile', controller='ckanext.map.controllers.map:MapController', action='tile')
 
         return map
