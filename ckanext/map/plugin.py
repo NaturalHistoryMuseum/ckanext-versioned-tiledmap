@@ -15,9 +15,19 @@ class MapPlugin(p.SingletonPlugin):
     Theme for the NHM data portal
     """
     p.implements(p.IConfigurer)
+    p.implements(p.IRoutes)
 
     ## IConfigurer
     def update_config(self, config):
         p.toolkit.add_template_directory(config, 'theme/templates')
         p.toolkit.add_public_directory(config, 'theme/public')
         p.toolkit.add_resource('theme/public', 'map')
+
+
+    ## IRoutes
+    def before_map(self, map):
+
+        # Add map controller
+        map.connect('map', '/map/{resource_id}', controller='ckanext.map.controllers.map:MapController', action='get')
+
+        return map
