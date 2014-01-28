@@ -23,17 +23,16 @@ class MapController(base.BaseController):
     Controlled for displaying map tiles
     """
 
-    def get(self, resource_id):
+    def tile(self):
 
         """
-        View a map
-        :param id:
-        :param resource_id:
+        View a map tile
         :return: string
         """
-        c.filters = request.POST.items()
 
-        # TODO: Q matches _full_text
+        # URL in the format http://10.11.12.13:5000/map-tile?resource_id=64351390-720f-4702-bd25-9fa607629b3f
+
+        resource_id = request.params.get('resource_id')
 
         context = {'model': model, 'session': model.Session, 'user': c.user or c.author}
 
@@ -45,7 +44,7 @@ class MapController(base.BaseController):
         except NotAuthorized:
             abort(401, _('Unauthorized to read resources'))
 
-        return 'STUFF'
+        return 'TILE'
 
 
 
