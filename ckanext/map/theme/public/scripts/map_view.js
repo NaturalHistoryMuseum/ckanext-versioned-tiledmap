@@ -105,9 +105,18 @@ my.NHMMap = Backbone.View.extend({
     this.info.update = function (props) {
       var template;
       if (props) {
-        template = "<h4>Botany Records</h4><b>{{ data.species }}</b><br />{{ data._id }}<br />{{ data.scientific_name }}<br/>{{ data.count }} records overlapping";
+        template = [
+          '<h4>Botany Records</h4>',
+          '<b>{{ data.species }}</b><br />',
+          '{{ data._id }}<br />',
+          '{{ data.scientific_name }}<br/>',
+          '{{ data.count }} records overlapping'
+        ].join('');
       } else {
-        template = "<h4>Botany Records</h4><p>Hover over a marker</p>";
+        template = [
+          '<h4>Botany Records</h4>',
+          '<p>Hover over a marker</p>'
+        ].join('');
       }
       this._div.innerHTML = Mustache.render(template, props);
     };
