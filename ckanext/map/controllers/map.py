@@ -7,7 +7,8 @@ from ckan.common import OrderedDict, _, json, request, c, g, response
 from ckan.lib.jsonp import jsonpify
 import logging
 import requests
-from pylons.controllers.util import Request, Response
+import urllib
+import cStringIO
 
 log = logging.getLogger(__name__)
 
@@ -47,11 +48,9 @@ class MapController(base.BaseController):
             abort(401, _('Unauthorized to read resources'))
 
         url = _('http://10.11.12.1:4000/database/nhm_botany/table/botany_all/{z}/{x}/{y}.png').format(z=z,x=x,y=y)
-        response = requests.get(url)
-        res = Response()
-        res.headers['Content-type'] = 'image/png'
-        res.write(response.content)
-        return res
+        response.headers['Content-type'] = 'image/png'
+        tile =  cStringIO.StringIO(urllib.urlopen(url).read())
+        return tile
 
 
 
