@@ -65,7 +65,7 @@ class MapController(base.BaseController):
 
         resource_id = request.params.get('resource_id')
         callback = request.params.get('callback')
-        sql = request.params.get('sql')
+        sql = request.params.get('sql') # TODO FIXME remove!
 
         context = {'model': model, 'session': model.Session, 'user': c.user or c.author}
 
