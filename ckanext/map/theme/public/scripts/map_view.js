@@ -81,7 +81,7 @@ my.NHMMap = Backbone.View.extend({
     this.map.setView(new L.LatLng(51.505, -0.09), 4, true);
     L.tileLayer('http://otile1.mqcdn.com/tiles/1.0.0/map/{z}/{x}/{y}.jpg', { opacity: 0.8 }).addTo(this.map);
 
-    var baseURL = "http://localhost:4444/database/<%= dbname %>/table/<%= table %>/{z}/{x}/{y}";
+    var baseURL = "/map-tile/{z}/{x}/{y}";
 
     this.tilejson = {
             tilejson: '1.0.0',
@@ -149,6 +149,8 @@ my.NHMMap = Backbone.View.extend({
     if (where.length){
         tile_params["sql"] += " WHERE " + where.join(" AND ");
     }
+
+    tile_params['resource_id'] = this.model.id;
 
     where.push('st_intersects(the_geom_webmercator, st_setsrid(!bbox!, 3857))');
 
