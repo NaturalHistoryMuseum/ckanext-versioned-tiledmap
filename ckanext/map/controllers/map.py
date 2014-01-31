@@ -47,7 +47,9 @@ class MapController(base.BaseController):
         except NotAuthorized:
             abort(401, _('Unauthorized to read resources'))
 
-        url = _('http://10.11.12.1:4000/database/nhm_botany/table/botany_all/{z}/{x}/{y}.png').format(z=z,x=x,y=y)
+        sql = "select * from botany_all where collection_department = '{dep}'".format(dep=c.resource['name'])
+
+        url = _('http://10.11.12.1:4000/database/nhm_botany/table/botany_all/{z}/{x}/{y}.png?sql={sql}').format(z=z,x=x,y=y,sql=sql)
         response.headers['Content-type'] = 'image/png'
         tile =  cStringIO.StringIO(urllib.urlopen(url).read())
         return tile
