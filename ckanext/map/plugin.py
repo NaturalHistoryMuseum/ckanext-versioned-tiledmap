@@ -28,6 +28,6 @@ class MapPlugin(p.SingletonPlugin):
     def before_map(self, map):
 
         # Add map controller
-        map.connect('/map-tile', controller='ckanext.map.controllers.map:MapController', action='tile')
+        map.connect('/map-tile/{z}/{x}/{y}.png', controller='ckanext.map.controllers.map:MapController', action='tile')
 
         return map

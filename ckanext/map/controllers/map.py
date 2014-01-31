@@ -23,7 +23,7 @@ class MapController(base.BaseController):
     Controlled for displaying map tiles
     """
 
-    def tile(self):
+    def tile(self, z, x, y):
 
         """
         View a map tile
@@ -44,7 +44,7 @@ class MapController(base.BaseController):
         except NotAuthorized:
             abort(401, _('Unauthorized to read resources'))
 
-        return 'TILE'
+        return _('TILE {z} {x} {y}').format(z=z,x=x,y=y)
 
 
 
