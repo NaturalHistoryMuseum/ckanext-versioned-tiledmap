@@ -71,6 +71,8 @@ my.NHMMap = Backbone.View.extend({
 
   _setupMap: function(){
 
+    var resource_id = this.model.id
+
     var dbname = 'nhm_botany';
     var table = 'botany_all';
 
