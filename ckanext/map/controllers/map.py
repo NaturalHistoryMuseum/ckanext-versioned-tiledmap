@@ -30,10 +30,10 @@ class MapController(base.BaseController):
 
         """
         View a map tile
-        :return: string
+        :return: png image
         """
 
-        # URL in the format http://10.11.12.13:5000/map-tile?resource_id=64351390-720f-4702-bd25-9fa607629b3f
+        # URL in the format http://10.11.12.13:5000/map-tile/2/2/2.png?resource_id=64351390-720f-4702-bd25-9fa607629b3f
 
         resource_id = request.params.get('resource_id')
 
