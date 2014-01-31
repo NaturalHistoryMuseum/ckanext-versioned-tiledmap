@@ -81,8 +81,6 @@ my.NHMMap = Backbone.View.extend({
     this.map.setView(new L.LatLng(51.505, -0.09), 4, true);
     L.tileLayer('http://otile1.mqcdn.com/tiles/1.0.0/map/{z}/{x}/{y}.jpg', { opacity: 0.8 }).addTo(this.map);
 
-    var baseURL = "/map-tile/{z}/{x}/{y}";
-
     this.tilejson = {
             tilejson: '1.0.0',
             scheme: 'xyz',
@@ -91,9 +89,8 @@ my.NHMMap = Backbone.View.extend({
             formatter: function(options, data) { return data._id + "/" + data.species + "/" + data.scientific_name }
     };
 
-    var url = _.template(baseURL, {dbname: dbname, table: table});
-    this.tiles_url = url + '.png';
-    this.grids_url = url + '.grid.json?callback={cb}';
+    this.tiles_url = '/map-tile/{z}/{x}/{y}.png';
+    this.grids_url = '/map-grid/{z}/{x}/{y}.grid.json?callback={cb}';
 
     this.info = L.control();
     this.info.options.position = 'bottomright';
@@ -151,6 +148,7 @@ my.NHMMap = Backbone.View.extend({
     }
 
     tile_params['resource_id'] = this.model.id;
+    grid_params['resource_id'] = this.model.id;
 
     where.push('st_intersects(the_geom_webmercator, st_setsrid(!bbox!, 3857))');
 

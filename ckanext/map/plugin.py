@@ -29,5 +29,6 @@ class MapPlugin(p.SingletonPlugin):
 
         # Add map controller
         map.connect('/map-tile/{z}/{x}/{y}.png', controller='ckanext.map.controllers.map:MapController', action='tile')
+        map.connect('/map-grid/{z}/{x}/{y}.grid.json', controller='ckanext.map.controllers.map:MapController', action='grid')
 
         return map
