@@ -70,7 +70,7 @@ my.NHMMap = Backbone.View.extend({
   },
 
   _setupMap: function(){
-
+    var self = this;
     var resource_id = this.model.id
 
     var dbname = 'nhm_botany';
@@ -81,6 +81,16 @@ my.NHMMap = Backbone.View.extend({
     this.map.setView(new L.LatLng(51.505, -0.09), 4, true);
     L.tileLayer('http://otile1.mqcdn.com/tiles/1.0.0/map/{z}/{x}/{y}.jpg', { opacity: 0.8 }).addTo(this.map);
 
+    var drawControl = new L.Control.Draw({
+     draw: {
+        polyline: false,
+        marker: false,
+        circle: false
+      }
+    });
+    this.map.addControl(drawControl);
+    this.drawLayer = null;
+
     this.tilejson = {
             tilejson: '1.0.0',
             scheme: 'xyz',
@@ -88,6 +98,18 @@ my.NHMMap = Backbone.View.extend({
             grids: [],
             formatter: function(options, data) { return data._id + "/" + data.species + "/" + data.scientific_name }
     };
+
+    this.map.on('draw:created', function (e) {
+      var type = e.layerType;
+      var layer = e.layer;
+      if (self.drawLayer) {
+        self.map.removeLayer(this.drawLayer);
+      }
+      self.map.addLayer(layer);
+      self.drawLayer = layer;
+      console.log("foo");
+      self.redraw();
+    });
 
     this.tiles_url = '/map-tile/{z}/{x}/{y}.png';
     this.grids_url = '/map-grid/{z}/{x}/{y}.grid.json?callback={cb}';
@@ -120,7 +142,7 @@ my.NHMMap = Backbone.View.extend({
       this._div.innerHTML = Mustache.render(template, props);
     };
 
-
+    this.layers = [];
     this.mapReady = true;
 
   },
@@ -141,6 +163,11 @@ my.NHMMap = Backbone.View.extend({
 
     if (this.model.queryState.attributes.q){
         where.push("_full_text='" + this.model.queryState.attributes.q + "'");
+    }
+
+    if (this.drawLayer) {
+      var geojson = this.drawLayer.toGeoJSON();
+      tile_params['geom'] = Terraformer.WKT.convert(geojson.geometry);
     }
 
     tile_params['resource_id'] = this.model.id;
@@ -170,16 +197,16 @@ my.NHMMap = Backbone.View.extend({
       this.tilejson.grids = [this.grids_url + "&" + $.param(grid_params)];
     }
 
-    _.each(layers, function(layer){
-        this.map.removeLayer(layer)
+    _.each(this.layers, function(layer){
+        self.map.removeLayer(layer)
     });
 
-    _.each(controls, function(control) {
-      this.map.removeControl(control)
+    _.each(this.controls, function(control) {
+        self.map.removeControl(control)
     });
 
-    var layers = [];
-    var controls = [];
+    this.layers = [];
+    this.controls = [];
 
     var testMap = L.tileLayer(this.tilejson.tiles[0]).addTo(this.map);
     var utfGrid = new L.UtfGrid(this.tilejson.grids[0], {
@@ -190,9 +217,9 @@ my.NHMMap = Backbone.View.extend({
     this.map.addLayer(utfGrid);
     this.map.addControl(this.info);
 
-    controls.push(this.info);
-    layers.push(utfGrid);
-    layers.push(testMap);
+    this.controls.push(this.info);
+    this.layers.push(utfGrid);
+    this.layers.push(testMap);
 
   }
 
