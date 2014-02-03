@@ -40,6 +40,9 @@ class MapController(base.BaseController):
         # URL in the format http://10.11.12.13:5000/map-tile/2/2/2.png?resource_id=64351390-720f-4702-bd25-9fa607629b3f
 
         resource_id = request.params.get('resource_id')
+        filters = request.params.get('filters')
+        query = request.params.get('q')
+        geom = request.params.get('geom')
 
         context = {'model': model, 'session': model.Session, 'user': c.user or c.author}
 
@@ -77,6 +80,13 @@ class MapController(base.BaseController):
         dep = 'Botany'
 
         s = select([botany_all]).where(botany_all.c.collection_department==dep)
+
+        if filters:
+          for filter in json.loads(filters):
+            # TODO - other types of filters
+            if (filter['type'] == 'term'):
+              s = s.where(botany_all.c.collection_sub_department==filter['term'])
+
         sql = helpers.interpolateQuery(s, engine)
 
         url = _('http://10.11.12.1:4000/database/nhm_botany/table/botany_all/{z}/{x}/{y}.png?sql={sql}').format(z=z,x=x,y=y,sql=sql)
