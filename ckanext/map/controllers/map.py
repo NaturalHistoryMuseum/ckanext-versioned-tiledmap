@@ -85,7 +85,7 @@ class MapController(base.BaseController):
           for filter in json.loads(filters):
             # TODO - other types of filters
             if (filter['type'] == 'term'):
-              s = s.where(botany_all.c.collection_sub_department==filter['term'])
+              s = s.where(botany_all.c[filter['field']]==filter['term'])
 
         sql = helpers.interpolateQuery(s, engine)
 
