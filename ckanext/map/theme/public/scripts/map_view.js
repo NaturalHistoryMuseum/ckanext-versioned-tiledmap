@@ -141,12 +141,6 @@ my.NHMMap = Backbone.View.extend({
         where.push("_full_text='" + this.model.queryState.attributes.q + "'");
     }
 
-    tile_params["sql"] = "select * from botany_all";
-
-    if (where.length){
-        tile_params["sql"] += " WHERE " + where.join(" AND ");
-    }
-
     tile_params['resource_id'] = this.model.id;
     grid_params['resource_id'] = this.model.id;
 
