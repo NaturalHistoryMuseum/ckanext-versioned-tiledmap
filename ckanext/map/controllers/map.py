@@ -9,6 +9,10 @@ import logging
 import requests
 import urllib
 import cStringIO
+import ckanext.map.lib.helpers as helpers
+from sqlalchemy.sql import select
+from sqlalchemy import Table, Column, Integer, String, MetaData
+from sqlalchemy import create_engine
 
 log = logging.getLogger(__name__)
 
@@ -47,7 +51,33 @@ class MapController(base.BaseController):
         except NotAuthorized:
             abort(401, _('Unauthorized to read resources'))
 
-        sql = "select * from botany_all where collection_department = '{dep}'".format(dep=c.resource['name'])
+        engine = create_engine('postgresql://')
+
+        metadata = MetaData()
+        botany_all = Table('botany_all', metadata,
+            Column('_id', Integer),
+            Column('type', String),
+            Column('collection_department', String),
+            Column('collection_sub_department', String),
+            Column('catalogue_number', String),
+            Column('scientific_name', String),
+            Column('genus', String),
+            Column('subgenus', String),
+            Column('species', String),
+            Column('scientific_name_author', String),
+            Column('continent', String),
+            Column('country', String),
+            Column('state_province', String),
+            Column('county', String),
+            Column('expedition_name', String),
+            Column('vessel_name', String),
+            Column('the_geom_webmercator', helpers.Geometry)
+        )
+
+        dep = 'Botany'
+
+        s = select([botany_all]).where(botany_all.c.collection_department==dep)
+        sql = helpers.interpolateQuery(s, engine)
 
         url = _('http://10.11.12.1:4000/database/nhm_botany/table/botany_all/{z}/{x}/{y}.png?sql={sql}').format(z=z,x=x,y=y,sql=sql)
         response.headers['Content-type'] = 'image/png'
