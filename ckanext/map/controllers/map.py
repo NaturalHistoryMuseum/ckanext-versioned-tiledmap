@@ -13,6 +13,7 @@ import ckanext.map.lib.helpers as helpers
 from sqlalchemy.sql import select
 from sqlalchemy import Table, Column, Integer, String, MetaData
 from sqlalchemy import create_engine
+import geoalchemy.functions as geoFunctions
 
 log = logging.getLogger(__name__)
 
@@ -86,6 +87,9 @@ class MapController(base.BaseController):
             # TODO - other types of filters
             if (filter['type'] == 'term'):
               s = s.where(botany_all.c[filter['field']]==filter['term'])
+
+        if geom:
+          s = s.where(geoFunctions.intersects(botany_all.c.the_geom_webmercator,geoFunctions.transform(geom,3857)))
 
         sql = helpers.interpolateQuery(s, engine)
 
