@@ -44,6 +44,7 @@ class MapController(base.BaseController):
         filters = request.params.get('filters')
         query = request.params.get('q')
         geom = request.params.get('geom')
+        heatmap = request.params.get('heatmap')
 
         context = {'model': model, 'session': model.Session, 'user': c.user or c.author}
 
@@ -93,7 +94,12 @@ class MapController(base.BaseController):
 
         sql = helpers.interpolateQuery(s, engine)
 
-        url = _('http://10.11.12.1:4000/database/nhm_botany/table/botany_all/{z}/{x}/{y}.png?sql={sql}').format(z=z,x=x,y=y,sql=sql)
+        style = ''
+
+        if heatmap:
+          style = urllib.quote_plus("@size: 20;  #botany_all[zoom >= 4] {   marker-file: url('http://thunderflames.org/temp/marker.svg');   marker-allow-overlap: true;   marker-opacity: 0.2;   marker-width: @size;   marker-height: @size;   marker-clip: false;   image-filters: colorize-alpha(blue, cyan, green, yellow , orange, red);   opacity: 0.8;   [zoom >= 7] {     marker-width: @size * 2;     marker-height: @size * 2;   } }")
+
+        url = _('http://10.11.12.1:4000/database/nhm_botany/table/botany_all/{z}/{x}/{y}.png?sql={sql}&style={style}').format(z=z,x=x,y=y,sql=sql,style=style)
         response.headers['Content-type'] = 'image/png'
         tile =  cStringIO.StringIO(urllib.urlopen(url).read())
         return tile
