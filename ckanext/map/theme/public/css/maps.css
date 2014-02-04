@@ -12,3 +12,12 @@
 .leaflet-container {
   background: #fff;
 }
+
+/* Override the paths to be root-relative, rather than relative to the CSS file */
+.leaflet-draw-toolbar a {
+    background-image: url('/images/spritesheet.png');
+}
+
+.leaflet-retina .leaflet-draw-toolbar a {
+    background-image: url('/images/spritesheet-2x.png');
+}
