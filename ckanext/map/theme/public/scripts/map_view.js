@@ -152,6 +152,7 @@ my.NHMMap = Backbone.View.extend({
     };
 
     this.layers = [];
+    this.controls = [];
     this.mapReady = true;
 
   },
