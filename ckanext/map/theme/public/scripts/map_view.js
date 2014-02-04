@@ -117,7 +117,6 @@ my.NHMMap = Backbone.View.extend({
       }
       self.map.addLayer(layer);
       self.drawLayer = layer;
-      console.log("foo");
       self.redraw();
     });
 
