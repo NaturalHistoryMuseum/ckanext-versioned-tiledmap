@@ -63,6 +63,16 @@ my.NHMMap = Backbone.View.extend({
 
   show: function() {
      $('.recline-pager').hide();
+
+    /* If the div was hidden, Leaflet needs to recalculate some sizes to display properly */
+    if (this.map){
+      this.map.invalidateSize();
+      if (this._zoomPending && this.state.get('autoZoom')) {
+        this._zoomToFeatures();
+        this._zoomPending = false;
+      }
+    }
+    this.visible = true;
   },
 
   hide: function() {
