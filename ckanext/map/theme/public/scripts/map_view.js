@@ -167,7 +167,8 @@ my.NHMMap = Backbone.View.extend({
     grid_params['filters'] = JSON.stringify(this.model.queryState.attributes.filters);
 
     if (this.model.queryState.attributes.q){
-        where.push("_full_text='" + this.model.queryState.attributes.q + "'");
+      tile_params['q'] = this.model.queryState.attributes.q;
+      grid_params['q'] = this.model.queryState.attributes.q;
     }
 
     if (this.drawLayer) {
