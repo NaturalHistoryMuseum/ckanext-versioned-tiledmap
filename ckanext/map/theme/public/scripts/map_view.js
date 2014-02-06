@@ -195,17 +195,8 @@ my.NHMMap = Backbone.View.extend({
 
     grid_params["sql"] = grid_sql;
 
-    if ($.isEmptyObject(tile_params)) {
-      this.tilejson.tiles = [this.tiles_url];
-    } else {
-      this.tilejson.tiles = [this.tiles_url + "?" + $.param(tile_params)];
-    }
-
-    if ($.isEmptyObject(grid_params)) {
-      this.tilejson.grids = [this.grids_url];
-    } else {
-      this.tilejson.grids = [this.grids_url + "&" + $.param(grid_params)];
-    }
+    this.tilejson.tiles = [this.tiles_url + "?" + $.param(tile_params)];
+    this.tilejson.grids = [this.grids_url + "&" + $.param(grid_params)];
 
     _.each(this.layers, function(layer){
         self.map.removeLayer(layer)
