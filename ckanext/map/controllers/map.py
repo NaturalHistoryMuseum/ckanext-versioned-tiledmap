@@ -153,7 +153,7 @@ class MapController(base.BaseController):
             # TODO - other types of filters
             if (filter['type'] == 'term'):
               sub = sub.where(botany_all.c[filter['field']]==filter['term'])
-        sub = sub.where(func.ST_Intersects(botany_all.c.the_geom_webmercator, func.ST_SetSrid('bbox_token', 3857)))
+        sub = sub.where(func.ST_Intersects(botany_all.c.the_geom_webmercator, func.ST_SetSrid(helpers.MapnikPlaceholderColumn('bbox'), 3857)))
         sub = sub.group_by(func.ST_SnapToGrid(botany_all.c.the_geom_webmercator,1000,1000))
         sub = sub.order_by(desc('count')).alias('sub')
         # Note that the c.foo[1] syntax needs SQLAlchemy >= 0.8
@@ -166,7 +166,6 @@ class MapController(base.BaseController):
                     ]
         s = select(outer_cols).select_from(sub)
         sql = helpers.interpolateQuery(s, engine)
-        sql = sql.replace("'bbox_token'","!bbox!")
 
         url = _('http://10.11.12.1:4000/database/nhm_botany/table/botany_all/{z}/{x}/{y}.grid.json?callback={cb}&sql={sql}').format(z=z,x=x,y=y,cb=callback,sql=sql)
         response.headers['Content-type'] = 'text/javascript'
