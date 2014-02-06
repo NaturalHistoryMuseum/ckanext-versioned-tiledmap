@@ -48,3 +48,20 @@ class Geometry(UserDefinedType):
     def column_expression(self, col):
         return col
 
+# MapnikPlaceholderColumn
+
+# Mapnik accepts 'placeholders' in the sql, in the format of "!placeholder!". This is then substituted with the
+# correct values at run-time. Unfortunately, of course "where(bar = !foo!)" isn't valid SQL, so we need to
+# trick SQLAlchemy into outputting the placeholders by defining our own custom column format.
+
+# See https://github.com/mapnik/mapnik/wiki/PostGIS#wiki-bbox-token for the tokens that mapnik supports
+
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql.expression import ColumnClause
+
+class MapnikPlaceholderColumn(ColumnClause):
+    pass
+
+@compiles(MapnikPlaceholderColumn)
+def compile_mapnikplaceholdercolumn(element, compiler, **kw):
+    return "!%s!" % element.name
