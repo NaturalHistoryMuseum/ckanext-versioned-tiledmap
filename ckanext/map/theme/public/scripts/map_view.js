@@ -160,28 +160,23 @@ my.NHMMap = Backbone.View.extend({
   redraw: function(){
 
     var self = this;
-    var tile_params = {};
-    var grid_params = {};
+    var params = {};
 
-    tile_params['filters'] = JSON.stringify(this.model.queryState.attributes.filters);
-    grid_params['filters'] = JSON.stringify(this.model.queryState.attributes.filters);
+    params['filters'] = JSON.stringify(this.model.queryState.attributes.filters);
 
     if (this.model.queryState.attributes.q){
-      tile_params['q'] = this.model.queryState.attributes.q;
-      grid_params['q'] = this.model.queryState.attributes.q;
+      params['q'] = this.model.queryState.attributes.q;
     }
 
     if (this.drawLayer) {
       var geojson = this.drawLayer.toGeoJSON();
-      tile_params['geom'] = Terraformer.WKT.convert(geojson.geometry);
-      grid_params['geom'] = Terraformer.WKT.convert(geojson.geometry);
+      params['geom'] = Terraformer.WKT.convert(geojson.geometry);
     }
 
-    tile_params['resource_id'] = this.model.id;
-    grid_params['resource_id'] = this.model.id;
+    params['resource_id'] = this.model.id;
 
-    this.tilejson.tiles = [this.tiles_url + "?" + $.param(tile_params)];
-    this.tilejson.grids = [this.grids_url + "&" + $.param(grid_params)];
+    this.tilejson.tiles = [this.tiles_url + "?" + $.param(params)];
+    this.tilejson.grids = [this.grids_url + "&" + $.param(params)];
 
     _.each(this.layers, function(layer){
         self.map.removeLayer(layer)
