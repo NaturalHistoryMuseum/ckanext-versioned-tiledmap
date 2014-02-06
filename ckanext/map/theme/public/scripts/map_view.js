@@ -173,6 +173,7 @@ my.NHMMap = Backbone.View.extend({
     if (this.drawLayer) {
       var geojson = this.drawLayer.toGeoJSON();
       tile_params['geom'] = Terraformer.WKT.convert(geojson.geometry);
+      grid_params['geom'] = Terraformer.WKT.convert(geojson.geometry);
     }
 
     tile_params['resource_id'] = this.model.id;

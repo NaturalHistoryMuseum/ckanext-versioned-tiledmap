@@ -123,6 +123,8 @@ class MapController(base.BaseController):
         resource_id = request.params.get('resource_id')
         callback = request.params.get('callback')
         filters = request.params.get('filters')
+        query = request.params.get('q')
+        geom = request.params.get('geom')
 
         context = {'model': model, 'session': model.Session, 'user': c.user or c.author}
 
@@ -159,6 +161,10 @@ class MapController(base.BaseController):
             if (filter['type'] == 'term'):
               sub = sub.where(botany_all.c[filter['field']]==filter['term'])
         sub = sub.where(func.ST_Intersects(botany_all.c.the_geom_webmercator, func.ST_SetSrid(helpers.MapnikPlaceholderColumn('bbox'), 3857)))
+
+        if geom:
+          sub = sub.where(geoFunctions.intersects(botany_all.c.the_geom_webmercator,geoFunctions.transform(geom,3857)))
+
         sub = sub.group_by(func.ST_SnapToGrid(botany_all.c.the_geom_webmercator,width * 4,height * 4))
         sub = sub.order_by(desc('count')).alias('sub')
         # Note that the c.foo[1] syntax needs SQLAlchemy >= 0.8
