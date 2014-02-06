@@ -31,6 +31,29 @@ class MapController(base.BaseController):
     Controlled for displaying map tiles
     """
 
+    def botany_table(self):
+      metadata = MetaData()
+      table = Table('botany_all', metadata,
+            Column('_id', Integer),
+            Column('type', String),
+            Column('collection_department', String),
+            Column('collection_sub_department', String),
+            Column('catalogue_number', String),
+            Column('scientific_name', String),
+            Column('genus', String),
+            Column('subgenus', String),
+            Column('species', String),
+            Column('scientific_name_author', String),
+            Column('continent', String),
+            Column('country', String),
+            Column('state_province', String),
+            Column('county', String),
+            Column('expedition_name', String),
+            Column('vessel_name', String),
+            Column('the_geom_webmercator', helpers.Geometry)
+      )
+      return table
+
     def tile(self, z, x, y):
 
         """
@@ -58,26 +81,7 @@ class MapController(base.BaseController):
 
         engine = create_engine('postgresql://')
 
-        metadata = MetaData()
-        botany_all = Table('botany_all', metadata,
-            Column('_id', Integer),
-            Column('type', String),
-            Column('collection_department', String),
-            Column('collection_sub_department', String),
-            Column('catalogue_number', String),
-            Column('scientific_name', String),
-            Column('genus', String),
-            Column('subgenus', String),
-            Column('species', String),
-            Column('scientific_name_author', String),
-            Column('continent', String),
-            Column('country', String),
-            Column('state_province', String),
-            Column('county', String),
-            Column('expedition_name', String),
-            Column('vessel_name', String),
-            Column('the_geom_webmercator', helpers.Geometry)
-        )
+        botany_all = self.botany_table()
 
         dep = 'Botany'
 
