@@ -14,6 +14,9 @@ from sqlalchemy.sql import select
 from sqlalchemy import Table, Column, Integer, String, MetaData
 from sqlalchemy import create_engine
 import geoalchemy.functions as geoFunctions
+from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy import func
+from sqlalchemy.sql import desc
 
 log = logging.getLogger(__name__)
 
@@ -83,7 +86,7 @@ class MapController(base.BaseController):
 
         botany_all = self.botany_table()
 
-        dep = 'Botany'
+        dep = 'Botany' # TODO: depends on resource
 
         s = select([botany_all]).where(botany_all.c.collection_department==dep)
 
@@ -119,7 +122,7 @@ class MapController(base.BaseController):
 
         resource_id = request.params.get('resource_id')
         callback = request.params.get('callback')
-        sql = request.params.get('sql') # TODO FIXME remove!
+        filters = request.params.get('filters')
 
         context = {'model': model, 'session': model.Session, 'user': c.user or c.author}
 
@@ -130,6 +133,40 @@ class MapController(base.BaseController):
             abort(404, _('Resource not found'))
         except NotAuthorized:
             abort(401, _('Unauthorized to read resources'))
+
+        engine = create_engine('postgresql://')
+
+        botany_all = self.botany_table()
+
+        sub_cols = [func.array_agg(botany_all.c.scientific_name).label('names'),
+                    func.array_agg(botany_all.c['_id']).label('ids'),
+                    func.array_agg(botany_all.c.species).label('species'),
+                    func.count(botany_all.c.the_geom_webmercator).label('count'),
+                    func.ST_SnapToGrid(botany_all.c.the_geom_webmercator, 1000, 1000).label('center')
+                   ]
+
+        dep = 'Botany' # TODO: depends on resource
+
+        sub = select(sub_cols).where(botany_all.c.collection_department==dep)
+        if filters:
+          for filter in json.loads(filters):
+            # TODO - other types of filters
+            if (filter['type'] == 'term'):
+              sub = sub.where(botany_all.c[filter['field']]==filter['term'])
+        sub = sub.where(func.ST_Intersects(botany_all.c.the_geom_webmercator, func.ST_SetSrid('bbox_token', 3857)))
+        sub = sub.group_by(func.ST_SnapToGrid(botany_all.c.the_geom_webmercator,1000,1000))
+        sub = sub.order_by(desc('count')).alias('sub')
+        # Note that the c.foo[1] syntax needs SQLAlchemy >= 0.8
+        # However, geoalchemy breaks on SQLAlchemy >= 0.9, so be careful.
+        outer_cols = [Column('names', ARRAY(String))[1].label('scientific_name'),
+                      Column('ids', ARRAY(String))[1].label('_id'),
+                      Column('species', ARRAY(String))[1].label('species'),
+                      Column('count', Integer),
+                      Column('center', helpers.Geometry).label('the_geom_webmercator')
+                    ]
+        s = select(outer_cols).select_from(sub)
+        sql = helpers.interpolateQuery(s, engine)
+        sql = sql.replace("'bbox_token'","!bbox!")
 
         url = _('http://10.11.12.1:4000/database/nhm_botany/table/botany_all/{z}/{x}/{y}.grid.json?callback={cb}&sql={sql}').format(z=z,x=x,y=y,cb=callback,sql=sql)
         response.headers['Content-type'] = 'text/javascript'

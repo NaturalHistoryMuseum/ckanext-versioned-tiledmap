@@ -163,13 +163,8 @@ my.NHMMap = Backbone.View.extend({
     var tile_params = {};
     var grid_params = {};
 
-    var where = [];
-
-    $.each(this.model.queryState.attributes.filters, function( i, filter ) {
-        where.push(filter.field + "='" + filter.term + "'");
-    });
-
     tile_params['filters'] = JSON.stringify(this.model.queryState.attributes.filters);
+    grid_params['filters'] = JSON.stringify(this.model.queryState.attributes.filters);
 
     if (this.model.queryState.attributes.q){
         where.push("_full_text='" + this.model.queryState.attributes.q + "'");
@@ -182,18 +177,6 @@ my.NHMMap = Backbone.View.extend({
 
     tile_params['resource_id'] = this.model.id;
     grid_params['resource_id'] = this.model.id;
-
-    where.push('st_intersects(the_geom_webmercator, st_setsrid(!bbox!, 3857))');
-
-    var grid_sql = "SELECT names[1] AS scientific_name, ids[1] as _id, species[1] as species, count, center as the_geom_webmercator" +
-      " FROM " +
-      "(SELECT array_agg(scientific_name) as names, array_agg(_id) AS ids, array_agg(species) as species, COUNT( geom ) AS count, ST_SnapToGrid( the_geom_webmercator, 1000, 1000) AS center " +
-      "FROM botany_all WHERE " +
-      where.join(' AND ') +
-      " GROUP BY ST_SnapToGrid( the_geom_webmercator, 1000, 1000) " +
-      "ORDER BY count DESC ) as sub "
-
-    grid_params["sql"] = grid_sql;
 
     this.tilejson.tiles = [this.tiles_url + "?" + $.param(tile_params)];
     this.tilejson.grids = [this.grids_url + "&" + $.param(grid_params)];
