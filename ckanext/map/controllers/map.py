@@ -138,11 +138,16 @@ class MapController(base.BaseController):
 
         botany_all = self.botany_table()
 
+        # Set mapnik placeholders for the size of each pixel. Allows the grid to adjust automatically to the pixel size
+        # at whichever zoom we happen to be at.
+        width = helpers.MapnikPlaceholderColumn('pixel_width')
+        height = helpers.MapnikPlaceholderColumn('pixel_height')
+
         sub_cols = [func.array_agg(botany_all.c.scientific_name).label('names'),
                     func.array_agg(botany_all.c['_id']).label('ids'),
                     func.array_agg(botany_all.c.species).label('species'),
                     func.count(botany_all.c.the_geom_webmercator).label('count'),
-                    func.ST_SnapToGrid(botany_all.c.the_geom_webmercator, 1000, 1000).label('center')
+                    func.ST_SnapToGrid(botany_all.c.the_geom_webmercator, width * 4, height * 4).label('center')
                    ]
 
         dep = 'Botany' # TODO: depends on resource
@@ -154,7 +159,7 @@ class MapController(base.BaseController):
             if (filter['type'] == 'term'):
               sub = sub.where(botany_all.c[filter['field']]==filter['term'])
         sub = sub.where(func.ST_Intersects(botany_all.c.the_geom_webmercator, func.ST_SetSrid(helpers.MapnikPlaceholderColumn('bbox'), 3857)))
-        sub = sub.group_by(func.ST_SnapToGrid(botany_all.c.the_geom_webmercator,1000,1000))
+        sub = sub.group_by(func.ST_SnapToGrid(botany_all.c.the_geom_webmercator,width * 4,height * 4))
         sub = sub.order_by(desc('count')).alias('sub')
         # Note that the c.foo[1] syntax needs SQLAlchemy >= 0.8
         # However, geoalchemy breaks on SQLAlchemy >= 0.9, so be careful.
