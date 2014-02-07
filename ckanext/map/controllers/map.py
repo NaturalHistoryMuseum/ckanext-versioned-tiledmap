@@ -168,6 +168,9 @@ class MapController(base.BaseController):
         width = helpers.MapnikPlaceholderColumn('pixel_width')
         height = helpers.MapnikPlaceholderColumn('pixel_height')
 
+        # To calculate the number of overlapping points, we first snap them to a grid roughly four pixels wide, and then
+        # group them by that grid. This allows us to count the records, but we need to aggregate the rest of the information
+        # in order to later return the "top" record from the stack of overlapping records
         sub_cols = [func.array_agg(geo_table.c.scientific_name).label('names'),
                     func.array_agg(geo_table.c['_id']).label('ids'),
                     func.array_agg(geo_table.c.species).label('species'),
@@ -175,21 +178,31 @@ class MapController(base.BaseController):
                     func.ST_SnapToGrid(geo_table.c.the_geom_webmercator, width * 4, height * 4).label('center')
                    ]
 
+        # Filter the records by department, using any filters, and by the geometry drawn
         dep = c.resource['name']
-
         sub = select(sub_cols).where(geo_table.c.collection_department==dep)
+
         if filters:
           for filter in json.loads(filters):
             # TODO - other types of filters
             if (filter['type'] == 'term'):
               sub = sub.where(geo_table.c[filter['field']]==filter['term'])
-        sub = sub.where(func.ST_Intersects(geo_table.c.the_geom_webmercator, func.ST_SetSrid(helpers.MapnikPlaceholderColumn('bbox'), 3857)))
 
         if geom:
           sub = sub.where(geoFunctions.intersects(geo_table.c.the_geom_webmercator,geoFunctions.transform(geom,3857)))
 
+        # We need to also filter the records to those in the area that we're looking at, otherwise the query causes every
+        # record in the database to be snapped to the grid. Mapnik can fill in the !bbox! token for us, which saves us
+        # trying to figure it out from the z/x/y numbers here.
+        sub = sub.where(func.ST_Intersects(geo_table.c.the_geom_webmercator, func.ST_SetSrid(helpers.MapnikPlaceholderColumn('bbox'), 3857)))
+
+        # The group by needs to match the column chosen above, including by the size of the grid
         sub = sub.group_by(func.ST_SnapToGrid(geo_table.c.the_geom_webmercator,width * 4,height * 4))
         sub = sub.order_by(desc('count')).alias('sub')
+
+        # In the outer query we can use the overlapping records count and the location, but we also need to pop the first
+        # record off of the array. If we were to return e.g. all the overlapping names, the json grids would unbounded in size.
+
         # Note that the c.foo[1] syntax needs SQLAlchemy >= 0.8
         # However, geoalchemy breaks on SQLAlchemy >= 0.9, so be careful.
         outer_cols = [Column('names', ARRAY(String))[1].label('scientific_name'),
