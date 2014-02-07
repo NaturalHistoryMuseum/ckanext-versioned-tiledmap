@@ -86,7 +86,7 @@ class MapController(base.BaseController):
 
         botany_all = self.botany_table()
 
-        dep = 'Botany' # TODO: depends on resource
+        dep = c.resource['name']
 
         s = select([botany_all]).where(botany_all.c.collection_department==dep)
 
@@ -152,7 +152,7 @@ class MapController(base.BaseController):
                     func.ST_SnapToGrid(botany_all.c.the_geom_webmercator, width * 4, height * 4).label('center')
                    ]
 
-        dep = 'Botany' # TODO: depends on resource
+        dep = c.resource['name']
 
         sub = select(sub_cols).where(botany_all.c.collection_department==dep)
         if filters:
