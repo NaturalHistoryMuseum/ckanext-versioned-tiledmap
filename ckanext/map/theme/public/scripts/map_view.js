@@ -83,9 +83,6 @@ my.NHMMap = Backbone.View.extend({
     var self = this;
     var resource_id = this.model.id
 
-    var dbname = 'nhm_botany';
-    var table = 'botany_all';
-
     this.map = new L.Map(this.$map.get(0));
 
     this.map.setView(new L.LatLng(51.505, -0.09), 4, true);
