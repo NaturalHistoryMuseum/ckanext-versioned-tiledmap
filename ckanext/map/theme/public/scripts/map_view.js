@@ -113,7 +113,7 @@ my.NHMMap = Backbone.View.extend({
       var type = e.layerType;
       var layer = e.layer;
       if (self.drawLayer) {
-        self.map.removeLayer(this.drawLayer);
+        self.map.removeLayer(self.drawLayer);
       }
       self.map.addLayer(layer);
       self.drawLayer = layer;
