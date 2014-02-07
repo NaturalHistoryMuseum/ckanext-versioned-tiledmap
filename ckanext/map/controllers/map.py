@@ -52,6 +52,14 @@ class MapController(base.BaseController):
                   }
                   """
 
+    windshaft_base = 'http://10.11.12.1:4000/database/nhm_botany/table/botany_all/{z}/{x}/{y}'
+
+    def tile_url(self):
+      return self.windshaft_base + '.png?sql={sql}&style={style}'
+
+    def grid_url(self):
+      return self.windshaft_base + '.grid.json?callback={cb}&sql={sql}'
+
     def geo_table(self):
       """ Return the SQLAlchemy table corresponding to the geo table in Windshaft
 
@@ -129,7 +137,7 @@ class MapController(base.BaseController):
         if heatmap:
           style = urllib.quote_plus(self.heatmap_mss)
 
-        url = _('http://10.11.12.1:4000/database/nhm_botany/table/botany_all/{z}/{x}/{y}.png?sql={sql}&style={style}').format(z=z,x=x,y=y,sql=sql,style=style)
+        url = self.tile_url().format(z=z,x=x,y=y,sql=sql,style=style)
         response.headers['Content-type'] = 'image/png'
         tile =  cStringIO.StringIO(urllib.urlopen(url).read())
         return tile
@@ -214,7 +222,7 @@ class MapController(base.BaseController):
         s = select(outer_cols).select_from(sub)
         sql = helpers.interpolateQuery(s, engine)
 
-        url = _('http://10.11.12.1:4000/database/nhm_botany/table/botany_all/{z}/{x}/{y}.grid.json?callback={cb}&sql={sql}').format(z=z,x=x,y=y,cb=callback,sql=sql)
+        url = self.grid_url().format(z=z,x=x,y=y,cb=callback,sql=sql)
         response.headers['Content-type'] = 'text/javascript'
         grid =  cStringIO.StringIO(urllib.urlopen(url).read())
         return grid
