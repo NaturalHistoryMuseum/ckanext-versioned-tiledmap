@@ -31,10 +31,15 @@ get_action = logic.get_action
 
 class MapController(base.BaseController):
     """
-    Controlled for displaying map tiles
+    Controller for displaying map tiles and grids
     """
 
-    def botany_table(self):
+    def geo_table(self):
+      """ Return the SQLAlchemy table corresponding to the geo table in Windshaft
+
+      Currently windshaft is configured with a slightly misleading table name of 'botany_all' containing
+      all records, not just botany ones.
+      """
       metadata = MetaData()
       table = Table('botany_all', metadata,
             Column('_id', Integer),
@@ -84,20 +89,20 @@ class MapController(base.BaseController):
 
         engine = create_engine('postgresql://')
 
-        botany_all = self.botany_table()
+        geo_table = self.geo_table()
 
         dep = c.resource['name']
 
-        s = select([botany_all]).where(botany_all.c.collection_department==dep)
+        s = select([geo_table]).where(geo_table.c.collection_department==dep)
 
         if filters:
           for filter in json.loads(filters):
             # TODO - other types of filters
             if (filter['type'] == 'term'):
-              s = s.where(botany_all.c[filter['field']]==filter['term'])
+              s = s.where(geo_table.c[filter['field']]==filter['term'])
 
         if geom:
-          s = s.where(geoFunctions.intersects(botany_all.c.the_geom_webmercator,geoFunctions.transform(geom,3857)))
+          s = s.where(geoFunctions.intersects(geo_table.c.the_geom_webmercator,geoFunctions.transform(geom,3857)))
 
         sql = helpers.interpolateQuery(s, engine)
 
@@ -138,34 +143,34 @@ class MapController(base.BaseController):
 
         engine = create_engine('postgresql://')
 
-        botany_all = self.botany_table()
+        geo_table = self.geo_table()
 
         # Set mapnik placeholders for the size of each pixel. Allows the grid to adjust automatically to the pixel size
         # at whichever zoom we happen to be at.
         width = helpers.MapnikPlaceholderColumn('pixel_width')
         height = helpers.MapnikPlaceholderColumn('pixel_height')
 
-        sub_cols = [func.array_agg(botany_all.c.scientific_name).label('names'),
-                    func.array_agg(botany_all.c['_id']).label('ids'),
-                    func.array_agg(botany_all.c.species).label('species'),
-                    func.count(botany_all.c.the_geom_webmercator).label('count'),
-                    func.ST_SnapToGrid(botany_all.c.the_geom_webmercator, width * 4, height * 4).label('center')
+        sub_cols = [func.array_agg(geo_table.c.scientific_name).label('names'),
+                    func.array_agg(geo_table.c['_id']).label('ids'),
+                    func.array_agg(geo_table.c.species).label('species'),
+                    func.count(geo_table.c.the_geom_webmercator).label('count'),
+                    func.ST_SnapToGrid(geo_table.c.the_geom_webmercator, width * 4, height * 4).label('center')
                    ]
 
         dep = c.resource['name']
 
-        sub = select(sub_cols).where(botany_all.c.collection_department==dep)
+        sub = select(sub_cols).where(geo_table.c.collection_department==dep)
         if filters:
           for filter in json.loads(filters):
             # TODO - other types of filters
             if (filter['type'] == 'term'):
-              sub = sub.where(botany_all.c[filter['field']]==filter['term'])
-        sub = sub.where(func.ST_Intersects(botany_all.c.the_geom_webmercator, func.ST_SetSrid(helpers.MapnikPlaceholderColumn('bbox'), 3857)))
+              sub = sub.where(geo_table.c[filter['field']]==filter['term'])
+        sub = sub.where(func.ST_Intersects(geo_table.c.the_geom_webmercator, func.ST_SetSrid(helpers.MapnikPlaceholderColumn('bbox'), 3857)))
 
         if geom:
-          sub = sub.where(geoFunctions.intersects(botany_all.c.the_geom_webmercator,geoFunctions.transform(geom,3857)))
+          sub = sub.where(geoFunctions.intersects(geo_table.c.the_geom_webmercator,geoFunctions.transform(geom,3857)))
 
-        sub = sub.group_by(func.ST_SnapToGrid(botany_all.c.the_geom_webmercator,width * 4,height * 4))
+        sub = sub.group_by(func.ST_SnapToGrid(geo_table.c.the_geom_webmercator,width * 4,height * 4))
         sub = sub.order_by(desc('count')).alias('sub')
         # Note that the c.foo[1] syntax needs SQLAlchemy >= 0.8
         # However, geoalchemy breaks on SQLAlchemy >= 0.9, so be careful.
@@ -182,5 +187,3 @@ class MapController(base.BaseController):
         response.headers['Content-type'] = 'text/javascript'
         grid =  cStringIO.StringIO(urllib.urlopen(url).read())
         return grid
-
-
