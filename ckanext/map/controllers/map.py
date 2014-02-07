@@ -34,6 +34,24 @@ class MapController(base.BaseController):
     Controller for displaying map tiles and grids
     """
 
+    heatmap_mss = """
+                  @size: 20;
+                  #botany_all[zoom >= 4] {
+                    marker-file: url('http://thunderflames.org/temp/marker.svg');
+                    marker-allow-overlap: true;
+                    marker-opacity: 0.2;
+                    marker-width: @size;
+                    marker-height: @size;
+                    marker-clip: false;
+                    image-filters: colorize-alpha(blue, cyan, green, yellow , orange, red);
+                    opacity: 0.8;
+                    [zoom >= 7] {
+                      marker-width: @size * 2;
+                      marker-height: @size * 2;
+                    }
+                  }
+                  """
+
     def geo_table(self):
       """ Return the SQLAlchemy table corresponding to the geo table in Windshaft
 
@@ -109,7 +127,7 @@ class MapController(base.BaseController):
         style = ''
 
         if heatmap:
-          style = urllib.quote_plus("@size: 20;  #botany_all[zoom >= 4] {   marker-file: url('http://thunderflames.org/temp/marker.svg');   marker-allow-overlap: true;   marker-opacity: 0.2;   marker-width: @size;   marker-height: @size;   marker-clip: false;   image-filters: colorize-alpha(blue, cyan, green, yellow , orange, red);   opacity: 0.8;   [zoom >= 7] {     marker-width: @size * 2;     marker-height: @size * 2;   } }")
+          style = urllib.quote_plus(self.heatmap_mss)
 
         url = _('http://10.11.12.1:4000/database/nhm_botany/table/botany_all/{z}/{x}/{y}.png?sql={sql}&style={style}').format(z=z,x=x,y=y,sql=sql,style=style)
         response.headers['Content-type'] = 'image/png'
