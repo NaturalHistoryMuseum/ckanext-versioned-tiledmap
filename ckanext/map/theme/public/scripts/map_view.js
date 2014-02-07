@@ -133,7 +133,7 @@ my.NHMMap = Backbone.View.extend({
       var template;
       if (props) {
         template = [
-          '<h4>Botany Records</h4>',
+          '<h4>' + self.model.attributes.name + ' Records</h4>',
           '<b>{{ data.species }}</b><br />',
           '{{ data._id }}<br />',
           '{{ data.scientific_name }}<br/>',
@@ -141,7 +141,7 @@ my.NHMMap = Backbone.View.extend({
         ].join('');
       } else {
         template = [
-          '<h4>Botany Records</h4>',
+          '<h4>' + self.model.attributes.name + ' Records</h4>',
           '<p>Hover over a marker</p>'
         ].join('');
       }
