@@ -107,13 +107,8 @@ my.NHMMap = Backbone.View.extend({
     };
 
     this.map.on('draw:created', function (e) {
-      var type = e.layerType;
-      var layer = e.layer;
-      if (self.drawLayer) {
-        self.map.removeLayer(self.drawLayer);
-      }
-      self.map.addLayer(layer);
-      self.drawLayer = layer;
+      // Set the the geometry in the queryState to persist it between filter/search updates
+      self.model.queryState.attributes.geom = e.layer.toGeoJSON().geometry;
       self.redraw();
     });
 
@@ -159,15 +154,21 @@ my.NHMMap = Backbone.View.extend({
     var self = this;
     var params = {};
 
+    if (self.drawLayer) {
+      self.map.removeLayer(self.drawLayer);
+    }
+
+    self.drawLayer = L.geoJson(this.model.queryState.attributes.geom);
+    self.map.addLayer(self.drawLayer);
+
     params['filters'] = JSON.stringify(this.model.queryState.attributes.filters);
 
     if (this.model.queryState.attributes.q){
       params['q'] = this.model.queryState.attributes.q;
     }
 
-    if (this.drawLayer) {
-      var geojson = this.drawLayer.toGeoJSON();
-      params['geom'] = Terraformer.WKT.convert(geojson.geometry);
+    if (this.model.queryState.attributes.geom) {
+      params['geom'] = Terraformer.WKT.convert(this.model.queryState.attributes.geom);
     }
 
     params['resource_id'] = this.model.id;
