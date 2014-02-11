@@ -26,5 +26,7 @@ setup(
 	"""
         [ckan.plugins]
             map = ckanext.map.plugin:MapPlugin
+        [paste.paster_command]
+            ckanextmap=ckanext.map.commands.add_geom:AddGeomCommand
 	""",
 )
