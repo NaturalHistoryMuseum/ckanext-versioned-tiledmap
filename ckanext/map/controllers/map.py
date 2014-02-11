@@ -119,18 +119,38 @@ class MapController(base.BaseController):
 
         dep = c.resource['name']
 
-        s = select([geo_table]).where(geo_table.c.collection_department==dep)
+        # If we're drawing dots, then we can ignore the ones with identical positions by
+        # selecting DISTINCT ON (the_geom_webmercator), but we need keep them for heatmaps
+        # to get the right effect.
+        # This provides a performance improvement for datasets with many points that share identical
+        # positions. Note that there's an overhead to doing so for small datasets, and also that
+        # it only has an effect for records with *identical* geometries.
+        if heatmap:
+          sub = select(['the_geom_webmercator'])
+        else:
+          sub = select(['the_geom_webmercator'], distinct='the_geom_webmercator')
+
+        sub = sub.where(geo_table.c.collection_department==dep)
 
         if filters:
           for filter in json.loads(filters):
             # TODO - other types of filters
             if (filter['type'] == 'term'):
-              s = s.where(geo_table.c[filter['field']]==filter['term'])
+              sub = sub.where(geo_table.c[filter['field']]==filter['term'])
 
         if geom:
-          s = s.where(geoFunctions.intersects(geo_table.c.the_geom_webmercator,geoFunctions.transform(geom,3857)))
+          sub = sub.where(geoFunctions.intersects(geo_table.c.the_geom_webmercator,geoFunctions.transform(geom,3857)))
 
-        sql = helpers.interpolateQuery(s, engine)
+        if heatmap:
+          # no need to shuffle (see below), so use the subquery directly
+          sql = helpers.interpolateQuery(sub, engine)
+        else:
+          # The SELECT ... DISTINCT ON query silently orders the results by lat and lon which leads to a nasty
+          # overlapping effect when rendered. To avoid this, we shuffle the points in an outer
+          # query.
+          sub = sub.alias('sub')
+          outer = select(['the_geom_webmercator']).select_from(sub).order_by(func.random())
+          sql = helpers.interpolateQuery(outer, engine)
 
         style = ''
 
