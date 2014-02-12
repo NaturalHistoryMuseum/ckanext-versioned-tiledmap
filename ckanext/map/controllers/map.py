@@ -34,6 +34,52 @@ class MapController(base.BaseController):
     Controller for displaying map tiles and grids
     """
 
+    standard_mss =  """
+                    #botany_all {
+                      marker-fill: #ee0000;
+                      marker-opacity: 1;
+                      marker-width: 8;
+                      marker-line-color: white;
+                      marker-line-width: 1;
+                      marker-line-opacity: 0.9;
+                      marker-placement: point;
+                      marker-type: ellipse;
+                      marker-allow-overlap: true;
+                    }
+                    """
+
+    gridded_mss = """
+                  @color: #f02323;
+                  @color1: spin(@color, 80);
+                  @color2: spin(@color, 70);
+                  @color3: spin(@color, 60);
+                  @color4: spin(@color, 50);
+                  @color5: spin(@color, 40);
+                  @color6: spin(@color, 30);
+                  @color7: spin(@color, 20);
+                  @color8: spin(@color, 10);
+                  @color9: spin(@color, 0);
+
+                  #botany_all {
+                    marker-fill: @color1;
+                    marker-opacity: 1;
+                    marker-width: 7;
+                    marker-placement: point;
+                    marker-type: ellipse;
+                    marker-line-width: 1.0;
+                    marker-line-color: white;
+                    marker-allow-overlap: true;
+                    [count > 5] { marker-fill: @color2; }
+                    [count > 10] { marker-fill: @color3; }
+                    [count > 15] { marker-fill: @color4; }
+                    [count > 20] { marker-fill: @color5; }
+                    [count > 25] { marker-fill: @color6; }
+                    [count > 30] { marker-fill: @color7; }
+                    [count > 35] { marker-fill: @color8; }
+                    [count > 40] { marker-fill: @color9; }
+                  }
+                  """
+
     heatmap_mss = """
                   @size: 20;
                   #botany_all[zoom >= 4] {
@@ -101,7 +147,7 @@ class MapController(base.BaseController):
         filters = request.params.get('filters')
         query = request.params.get('q')
         geom = request.params.get('geom')
-        heatmap = request.params.get('heatmap')
+        style = request.params.get('style')
 
         context = {'model': model, 'session': model.Session, 'user': c.user or c.author}
 
@@ -119,14 +165,19 @@ class MapController(base.BaseController):
 
         dep = c.resource['name']
 
+        width = helpers.MapnikPlaceholderColumn('pixel_width')
+        height = helpers.MapnikPlaceholderColumn('pixel_height')
+
         # If we're drawing dots, then we can ignore the ones with identical positions by
         # selecting DISTINCT ON (the_geom_webmercator), but we need keep them for heatmaps
         # to get the right effect.
         # This provides a performance improvement for datasets with many points that share identical
         # positions. Note that there's an overhead to doing so for small datasets, and also that
         # it only has an effect for records with *identical* geometries.
-        if heatmap:
+        if style == 'heatmap':
           sub = select(['the_geom_webmercator'])
+        elif style == 'gridded':
+          sub = select([func.count(geo_table.c.the_geom_webmercator).label('count'),func.ST_SnapToGrid(geo_table.c.the_geom_webmercator, width * 8, height * 8).label('the_geom_webmercator')])
         else:
           sub = select(['the_geom_webmercator'], distinct='the_geom_webmercator')
 
@@ -141,23 +192,35 @@ class MapController(base.BaseController):
         if geom:
           sub = sub.where(geoFunctions.intersects(geo_table.c.the_geom_webmercator,geoFunctions.transform(geom,3857)))
 
-        if heatmap:
+        if style == 'heatmap':
           # no need to shuffle (see below), so use the subquery directly
           sql = helpers.interpolateQuery(sub, engine)
+        elif style == 'gridded':
+          sub = sub.where(func.ST_Intersects(geo_table.c.the_geom_webmercator, func.ST_SetSrid(helpers.MapnikPlaceholderColumn('bbox'), 3857)))
+
+          # The group by needs to match the column chosen above, including by the size of the grid
+          sub = sub.group_by(func.ST_SnapToGrid(geo_table.c.the_geom_webmercator,width * 8,height * 8))
+          sub = sub.order_by(desc('count')).alias('sub')
+
+          outer = select(['count', 'the_geom_webmercator']).select_from(sub).order_by(func.random())
+          sql = helpers.interpolateQuery(outer, engine)
         else:
           # The SELECT ... DISTINCT ON query silently orders the results by lat and lon which leads to a nasty
           # overlapping effect when rendered. To avoid this, we shuffle the points in an outer
           # query.
+
           sub = sub.alias('sub')
           outer = select(['the_geom_webmercator']).select_from(sub).order_by(func.random())
           sql = helpers.interpolateQuery(outer, engine)
 
-        style = ''
+        if style == 'heatmap':
+          mss = self.heatmap_mss
+        elif style == 'gridded':
+          mss = self.gridded_mss
+        else:
+          mss = self.standard_mss
 
-        if heatmap:
-          style = urllib.quote_plus(self.heatmap_mss)
-
-        url = self.tile_url().format(z=z,x=x,y=y,sql=sql,style=style)
+        url = self.tile_url().format(z=z,x=x,y=y,sql=sql,style=urllib.quote_plus(mss))
         response.headers['Content-type'] = 'image/png'
         tile =  cStringIO.StringIO(urllib.urlopen(url).read())
         return tile
@@ -176,6 +239,7 @@ class MapController(base.BaseController):
         filters = request.params.get('filters')
         query = request.params.get('q')
         geom = request.params.get('geom')
+        style = request.params.get('style')
 
         context = {'model': model, 'session': model.Session, 'user': c.user or c.author}
 
@@ -191,6 +255,11 @@ class MapController(base.BaseController):
 
         geo_table = self.geo_table()
 
+        if style == 'gridded':
+          grid_size = 8
+        else:
+          grid_size = 4
+
         # Set mapnik placeholders for the size of each pixel. Allows the grid to adjust automatically to the pixel size
         # at whichever zoom we happen to be at.
         width = helpers.MapnikPlaceholderColumn('pixel_width')
@@ -203,7 +272,7 @@ class MapController(base.BaseController):
                     func.array_agg(geo_table.c['_id']).label('ids'),
                     func.array_agg(geo_table.c.species).label('species'),
                     func.count(geo_table.c.the_geom_webmercator).label('count'),
-                    func.ST_SnapToGrid(geo_table.c.the_geom_webmercator, width * 4, height * 4).label('center')
+                    func.ST_SnapToGrid(geo_table.c.the_geom_webmercator, width * grid_size, height * grid_size).label('center')
                    ]
 
         # Filter the records by department, using any filters, and by the geometry drawn
@@ -225,7 +294,7 @@ class MapController(base.BaseController):
         sub = sub.where(func.ST_Intersects(geo_table.c.the_geom_webmercator, func.ST_SetSrid(helpers.MapnikPlaceholderColumn('bbox'), 3857)))
 
         # The group by needs to match the column chosen above, including by the size of the grid
-        sub = sub.group_by(func.ST_SnapToGrid(geo_table.c.the_geom_webmercator,width * 4,height * 4))
+        sub = sub.group_by(func.ST_SnapToGrid(geo_table.c.the_geom_webmercator, width * grid_size, height * grid_size))
         sub = sub.order_by(desc('count')).alias('sub')
 
         # In the outer query we can use the overlapping records count and the location, but we also need to pop the first
