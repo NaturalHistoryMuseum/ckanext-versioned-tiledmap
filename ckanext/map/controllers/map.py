@@ -83,7 +83,7 @@ class MapController(base.BaseController):
     heatmap_mss = """
                   @size: 20;
                   #botany_all[zoom >= 4] {
-                    marker-file: url('http://thunderflames.org/temp/marker.svg');
+                    marker-file: url('symbols/marker.svg');
                     marker-allow-overlap: true;
                     marker-opacity: 0.2;
                     marker-width: @size;
