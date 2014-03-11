@@ -3,7 +3,6 @@ import ckan.plugins as p
 import ckan.model as model
 from ckan.common import c
 import ckanext.nhm.logic.action as action
-from ckanext.nhm.model import setup as setup_model
 import ckanext.nhm.lib.helpers as nhmhelpers
 import sqlalchemy.exc
 
