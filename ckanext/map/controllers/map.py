@@ -172,7 +172,7 @@ class MapController(base.BaseController):
         @return: The Windshaft URL that will serve a grid. The URL contains
             6 place holders: {x}, {y}, {z}, {cb} and {sql}
         """
-        return self._base_url() + '.grid.json?callback={cb}&sql={sql}'
+        return self._base_url() + '.grid.json?callback={cb}&sql={sql}&interactivity={interactivity}'
 
     def _geo_table(self):
         """Return the table used to build the Windshaft query
@@ -346,7 +346,7 @@ class MapController(base.BaseController):
         s = select(outer_cols).select_from(sub)
         sql = helpers.interpolateQuery(s, self.engine)
 
-        url = self._grid_url().format(z=z, x=x, y=y, cb=callback, sql=sql)
+        url = self._grid_url().format(z=z, x=x, y=y, cb=callback, sql=sql, interactivity='_id,scientific_name,count')
         response.headers['Content-type'] = 'text/javascript'
         grid = cStringIO.StringIO(urllib.urlopen(url).read())
         return grid
