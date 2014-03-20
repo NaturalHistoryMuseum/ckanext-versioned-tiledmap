@@ -137,7 +137,7 @@ class MapController(base.BaseController):
         self.windshaft_port = config.get('map.windshaft.port', '4000')
         self.windshaft_database = config.get('map.windshaft.database', None) or self.engine.url.database
         self.interactivity = [i.strip() for i in config.get('map.interactivity', '_id,count').split(',')]
-        self.geom_field = config.get('map.geom', 'the_geom_webmercator')
+        self.geom_field = config.get('map.geom_field', 'the_geom_webmercator')
 
         if not request.params.get('resource_id'):
             base.abort(400, _("Missing resource id"))
