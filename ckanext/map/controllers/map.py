@@ -27,7 +27,7 @@ class MapController(base.BaseController):
     Both request will expect a 'resource_id' parameter, and may optionally have:
     - filter, defining the filters to apply ;
     - geom, defining the geometry to apply ;
-    - style, defining the style to apply ;
+    - style, defining the map style (either 'heatmap', 'gridded' or nothing for the dot map)
 
     The configuration must include the following items:
     - ckan.datastore.write_url: The URL for the datastore database
@@ -35,8 +35,13 @@ class MapController(base.BaseController):
     It may optionally define:
     - map.windshaft.host: The hostname of the windshaft server. Defaults to 127.0.0.1
     - map.windshaft.port: The port for the windshaft server. Defaults to 4000
-    - winsdhaft_database: The database name to pass to the windshaft server. Defaults
+    - map.winsdhaft_database: The database name to pass to the windshaft server. Defaults
         to the database name from the datastore URL.
+    - map.geom: Geom field. Defaults to the_geom_webmercator. Must be 3857 type field;
+    - map.interactivity: List of SQL fields to use for the interactivity layer. Defaults
+        to '_id, count'. Note that 'count' refers to the count, while all other fields
+        *must* exist in the database table. The plugin uses aliases starting with _mapplugin
+        while building the query, so there should be no fields named in this way.
     """
 
     standard_mss = """
@@ -113,6 +118,8 @@ class MapController(base.BaseController):
         self.windshaft_database = ''
         self.engine = None
         self.resource_id = ''
+        self.interactivity = ''
+        self.geom_field = ''
 
     def __before__(self, action, **params):
         """Setup the request
@@ -129,6 +136,8 @@ class MapController(base.BaseController):
         self.windshaft_host = config.get('map.windshaft.host', '127.0.0.1')
         self.windshaft_port = config.get('map.windshaft.port', '4000')
         self.windshaft_database = config.get('map.windshaft.database', None) or self.engine.url.database
+        self.interactivity = [i.strip() for i in config.get('map.interactivity', '_id,count').split(',')]
+        self.geom_field = config.get('map.geom', 'the_geom_webmercator')
 
         if not request.params.get('resource_id'):
             base.abort(400, _("Missing resource id"))
@@ -141,38 +150,73 @@ class MapController(base.BaseController):
         except logic.NotAuthorized:
             base.abort(401, _('Unauthorized to read resources'))
 
-    def _base_url(self):
+    def _base_url(self, z, x, y, ext, query=None):
         """Return the base Windshaft URL that will serve the tiles and grids.
 
+        @param z: the Z coordinate of the tile
+        @param x: the X coordinate of the tile
+        @param y: the Y coordinate of the tile
+        @param ext: the Extension (.png/.grid.json) for the URL
+        @param query: Dictionary defining a query string
         @rtype: str
-        @return: The base windshaft URL that will serve the tile/overlay. The URL
-            contains three placeholders: {x}, {y}, and {z} used to specify the required
-            tile.
+        @return: The base windshaft URL that will serve the tile/overlay.
         """
-        return 'http://{}:{}/database/{}/table/{}/{{z}}/{{x}}/{{y}}'.format(
-            self.windshaft_host,
-            self.windshaft_port,
-            self.windshaft_database,
-            self.resource_id
+        base = 'http://{host}:{port}/database/{database}/table/{table}/{z}/{x}/{y}.{ext}'.format(
+            host=self.windshaft_host,
+            port=self.windshaft_port,
+            database=self.windshaft_database,
+            table=self.resource_id,
+            z=z,
+            x=x,
+            y=y,
+            ext=ext
         )
+        if query is not None and len(query):
+            return base + "?" + urllib.urlencode(query)
+        else:
+            return base
 
-    def _tile_url(self):
+    def _tile_url(self, z, x, y, sql='', style='', query=None):
         """Return the tile Windshaft URL.
 
+        @param z: the Z coordinate of the tile
+        @param x: the X coordinate of the tile
+        @param y: the Y coordinate of the tile
+        @param sql: the SQL query to pass on to Windshaft
+        @param style: the Style to pass on to Windshaft
         @rtype: str
-        @return: The Winsdhaft URL that will serve a tile The URL contains
-            6 place holders: {x}, {y}, {z}, {sql} and {style}. See base_url
+        @return: The Winsdhaft URL that will serve a tile
         """
-        return self._base_url() + '.png?sql={sql}&style={style}'
+        if query is None:
+            query = {}
+        if sql:
+            query['sql'] = sql
+        if style:
+            query['style'] = style
+        return self._base_url(z, x, y, 'png', query)
 
-    def _grid_url(self):
+    def _grid_url(self, z, x, y, callback='', sql='', interactivity='', query=None):
         """Return the grid windshaft URL.
 
+        @param z: the Z coordinate of the tile
+        @param x: the X coordinate of the tile
+        @param y: the Y coordinate of the tile
+        @param callback: Javascript callback function.
+        @param sql: Sql to provide to the server.
+        @param interactivity: SQL fields to display in information popup/box
+        @param query: A dictionary defining any other query strings for the URL
         @rtype: str
-        @return: The Windshaft URL that will serve a grid. The URL contains
-            6 place holders: {x}, {y}, {z}, {cb} and {sql}
+        @return: The Windshaft URL that will serve a grid.
         """
-        return self._base_url() + '.grid.json?callback={cb}&sql={sql}&interactivity={interactivity}'
+        if query is None:
+            query = {}
+        if callback:
+            query['callback'] = callback
+        if sql:
+            query['sql'] = sql
+        if interactivity:
+            query['interactivity'] = interactivity
+        return self._base_url(z, x, y, 'grid.json', query)
 
     def _geo_table(self):
         """Return the table used to build the Windshaft query
@@ -213,14 +257,14 @@ class MapController(base.BaseController):
         # positions. Note that there's an overhead to doing so for small datasets, and also that
         # it only has an effect for records with *identical* geometries.
         if style == 'heatmap':
-            sub = select(geo_table.c.the_geom_webmercator.label('the_geom_webmercator'))
+            sub = select(geo_table.c[self.geom_field])
         elif style == 'gridded':
-            sub = select([func.count(geo_table.c.the_geom_webmercator).label('count'),
-                          func.ST_SnapToGrid(geo_table.c.the_geom_webmercator, width * 8, height * 8).label(
-                              'the_geom_webmercator')])
+            sub = select([func.count(geo_table.c[self.geom_field]).label('count'),
+                          func.ST_SnapToGrid(geo_table.c[self.geom_field], width * 8, height * 8).label(
+                              self.geom_field)])
         else:
-            sub = select([geo_table.c.the_geom_webmercator.label('the_geom_webmercator')],
-                         distinct='the_geom_webmercator',
+            sub = select([geo_table.c[self.geom_field].label(self.geom_field)],
+                         distinct=self.geom_field,
                          from_obj=geo_table)
 
         if filters:
@@ -231,29 +275,29 @@ class MapController(base.BaseController):
 
         if geom:
             sub = sub.where(
-                geo_functions.intersects(geo_table.c.the_geom_webmercator, geo_functions.transform(geom, 3857))
+                geo_functions.intersects(geo_table.c[self.geom_field], geo_functions.transform(geom, 3857))
             )
 
         if style == 'heatmap':
             # no need to shuffle (see below), so use the subquery directly
             sql = helpers.interpolateQuery(sub, self.engine)
         elif style == 'gridded':
-            sub = sub.where(func.ST_Intersects(geo_table.c.the_geom_webmercator,
+            sub = sub.where(func.ST_Intersects(geo_table.c[self.geom_field],
                                                func.ST_SetSrid(helpers.MapnikPlaceholderColumn('bbox'), 3857)))
 
             # The group by needs to match the column chosen above, including by the size of the grid
-            sub = sub.group_by(func.ST_SnapToGrid(geo_table.c.the_geom_webmercator, width * 8, height * 8))
-            sub = sub.order_by(desc('count')).alias('sub')
+            sub = sub.group_by(func.ST_SnapToGrid(geo_table.c[self.geom_field], width * 8, height * 8))
+            sub = sub.order_by(desc('count')).alias('_mapplugin_sub')
 
-            outer = select(['count', 'the_geom_webmercator']).select_from(sub).order_by(func.random())
+            outer = select(['count', self.geom_field]).select_from(sub).order_by(func.random())
             sql = helpers.interpolateQuery(outer, self.engine)
         else:
             # The SELECT ... DISTINCT ON query silently orders the results by lat and lon which leads to a nasty
             # overlapping effect when rendered. To avoid this, we shuffle the points in an outer
             # query.
 
-            sub = sub.alias('sub')
-            outer = select(['the_geom_webmercator']).select_from(sub).order_by(func.random())
+            sub = sub.alias('_mapplugin_sub')
+            outer = select([self.geom_field]).select_from(sub).order_by(func.random())
             sql = helpers.interpolateQuery(outer, self.engine)
 
         if style == 'heatmap':
@@ -263,7 +307,7 @@ class MapController(base.BaseController):
         else:
             mss = self.standard_mss.format(resource_id=resource_id)
 
-        url = self._tile_url().format(z=z, x=x, y=y, sql=sql, style=urllib.quote_plus(mss))
+        url = self._tile_url(z, x, y, sql=sql, style=mss)
         response.headers['Content-type'] = 'image/png'
         tile = cStringIO.StringIO(urllib.urlopen(url).read())
         return tile
@@ -300,12 +344,15 @@ class MapController(base.BaseController):
         # To calculate the number of overlapping points, we first snap them to a grid roughly four pixels wide, and then
         # group them by that grid. This allows us to count the records, but we need to aggregate the rest of the
         # information in order to later return the "top" record from the stack of overlapping records
-        sub_cols = [func.array_agg(geo_table.c.scientific_name).label('names'),
-                    func.array_agg(geo_table.c['_id']).label('ids'),
-                    func.array_agg(geo_table.c.species).label('species'),
-                    func.count(geo_table.c.the_geom_webmercator).label('count'),
-                    func.ST_SnapToGrid(geo_table.c.the_geom_webmercator, width * grid_size, height * grid_size).label(
-                        'center')]
+
+        sub_cols = []
+        for i in self.interactivity:
+            if i not in ['count', '_mapplugin_center', self.geom_field, '_mapplugin_sub']:
+                sub_cols.append(func.array_agg(geo_table.c[i]).label(i))
+        sub_cols.append(func.count(geo_table.c[self.geom_field]).label('count'))
+        sub_cols.append(func.ST_SnapToGrid(geo_table.c[self.geom_field], width * grid_size, height * grid_size).label(
+            '_mapplugin_center'
+        ))
 
         # Filter the records by department, using any filters, and by the geometry drawn
         sub = select(sub_cols)
@@ -318,18 +365,18 @@ class MapController(base.BaseController):
 
         if geom:
             sub = sub.where(
-                geo_functions.intersects(geo_table.c.the_geom_webmercator, geo_functions.transform(geom, 3857))
+                geo_functions.intersects(geo_table.c[self.geom_field], geo_functions.transform(geom, 3857))
             )
 
         # We need to also filter the records to those in the area that we're looking at, otherwise the query causes
         # every record in the database to be snapped to the grid. Mapnik can fill in the !bbox! token for us, which
         # saves us trying to figure it out from the z/x/y numbers here.
-        sub = sub.where(func.ST_Intersects(geo_table.c.the_geom_webmercator,
+        sub = sub.where(func.ST_Intersects(geo_table.c[self.geom_field],
                                            func.ST_SetSrid(helpers.MapnikPlaceholderColumn('bbox'), 3857)))
 
         # The group by needs to match the column chosen above, including by the size of the grid
-        sub = sub.group_by(func.ST_SnapToGrid(geo_table.c.the_geom_webmercator, width * grid_size, height * grid_size))
-        sub = sub.order_by(desc('count')).alias('sub')
+        sub = sub.group_by(func.ST_SnapToGrid(geo_table.c[self.geom_field], width * grid_size, height * grid_size))
+        sub = sub.order_by(desc('count')).alias('_mapplugin_sub')
 
         # In the outer query we can use the overlapping records count and the location, but we also need to pop the
         # first record off of the array. If we were to return e.g. all the overlapping names, the json grids would
@@ -337,16 +384,21 @@ class MapController(base.BaseController):
 
         # Note that the c.foo[1] syntax needs SQLAlchemy >= 0.8
         # However, geoalchemy breaks on SQLAlchemy >= 0.9, so be careful.
-        outer_cols = [Column('names', ARRAY(String))[1].label('scientific_name'),
-                      Column('ids', ARRAY(String))[1].label('_id'),
-                      Column('species', ARRAY(String))[1].label('species'),
-                      Column('count', Integer),
-                      Column('center', helpers.Geometry).label('the_geom_webmercator')]
+
+        outer_cols = []
+        for i in self.interactivity:
+            if i in ['_mapplugin_center', '_mapplugin_sub', self.geom_field]:
+                continue
+            elif i in ['count']:
+                outer_cols.append(Column('count', Integer))
+            else:
+                outer_cols.append(Column(i, ARRAY(String))[1].label(i))
+        outer_cols.append(Column('_mapplugin_center', helpers.Geometry).label(self.geom_field))
 
         s = select(outer_cols).select_from(sub)
         sql = helpers.interpolateQuery(s, self.engine)
 
-        url = self._grid_url().format(z=z, x=x, y=y, cb=callback, sql=sql, interactivity='_id,scientific_name,count')
+        url = self._grid_url(z, x, y, callback=callback, sql=sql, interactivity=','.join(self.interactivity))
         response.headers['Content-type'] = 'text/javascript'
         grid = cStringIO.StringIO(urllib.urlopen(url).read())
         return grid
