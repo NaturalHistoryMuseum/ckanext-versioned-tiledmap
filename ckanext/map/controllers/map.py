@@ -1,3 +1,4 @@
+import json
 import urllib
 import cStringIO
 
@@ -29,6 +30,14 @@ class MapController(base.BaseController):
     - geom, defining the geometry to apply ;
     - style, defining the map style (either 'heatmap', 'gridded' or nothing for the dot map)
 
+    In addition, this controller serves meta-information about a particular map at the following URL:
+
+    - /map-info
+
+    This request expects a 'resource_id' parameter, and may optionally have:
+
+    - filter, defining the filters to apply.
+
     The configuration must include the following items:
     - ckan.datastore.write_url: The URL for the datastore database
 
@@ -37,11 +46,16 @@ class MapController(base.BaseController):
     - map.windshaft.port: The port for the windshaft server. Defaults to 4000
     - map.winsdhaft_database: The database name to pass to the windshaft server. Defaults
         to the database name from the datastore URL.
-    - map.geom: Geom field. Defaults to the_geom_webmercator. Must be 3857 type field;
+    - map.geom_field: Geom field. Defaults to the_geom_webmercator. Must be 3857 type field;
+    - map.geom_field_4326: The 4326 geom field. Defaults to geom ;
     - map.interactivity: List of SQL fields to use for the interactivity layer. Defaults
         to '_id, count'. Note that 'count' refers to the count, while all other fields
         *must* exist in the database table. The plugin uses aliases starting with _mapplugin
         while building the query, so there should be no fields named in this way.
+    - map.tile_layer.url: URL of the tile layer. Defaults to http://otile1.mqcdn.com/tiles/1.0.0/map/{z}/{x}/{y}.jpg
+    - map.tile_layer.opacity: Opacity of the tile layer. Defaults to 0.8
+    - map.initial_zoom.min: Minimum zoom level for initial display of dataset, defaults to 2
+    - map.initial_zoom.max: Maximum zoom level for initial display of dataset, defaults to 6
     """
 
     standard_mss = """
@@ -120,6 +134,9 @@ class MapController(base.BaseController):
         self.resource_id = ''
         self.interactivity = ''
         self.geom_field = ''
+        self.geom_field_4326 = ''
+        self.tile_layer = {}
+        self.initial_zoom = {}
 
     def __before__(self, action, **params):
         """Setup the request
@@ -138,6 +155,15 @@ class MapController(base.BaseController):
         self.windshaft_database = config.get('map.windshaft.database', None) or self.engine.url.database
         self.interactivity = [i.strip() for i in config.get('map.interactivity', '_id,count').split(',')]
         self.geom_field = config.get('map.geom_field', 'the_geom_webmercator')
+        self.geom_field_4326 = config.get('map.geom_field_4326', 'geom')
+        self.tile_layer = {
+            'url': config.get('map.tile_layer.url', 'http://otile1.mqcdn.com/tiles/1.0.0/map/{z}/{x}/{y}.jpg'),
+            'opacity': config.get('map.tile_layer.opacity', '0.8')
+        }
+        self.initial_zoom = {
+            'min': config.get('map.initial_zoom.min', 2),
+            'max': config.get('map.initial_zoom.max', 6)
+        }
 
         if not request.params.get('resource_id'):
             base.abort(400, _("Missing resource id"))
@@ -400,5 +426,56 @@ class MapController(base.BaseController):
 
         url = self._grid_url(z, x, y, callback=callback, sql=sql, interactivity=','.join(self.interactivity))
         response.headers['Content-type'] = 'text/javascript'
+        # TODO: Detect if the incoming connection has been dropped, and if so stop the query.
         grid = cStringIO.StringIO(urllib.urlopen(url).read())
         return grid
+
+    def map_info(self):
+        """Controller action that returns metadata about a given map.
+
+        As a side effect this will set the content type to application/json
+
+        @return: A JSON encoded string representing the metadata
+        """
+        # Setup query
+        filters = request.params.get('filters')
+        fetch_id = request.params.get('fetch_id')
+
+        geo_table = self._geo_table()
+
+        query = select(bind=self.engine)
+        query = query.where(geo_table.c[self.geom_field].isnot(None))
+
+        if filters:
+            for input_filters in json.loads(filters):
+                # TODO - other types of filters
+                if input_filters['type'] == 'term':
+                    query = query.where(geo_table.c[input_filters['field']] == input_filters['term'])
+
+        # Prepare result
+        result = {
+            'geom_count': 0,
+            'bounds': ((51.496830, -0.178812), (51.496122, -0.173877)),
+            'initial_zoom': self.initial_zoom,
+            'tile_layer': self.tile_layer,
+            'fetch_id': fetch_id
+        }
+
+        inner_query = query.column(geo_table.c[self.geom_field_4326].label('r')).alias('_mapplugin_sub')
+        inner_col = Column('r', helpers.Geometry)
+        outer_query = select([
+            func.count(inner_col).label('count'),
+            func.ymin(func.extent(inner_col)).label('ymin'),
+            func.xmin(func.extent(inner_col)).label('xmin'),
+            func.ymax(func.extent(inner_col)).label('ymax'),
+            func.xmax(func.extent(inner_col)).label('xmax')
+        ]).select_from(inner_query)
+        query_result = self.engine.execute(outer_query)
+        row = query_result.fetchone()
+        result['geom_count'] = row['count']
+        if row['xmin'] is not None:
+            result['bounds'] = ((row['ymin'], row['xmin']), (row['ymax'], row['xmax']))
+        query_result.close()
+
+        response.headers['Content-type'] = 'application/json'
+        return json.dumps(result)

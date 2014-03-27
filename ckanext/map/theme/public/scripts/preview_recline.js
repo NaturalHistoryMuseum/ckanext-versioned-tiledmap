@@ -1,7 +1,12 @@
-// Hacked recline preview
-// Added code to enable clickable IDs
-// Switched map to use NHM Map
-
+/* Custom recline preview module ; provides:
+ *
+ *  - Clickabed IDs
+ *  - Windshaft map (ckanext-map extention)
+ *
+ * This gets loaded through the data-module declaration in recline.html.
+ * Note that this does not prevent the origin preview_recline.js from being included ;
+ * but this one gets executed.
+ */
 this.ckan.module('nhm-reclinepreview', function (jQuery, _) {
 
   return {
@@ -171,7 +176,6 @@ this.ckan.module('nhm-reclinepreview', function (jQuery, _) {
           readOnly: true
         }
       });
-
     },
     normalizeFormat: function (format) {
       var out = format.toLowerCase();

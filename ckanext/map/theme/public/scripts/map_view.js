@@ -4,7 +4,11 @@ this.recline = this.recline || {};
 this.recline.View = this.recline.View || {};
 
 (function($, my) {
-
+/**
+ * NHMMap
+ *
+ * Custom backbone view to display the Windshaft based maps.
+ */
 my.NHMMap = Backbone.View.extend({
   className: 'recline-nhm-map well',
   template: '\
@@ -12,60 +16,69 @@ my.NHMMap = Backbone.View.extend({
       <div class="panel map"></div> \
     </div> \
   ',
+
+  /**
+   * Initialize
+   *
+   * This is only called once.
+   */
   initialize: function() {
     this.el = $(this.el);
     _.bindAll(this, 'render');
     this.model.queryState.bind('change', this.render);
+    this.map_ready = false;
+    this.visible = false;
+    this.fetch_count = 0;
   },
+
+  /**
+   * Render the map
+   *
+   * This is called when for the initial map rendering and when the map needs
+   * a full refresh (eg. filters are applied).
+   */
   render: function() {
-
-    var self = this;
-
-    out = Mustache.render(this.template);
+    var out = Mustache.render(this.template);
     $(this.el).html(out);
     this.$map = this.el.find('.panel.map');
-
-//    if (!self.mapReady){
-//      self._setupMap();
-//    }
-
-    self._setupMap();
-
-    self.redraw();
-
-//    var filters = {}
-//
-//    $.each(this.model.queryState.attributes.filters, function( i, filter ) {
-//        filters[filter.field] = filter.term;
-//    });
-//
-//    if (this.model.queryState.attributes.q){
-//        filters['q'] = this.model.queryState.attributes.q
-//    }
-
-//    var tmplData = {}
-//
-//    var jqxhr = $.ajax({
-//        url: '/map/' + this.model.id,
-//        type: 'POST',
-//        data: filters,
-//        success: function(response) {
-//            tmplData = response;
-//        },
-//        async: false
-//    });
-//
-//    var out = Mustache.render(this.template, tmplData);
-//    var out = Mustache.render(this.template);
-//    this.el.html(out);
-
+    this.map_ready = false;
+    this._fetchMapInfo($.proxy(function(){
+      this._setupMap();
+      this.redraw();
+      this.map_ready = true;
+      if (this.visible){
+          this.show()
+      }
+    }, this));
   },
 
+  /**
+   * Show the map
+   *
+   * Called when the map visulisation is selected.
+   */
   show: function() {
-     $('.recline-pager').hide();
+    /* Update Recline's meta-info */
+    $('.recline-pager').hide();
+
+    var $rri = $('.recline-results-info');
+    if (this.map_ready){
+      var template = [
+        '<span class="doc-count">{{geoRecordCount}}</span>',
+        ' of ',
+        '</span><span class="doc-count">{{recordCount}}</span>',
+        'records'
+      ].join(' ');
+      $rri.html(Mustache.render(template, {
+        recordCount: this.model.recordCount ? this.model.recordCount.toString() : '0',
+        geoRecordCount: this.map_info.geom_count ? this.map_info.geom_count.toString() : '0'
+      }));
+    } else {
+      $rri.html('Loading...');
+    }
 
     /* If the div was hidden, Leaflet needs to recalculate some sizes to display properly */
-    if (this.map){
+    if (this.map_ready && this.map){
       this.map.invalidateSize();
       if (this._zoomPending && this.state.get('autoZoom')) {
         this._zoomToFeatures();
@@ -75,18 +88,45 @@ my.NHMMap = Backbone.View.extend({
     this.visible = true;
   },
 
+  /**
+   * Hide the map.
+   *
+   * This is called when the grid or graph views are selected.
+   */
   hide: function() {
+     // Restore recline pager & row count
      $('.recline-pager').show();
+     var template = '</span><span class="doc-count">{{recordCount}}</span> records';
+     $('.recline-results-info').html(Mustache.render(template, {
+        recordCount: this.model.recordCount ? this.model.recordCount.toString() : '0'
+     }));
+     this.visible = false
   },
 
+  /**
+   * Internal map setup.
+   *
+   * This is called internally when the map is initially setup, or when it needs
+   * a full refresh (eg. filters are applied)
+   */
   _setupMap: function(){
     var self = this;
-    var resource_id = this.model.id
 
+    if (typeof this.map !== 'undefined'){
+        this.map.remove();
+    }
     this.map = new L.Map(this.$map.get(0));
-
-    this.map.setView(new L.LatLng(51.505, -0.09), 4, true);
-    L.tileLayer('http://otile1.mqcdn.com/tiles/1.0.0/map/{z}/{x}/{y}.jpg', { opacity: 0.8 }).addTo(this.map);
+    this.map.fitBounds(this.map_info.bounds, {
+        animate: false,
+        maxZoom: this.map_info.initial_zoom.max
+    });
+    if (this.map.getZoom() < this.map_info.initial_zoom.min) {
+        var center = this.map.getCenter();
+        this.map.setView(center, this.map_info.initial_zoom.min)
+    }
+    L.tileLayer(this.map_info.tile_layer.url, {
+        opacity: this.map_info.tile_layer.opacity
+    }).addTo(this.map);
 
     var drawControl = new L.Control.Draw({
      draw: {
@@ -145,12 +185,65 @@ my.NHMMap = Backbone.View.extend({
 
     this.layers = [];
     this.controls = [];
-    this.mapReady = true;
-
   },
 
-  redraw: function(){
+  /**
+   * Internal method to fetch extra map info (such as the number of records with geoms)
+   *
+   * Called internally during render, and calls the provided callback function on success
+   * after updating map_info
+   */
+  _fetchMapInfo: function(callback){
+    this.fetch_count++;
 
+    var params = {
+        resource_id: this.model.id,
+        fetch_id: this.fetch_count
+    };
+    params['filters'] = JSON.stringify(this.model.queryState.attributes.filters);
+
+    if (this.model.queryState.attributes.q){
+      params['q'] = this.model.queryState.attributes.q;
+    }
+
+    if (this.model.queryState.attributes.geom) {
+      params['geom'] = Terraformer.WKT.convert(this.model.queryState.attributes.geom);
+    }
+
+    if (typeof this.jqxhr !== 'undefined' && this.jqxhr !== null){
+      this.jqxhr.abort();
+    }
+
+    this.jqxhr = $.ajax({
+      url: ckan.SITE_ROOT + '/map-info',
+      type: 'GET',
+      data: params,
+      success: $.proxy(function(data, status, jqXHR){
+        this.jqxhr = null;
+        // Ensure this is the result we want, not a previous query!
+        if (data.fetch_id == this.fetch_count){
+          this.map_info = data;
+          if (typeof callback !== 'undefined'){
+            callback();
+          }
+        }
+      }, this),
+      error: function(jqXHR, status, error){
+        if (status != 'abort'){
+          console.log('failed to fetch map info:', status, error);
+        }
+      }
+    });
+  },
+
+  /**
+   * Redraw the map
+   *
+   * This is called to redraw the map. It is called for the initial redraw, but also
+   * when the display region changes ; eg. when a shape is drawn on the map.
+   *
+   */
+  redraw: function(){
     var self = this;
     var params = {};
 
@@ -189,7 +282,7 @@ my.NHMMap = Backbone.View.extend({
 
     var testMap = L.tileLayer(this.tilejson.tiles[0]).addTo(this.map);
     var utfGrid = new L.UtfGrid(this.tilejson.grids[0], {
-      resolution: 4
+      resolution: 4,
     });
 
     utfGrid.on('mouseover', function(e){ self.info.update(e);}).on('mouseout', function(e){ self.info.update();})
@@ -199,10 +292,7 @@ my.NHMMap = Backbone.View.extend({
     this.controls.push(this.info);
     this.layers.push(utfGrid);
     this.layers.push(testMap);
-
   }
-
-
 });
 
 })(jQuery, recline.View);
