@@ -1,5 +1,4 @@
 import ckan.plugins as p
-import ckanext.map.logic.action as action
 
 import ckan.logic as logic
 get_action = logic.get_action
