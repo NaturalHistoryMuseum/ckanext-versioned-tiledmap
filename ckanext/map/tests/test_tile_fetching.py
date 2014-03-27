@@ -1,4 +1,5 @@
 import re
+import json
 import urllib
 import urlparse
 
@@ -15,7 +16,7 @@ import ckan.config.middleware as middleware
 import ckan.lib.create_test_data as ctd
 from ckan.logic.action.create import package_create
 from ckan.logic.action.delete import package_delete
-from ckanext.datastore.logic.action import datastore_create, datastore_delete
+from ckanext.datastore.logic.action import datastore_create, datastore_delete, datastore_upsert
 
 
 class TestTileFetching(tests.WsgiAppCase):
@@ -43,20 +44,59 @@ class TestTileFetching(tests.WsgiAppCase):
         p.load('map')
         p.load('datastore')
 
-        # Setup a dummy datastore ; the map plugin just needs the schema in order to build
-        # the query it passes to windshaft, so no actual data is needed for these tests and
-        # the type of the field is not important.
+        # Setup a dummy datastore.
         cls.dataset = package_create(cls.context, {'name': 'map-test-dataset'})
         cls.resource = datastore_create(cls.context, {
             'resource': {
                 'package_id': cls.dataset['id']
             },
             'fields': [
-                {'id': 'the_geom_webmercator', 'type': 'text'},
-                {'id': 'the_geom_2', 'type': 'text'},
+                {'id': 'id', 'type': 'integer'},
+                {'id': 'the_geom_webmercator', 'type': 'geometry'},
+                {'id': 'the_geom_2', 'type': 'geometry'},
+                {'id': 'geom', 'type': 'geometry'},
                 {'id': 'some_field_1', 'type': 'text'},
                 {'id': 'some_field_2', 'type': 'text'}
-            ]
+            ],
+            'primary_key': 'id'
+        })
+
+        # Add some data. We add 4 records such that:
+        # - The first three records have 'some_field_1' set to 'hello' ;
+        # - The third record does not have a geom ;
+        # - The fourth record has a geom, but 'some_field_1' is set to something elese.
+        datastore_upsert(cls.context, {
+            'resource_id': cls.resource['resource_id'],
+            'method': 'upsert',
+            'records': [{
+                'id': '1',
+                'the_geom_webmercator': '010100000000000000000026C00000000000002EC0', #(-11,-15)
+                'the_geom_2': '010100000000000000000026C00000000000002EC0',
+                'geom': '010100000000000000000026C00000000000002EC0',
+                'some_field_1': 'hello',
+                'some_field_2': 'world'
+            }, {
+                'id': 2,
+                'the_geom_webmercator': '010100000000000000000037400000000000004840', #(23,48)
+                'the_geom_2': '010100000000000000000037400000000000004840',
+                'geom': '010100000000000000000037400000000000004840',
+                'some_field_1': 'hello',
+                'some_field_2': 'again'
+            }, {
+                'id': 3,
+                'the_geom_webmercator': None,
+                'the_geom_2': None,
+                'geom': None,
+                'some_field_1': 'hello',
+                'some_field_2': 'hello'
+            }, {
+                'id': 4,
+                'the_geom_webmercator': '010100000000000000000059400000000000005940', #(100,100)
+                'the_geom_2': '010100000000000000000059400000000000005940',
+                'geom': '010100000000000000000059400000000000005940',
+                'some_field_1': 'all your bases',
+                'some_field_2': 'are belong to us'
+            }]
         })
 
     @classmethod
@@ -175,3 +215,18 @@ class TestTileFetching(tests.WsgiAppCase):
         '''.format(rid=TestTileFetching.resource['resource_id']).strip()
         assert re.sub('\s+', ' ', sql).strip() == re.sub('\s+', ' ', called_query['sql'][0]), '''Map tile plugin did not
                                           generate correct SQL : {} instead of {}'''.format(called_query['sql'][0], sql)
+
+    def test_map_info(self):
+        """Test the map-info controller returns the expected data"""
+        filters = '[{"type":"term","field":"some_field_1","term":"hello"}]'
+        res = self.app.get('/map-info?resource_id={resource_id}&filters={filters}&fetch_id={fetch_id}'.format(
+            resource_id=TestTileFetching.resource['resource_id'],
+            filters=urllib.quote_plus(filters),
+            fetch_id=44
+        ))
+        values = json.loads(res.body)
+        assert values['geom_count'] == 2, 'The map-info controller returned the wrong number of rows'
+        assert values['fetch_id'] == '44', 'The map-info controller did not pass fetch_id back'
+        assert 'initial_zoom' in values, 'The map-info does not define max zoom'
+        assert 'tile_layer' in values, 'The map-info does not define a tile layer'
+        assert values['bounds'] == [[-15, -11], [48, 23]], 'The map-info did return the correct bounds'
