@@ -1,4 +1,6 @@
 import ckan.plugins as p
+import ckanext.map.logic.action as map_action
+import ckanext.map.logic.auth as map_auth
 
 import ckan.logic as logic
 get_action = logic.get_action
@@ -13,6 +15,8 @@ class MapPlugin(p.SingletonPlugin):
     """
     p.implements(p.IConfigurer)
     p.implements(p.IRoutes, inherit=True)
+    p.implements(p.IActions)
+    p.implements(p.IAuthFunctions)
 
     ## IConfigurer
     def update_config(self, config):
@@ -30,3 +34,17 @@ class MapPlugin(p.SingletonPlugin):
         map.connect('/map-info', controller='ckanext.map.controllers.map:MapController', action='map_info')
 
         return map
+
+    ## IActions
+    def get_actions(self):
+        return {
+            'create_geom_columns': map_action.create_geom_columns,
+            'update_geom_columns': map_action.update_geom_columns
+        }
+
+    ## IAuthFunctions
+    def get_auth_functions(self):
+        return {
+            'create_geom_columns': map_auth.create_geom_columns,
+            'update_geom_columns': map_auth.update_geom_columns
+        }
