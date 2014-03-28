@@ -65,7 +65,7 @@ called as:
 ```python
     import ckan.plugins.toolkit as toolkit
     create_geom_columns = toolkit.get_action('create_geom_columns')
-    create_geom_columns(TestMapActions.context, {
+    create_geom_columns(context, {
         'resource_id': resource_id,
         'lat_field': 'latitude',
         'long_field': 'longitude'
@@ -81,7 +81,7 @@ populate the columns later (or update already populated columns) by doing:
 ```python
     import ckan.plugins.toolkit as toolkit
     update_geom_columns = toolkit.get_action('updated_geom_columns')
-    updated_geom_columns(TestMapActions.context, {
+    updated_geom_columns(context, {
         'resource_id': resource_id,
         'lat_field': 'latitude',
         'long_field': 'longitude'
