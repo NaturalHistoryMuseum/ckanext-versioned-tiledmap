@@ -14,10 +14,10 @@ setup
 Postgis
 -------
 
-You postgresql database must have <a href="http://postgis.net/">postgis<a> support. On Ubuntu 12.04 LTS, assuming a
+You postgresql database must have <a href="http://postgis.net/">postgis</a> support. On Ubuntu 12.04 LTS, assuming a
 default postgres 9.1 install you can setup your database by doing:
 
-```
+```bash
   sudo apt-get install -y postgresql-9.1-postgis
   sudo -u postgres psql -d ${DATASTORE_DB_NAME} -f /usr/share/postgresql/9.1/contrib/postgis-1.5/postgis.sql
   sudo -u postgres psql -d ${DATASTORE_DB_NAME} -c "ALTER TABLE geometry_columns OWNER TO $DB_USER"
@@ -96,5 +96,5 @@ And finally, the plugin also provides paster scripts to add geometry columns to 
 recommend calling the actions from your own code you can use this initially when testing/setting up:
 
 ```
-paster ckanextmap add-all-geoms -c &lt;path to your config file&gt;
+paster ckanextmap add-all-geoms -c <path to your config file>
 ```
