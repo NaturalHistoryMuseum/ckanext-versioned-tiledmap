@@ -78,13 +78,14 @@ def update_geom_columns(context, data_dict):
 
     # Create geometries from the latitude and longitude columns.
     engine = create_engine(config['ckan.datastore.write_url'])
+    # TODO: change to sqlalchemy so we don't have to worry about escaping column names!
     with engine.begin() as connection:
         s = sqlalchemy.text("""
           UPDATE "{resource_id}"
-          SET {geom_field_4326} = st_setsrid(st_makepoint({long_field}::float8, {lat_field}::float8), 4326)
-          WHERE {lat_field} IS NOT NULL
-            AND {lat_field} <> ''
-            AND {lat_field}  NOT LIKE '%{{%'
+          SET "{geom_field_4326}" = st_setsrid(st_makepoint("{long_field}"::float8, "{lat_field}"::float8), 4326)
+          WHERE "{lat_field}" IS NOT NULL
+            AND "{lat_field}" <> ''
+            AND "{lat_field}"  NOT LIKE '%{{%'
         """.format(
             resource_id=resource_id,
             geom_field_4326=geom_field_4326,
@@ -94,8 +95,8 @@ def update_geom_columns(context, data_dict):
         connection.execute(s)
         s = sqlalchemy.text("""
           UPDATE "{resource_id}"
-          SET {geom_field} = st_transform({geom_field_4326}, 3857)
-          WHERE y({geom_field_4326}) <= 90 AND y({geom_field_4326}) >= -90
+          SET "{geom_field}" = st_transform("{geom_field_4326}", 3857)
+          WHERE st_y("{geom_field_4326}") <= 90 AND st_y("{geom_field_4326}") >= -90
         """.format(
             resource_id=resource_id,
             geom_field=geom_field,
