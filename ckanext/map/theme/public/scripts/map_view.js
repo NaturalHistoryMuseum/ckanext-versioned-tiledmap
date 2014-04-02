@@ -42,12 +42,24 @@ my.NHMMap = Backbone.View.extend({
     $(this.el).html(out);
     this.$map = this.el.find('.panel.map');
     this.map_ready = false;
-    this._fetchMapInfo($.proxy(function(){
+    this._fetchMapInfo($.proxy(function(info){
+      this.map_info = info;
+      this.map_info.draw = true;
+      this.map_ready = true;
       this._setupMap();
       this.redraw();
-      this.map_ready = true;
       if (this.visible){
           this.show()
+      }
+    }, this), $.proxy(function(message){
+      this.map_info = {
+        draw: false,
+        error:message
+      };
+      // The map _is_ ready, even if all it displays is an error message.
+      this.map_ready = true;
+      if (this.visible){
+        this.show();
       }
     }, this));
   },
@@ -63,16 +75,20 @@ my.NHMMap = Backbone.View.extend({
 
     var $rri = $('.recline-results-info');
     if (this.map_ready){
-      var template = [
-        '<span class="doc-count">{{geoRecordCount}}</span>',
-        ' of ',
-        '</span><span class="doc-count">{{recordCount}}</span>',
-        'records'
-      ].join(' ');
-      $rri.html(Mustache.render(template, {
-        recordCount: this.model.recordCount ? this.model.recordCount.toString() : '0',
-        geoRecordCount: this.map_info.geom_count ? this.map_info.geom_count.toString() : '0'
-      }));
+      if (this.map_info.draw){
+          var template = [
+            '<span class="doc-count">{{geoRecordCount}}</span>',
+            ' of ',
+            '</span><span class="doc-count">{{recordCount}}</span>',
+            'records'
+          ].join(' ');
+          $rri.html(Mustache.render(template, {
+            recordCount: this.model.recordCount ? this.model.recordCount.toString() : '0',
+            geoRecordCount: this.map_info.geom_count ? this.map_info.geom_count.toString() : '0'
+          }));
+      } else {
+          $rri.html(this.map_info.error);
+      }
     } else {
       $rri.html('Loading...');
     }
@@ -193,7 +209,7 @@ my.NHMMap = Backbone.View.extend({
    * Called internally during render, and calls the provided callback function on success
    * after updating map_info
    */
-  _fetchMapInfo: function(callback){
+  _fetchMapInfo: function(callback, error_cb){
     this.fetch_count++;
 
     var params = {
@@ -222,15 +238,16 @@ my.NHMMap = Backbone.View.extend({
         this.jqxhr = null;
         // Ensure this is the result we want, not a previous query!
         if (data.fetch_id == this.fetch_count){
-          this.map_info = data;
-          if (typeof callback !== 'undefined'){
-            callback();
+          if (typeof data.geospatial !== 'undefined' && data.geospatial){
+              callback(data);
+          } else {
+              error_cb("This data does not have geospatial information");
           }
         }
       }, this),
       error: function(jqXHR, status, error){
         if (status != 'abort'){
-          console.log('failed to fetch map info:', status, error);
+          error_cb("Error while loading the map");
         }
       }
     });
@@ -246,6 +263,10 @@ my.NHMMap = Backbone.View.extend({
   redraw: function(){
     var self = this;
     var params = {};
+
+    if (!this.map_ready || !this.map_info.draw){
+      return;
+    }
 
     if (self.drawLayer) {
       self.map.removeLayer(self.drawLayer);
