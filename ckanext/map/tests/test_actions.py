@@ -134,8 +134,8 @@ class TestMapActions(tests.WsgiAppCase):
         s = select([
             table.c['latitude'],
             table.c['longitude'],
-            func.x(table.c['geom']).label('x'),
-            func.y(table.c['geom']).label('y'),
+            func.st_x(table.c['geom']).label('x'),
+            func.st_y(table.c['geom']).label('y'),
             table.c['skip']
         ]).where(table.c['the_geom_webmercator'].isnot(None))
         r = TestMapActions.engine.execute(s)
@@ -209,8 +209,8 @@ class TestMapActions(tests.WsgiAppCase):
         s = select([
             table.c['latitude'],
             table.c['longitude'],
-            func.x(table.c['geom']).label('x'),
-            func.y(table.c['geom']).label('y'),
+            func.st_x(table.c['geom']).label('x'),
+            func.st_y(table.c['geom']).label('y'),
             table.c['skip']
         ]).where(table.c['the_geom_webmercator'].isnot(None))
         r = TestMapActions.engine.execute(s)
