@@ -9,6 +9,7 @@ import geoalchemy.functions as geo_functions
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy import func
 from sqlalchemy.sql import desc
+from sqlalchemy.exc import ProgrammingError
 
 import ckan.logic as logic
 import ckan.lib.base as base
@@ -175,6 +176,9 @@ class MapController(base.BaseController):
         except logic.NotAuthorized:
             base.abort(401, _('Unauthorized to read resources'))
 
+        # Build the list of columns needed for this request
+        self._request_columns()
+
     def _base_url(self, z, x, y, ext, query=None):
         """Return the base Windshaft URL that will serve the tiles and grids.
 
@@ -243,6 +247,30 @@ class MapController(base.BaseController):
             query['interactivity'] = interactivity
         return self._base_url(z, x, y, 'grid.json', query)
 
+    def _request_columns(self):
+        """Setup a dict of SQLAlchemy columns needed for the current request
+
+        We don't use reflection for this as SqlAlchemy doesn't support materialized views.
+        """
+        self.columns = {}
+        # Add geom columns
+        self.columns[self.geom_field] = Column(self.geom_field, helpers.Geometry)
+        self.columns[self.geom_field_4326] = Column(self.geom_field_4326, helpers.Geometry)
+        # Add filter columns. Note that this will fail for integer and date fields - however
+        # that is how the datastore queries are build, so we replicate the behaviour here.
+        filters = request.params.get('filters')
+        if filters:
+            for input_filters in json.loads(filters):
+                # TODO - other types of filters
+                if input_filters['type'] == 'term':
+                    self.columns[input_filters['field']] = Column(input_filters['field'], String(255))
+
+        # Add the interactivity fields. We ignore the special 'count' column.
+        for column_name in self.interactivity:
+            if column_name not in ['count']:
+                self.columns[column_name] = Column(column_name, String(255))
+
+
     def _geo_table(self):
         """Return the table used to build the Windshaft query
 
@@ -250,7 +278,7 @@ class MapController(base.BaseController):
         @return: Return the SQLAlchemy table corresponding to the geo table in Windshaft
         """
         metadata = MetaData()
-        table = Table(self.resource_id, metadata, autoload=True, autoload_with=self.engine)
+        table = Table(self.resource_id, metadata, *self.columns.values())
         return table
 
     def tile(self, z, x, y):
@@ -453,6 +481,7 @@ class MapController(base.BaseController):
 
         # Prepare result
         result = {
+            'geospatial': True,
             'geom_count': 0,
             'bounds': ((51.496830, -0.178812), (51.496122, -0.173877)),
             'initial_zoom': self.initial_zoom,
@@ -464,12 +493,20 @@ class MapController(base.BaseController):
         inner_col = Column('r', helpers.Geometry)
         outer_query = select([
             func.count(inner_col).label('count'),
-            func.ymin(func.extent(inner_col)).label('ymin'),
-            func.xmin(func.extent(inner_col)).label('xmin'),
-            func.ymax(func.extent(inner_col)).label('ymax'),
-            func.xmax(func.extent(inner_col)).label('xmax')
+            func.st_ymin(func.st_extent(inner_col)).label('ymin'),
+            func.st_xmin(func.st_extent(inner_col)).label('xmin'),
+            func.st_ymax(func.st_extent(inner_col)).label('ymax'),
+            func.st_xmax(func.st_extent(inner_col)).label('xmax')
         ]).select_from(inner_query)
-        query_result = self.engine.execute(outer_query)
+        try:
+            query_result = self.engine.execute(outer_query)
+        except ProgrammingError:
+            response.headers['Content-type'] = 'application/json'
+            return json.dumps({
+                'geospatial': False,
+                'fetch_id': fetch_id
+            })
+
         row = query_result.fetchone()
         result['geom_count'] = row['count']
         if row['xmin'] is not None:

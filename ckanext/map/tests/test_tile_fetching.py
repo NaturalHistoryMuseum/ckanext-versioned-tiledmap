@@ -99,6 +99,19 @@ class TestTileFetching(tests.WsgiAppCase):
             }]
         })
 
+        # Create a resource that does not have spatial fields
+        cls.non_spatial_resource = datastore_create(cls.context, {
+            'resource': {
+                'package_id': cls.dataset['id']
+            },
+            'fields': [
+                {'id': 'id', 'type': 'integer'},
+                {'id': 'some_field', 'type': 'text'}
+            ],
+            'primary_key': 'id'
+        })
+
+
     @classmethod
     def teardown_class(cls):
         """Clean up after the test"""
@@ -225,8 +238,19 @@ class TestTileFetching(tests.WsgiAppCase):
             fetch_id=44
         ))
         values = json.loads(res.body)
+        assert values['geospatial'], 'The map-info claims this is not geo spatially enabled'
         assert values['geom_count'] == 2, 'The map-info controller returned the wrong number of rows'
         assert values['fetch_id'] == '44', 'The map-info controller did not pass fetch_id back'
         assert 'initial_zoom' in values, 'The map-info does not define max zoom'
         assert 'tile_layer' in values, 'The map-info does not define a tile layer'
         assert values['bounds'] == [[-15, -11], [48, 23]], 'The map-info did return the correct bounds'
+
+    def test_map_info_no_geo(self):
+        """Test the map info controllers warns us of non-geo spatial datasets"""
+        res = self.app.get('/map-info?resource_id={resource_id}&fetch_id={fetch_id}'.format(
+            resource_id=TestTileFetching.non_spatial_resource['resource_id'],
+            fetch_id=58
+        ))
+        values = json.loads(res.body)
+        assert values['geospatial'] is False, 'The map-info claims this is geo spatially enabled'
+        assert values['fetch_id'] == '58', 'The map-info does not return fetch_id for non-geo spatial data sets'
