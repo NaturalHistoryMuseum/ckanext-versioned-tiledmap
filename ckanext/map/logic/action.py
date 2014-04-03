@@ -26,11 +26,11 @@ def create_geom_columns(context, data_dict):
     if 'geom_field' in data_dict:
         geom_field = data_dict['geom_field']
     else:
-        geom_field = config.get('map.geom_field', 'the_geom_webmercator')
+        geom_field = config.get('map.geom_field', '_the_geom_webmercator')
     if 'geom_field_4326' in data_dict:
         geom_field_4326 = data_dict['geom_field_4326']
     else:
-        geom_field_4326 = config.get('map.geom_field_4326', 'geom')
+        geom_field_4326 = config.get('map.geom_field_4326', '_geom')
     if 'populate' in data_dict:
         populate = data_dict['populate']
     else:
@@ -70,11 +70,11 @@ def update_geom_columns(context, data_dict):
     if 'geom_field' in data_dict:
         geom_field = data_dict['geom_field']
     else:
-        geom_field = config.get('map.geom_field', 'the_geom_webmercator')
+        geom_field = config.get('map.geom_field', '_the_geom_webmercator')
     if 'geom_field_4326' in data_dict:
         geom_field_4326 = data_dict['geom_field_4326']
     else:
-        geom_field_4326 = config.get('map.geom_field_4326', 'geom')
+        geom_field_4326 = config.get('map.geom_field_4326', '_geom')
 
     # Create geometries from the latitude and longitude columns.
     engine = create_engine(config['ckan.datastore.write_url'])

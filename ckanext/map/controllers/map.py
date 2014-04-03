@@ -46,8 +46,8 @@ class MapController(base.BaseController):
     - map.windshaft.port: The port for the windshaft server. Defaults to 4000
     - map.winsdhaft_database: The database name to pass to the windshaft server. Defaults
         to the database name from the datastore URL.
-    - map.geom_field: Geom field. Defaults to the_geom_webmercator. Must be 3857 type field;
-    - map.geom_field_4326: The 4326 geom field. Defaults to geom ;
+    - map.geom_field: Geom field. Defaults to _the_geom_webmercator. Must be 3857 type field;
+    - map.geom_field_4326: The 4326 geom field. Defaults to _geom ;
     - map.interactivity: List of SQL fields to use for the interactivity layer. Defaults
         to '_id, count'. Note that 'count' refers to the count, while all other fields
         *must* exist in the database table. The plugin uses aliases starting with _mapplugin
@@ -154,8 +154,8 @@ class MapController(base.BaseController):
         self.windshaft_port = config.get('map.windshaft.port', '4000')
         self.windshaft_database = config.get('map.windshaft.database', None) or self.engine.url.database
         self.interactivity = [i.strip() for i in config.get('map.interactivity', '_id,count').split(',')]
-        self.geom_field = config.get('map.geom_field', 'the_geom_webmercator')
-        self.geom_field_4326 = config.get('map.geom_field_4326', 'geom')
+        self.geom_field = config.get('map.geom_field', '_the_geom_webmercator')
+        self.geom_field_4326 = config.get('map.geom_field_4326', '_geom')
         self.tile_layer = {
             'url': config.get('map.tile_layer.url', 'http://otile1.mqcdn.com/tiles/1.0.0/map/{z}/{x}/{y}.jpg'),
             'opacity': config.get('map.tile_layer.opacity', '0.8')
@@ -304,7 +304,7 @@ class MapController(base.BaseController):
         height = helpers.MapnikPlaceholderColumn('pixel_height')
 
         # If we're drawing dots, then we can ignore the ones with identical positions by
-        # selecting DISTINCT ON (the_geom_webmercator), but we need keep them for heatmaps
+        # selecting DISTINCT ON (_the_geom_webmercator), but we need keep them for heatmaps
         # to get the right effect.
         # This provides a performance improvement for datasets with many points that share identical
         # positions. Note that there's an overhead to doing so for small datasets, and also that

@@ -44,9 +44,9 @@ The plugin supports the following configuration options:
 - map.windshaft.port: The port for the windshaft server. Defaults to 4000 ;
 - map.winsdhaft_database: The database name to pass to the windshaft server. Defaults
   to the database name from the datastore URL ;
-- map.geom_field: Geom field. Defaults to ```the_geom_webmercator```. Do not change this unless you know what you are
+- map.geom_field: Geom field. Defaults to ```_the_geom_webmercator```. Do not change this unless you know what you are
   doing. Must be 3857 type field;
-- map.geom_field_4326: The 4326 geom field. Defaults to ```geom```. Do not change this unless you know what you are
+- map.geom_field_4326: The 4326 geom field. Defaults to ```_geom```. Do not change this unless you know what you are
   doing. Must be 4326 type field ;
 - map.interactivity: List of SQL fields to use for the interactivity layer. Defaults to ```_id, count```. Note that
   ```count``` refers to the count, while all other fields *must* exist in the database table. The plugin uses aliases

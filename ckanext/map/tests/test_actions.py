@@ -129,15 +129,15 @@ class TestMapActions(tests.WsgiAppCase):
         # Test we have the expected columns
         metadata = MetaData()
         table = Table(self.resource['resource_id'], metadata, autoload=True, autoload_with=TestMapActions.engine)
-        assert 'geom' in table.c, "Column geom was not created"
-        assert 'the_geom_webmercator' in table.c, "Column the_geom_webmercator was not created"
+        assert '_geom' in table.c, "Column geom was not created"
+        assert '_the_geom_webmercator' in table.c, "Column _the_geom_webmercator was not created"
         s = select([
             table.c['latitude'],
             table.c['longitude'],
-            func.st_x(table.c['geom']).label('x'),
-            func.st_y(table.c['geom']).label('y'),
+            func.st_x(table.c['_geom']).label('x'),
+            func.st_y(table.c['_geom']).label('y'),
             table.c['skip']
-        ]).where(table.c['the_geom_webmercator'].isnot(None))
+        ]).where(table.c['_the_geom_webmercator'].isnot(None))
         r = TestMapActions.engine.execute(s)
         try:
             assert r.rowcount == 2, "Did not report the expected rows. Expecting {}, got {}".format(2, r.rowcount)
@@ -188,7 +188,7 @@ class TestMapActions(tests.WsgiAppCase):
         # Test the result did not populate the geom field
         metadata = MetaData()
         table = Table(self.resource['resource_id'], metadata, autoload=True, autoload_with=TestMapActions.engine)
-        s = select(['*']).where(table.c['the_geom_webmercator'].isnot(None))
+        s = select(['*']).where(table.c['_the_geom_webmercator'].isnot(None))
         r = TestMapActions.engine.execute(s)
         try:
             assert r.rowcount == 0, "Table was populated"
@@ -209,10 +209,10 @@ class TestMapActions(tests.WsgiAppCase):
         s = select([
             table.c['latitude'],
             table.c['longitude'],
-            func.st_x(table.c['geom']).label('x'),
-            func.st_y(table.c['geom']).label('y'),
+            func.st_x(table.c['_geom']).label('x'),
+            func.st_y(table.c['_geom']).label('y'),
             table.c['skip']
-        ]).where(table.c['the_geom_webmercator'].isnot(None))
+        ]).where(table.c['_the_geom_webmercator'].isnot(None))
         r = TestMapActions.engine.execute(s)
         try:
             assert r.rowcount == 2, "Did not report the expected rows. Expecting {}, got {}".format(2, r.rowcount)

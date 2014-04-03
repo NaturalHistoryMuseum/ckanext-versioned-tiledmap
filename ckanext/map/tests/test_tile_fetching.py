@@ -26,7 +26,9 @@ class TestTileFetching(tests.WsgiAppCase):
     context = None
 
     @classmethod
-    def setup_class(cls):
+    @patch('ckanext.datastore.db._is_valid_field_name')
+    @patch('ckanext.datastore.db._get_fields')
+    def setup_class(cls, mock_get_fields, mock_valid_field_name):
         """Prepare the test"""
         # We need datastore for these tests.
         if not tests.is_datastore_supported():
@@ -44,6 +46,19 @@ class TestTileFetching(tests.WsgiAppCase):
         p.load('map')
         p.load('datastore')
 
+        # datastore won't let us create a fields starting with _. When running the application
+        # this is not how the geometry fields are created - but this is not what we are
+        # testing here, so it's simpler to patch datastore to accept our field names.
+        mock_valid_field_name.return_value = True
+        mock_get_fields.return_value = [
+            {'type': u'int4', 'id': u'id'},
+            {'type': u'geometry', 'id': u'_the_geom_webmercator'},
+            {'type': u'geometry', 'id': u'the_geom_2'},
+            {'type': u'geometry', 'id': u'_geom'},
+            {'type': u'text', 'id': u'some_field_1'},
+            {'type': u'text', 'id': u'some_field_2'},
+        ]
+
         # Setup a dummy datastore.
         cls.dataset = package_create(cls.context, {'name': 'map-test-dataset'})
         cls.resource = datastore_create(cls.context, {
@@ -52,9 +67,9 @@ class TestTileFetching(tests.WsgiAppCase):
             },
             'fields': [
                 {'id': 'id', 'type': 'integer'},
-                {'id': 'the_geom_webmercator', 'type': 'geometry'},
+                {'id': '_the_geom_webmercator', 'type': 'geometry'},
                 {'id': 'the_geom_2', 'type': 'geometry'},
-                {'id': 'geom', 'type': 'geometry'},
+                {'id': '_geom', 'type': 'geometry'},
                 {'id': 'some_field_1', 'type': 'text'},
                 {'id': 'some_field_2', 'type': 'text'}
             ],
@@ -70,30 +85,30 @@ class TestTileFetching(tests.WsgiAppCase):
             'method': 'upsert',
             'records': [{
                 'id': '1',
-                'the_geom_webmercator': '010100000000000000000026C00000000000002EC0', #(-11,-15)
+                '_the_geom_webmercator': '010100000000000000000026C00000000000002EC0', #(-11,-15)
                 'the_geom_2': '010100000000000000000026C00000000000002EC0',
-                'geom': '010100000000000000000026C00000000000002EC0',
+                '_geom': '010100000000000000000026C00000000000002EC0',
                 'some_field_1': 'hello',
                 'some_field_2': 'world'
             }, {
                 'id': 2,
-                'the_geom_webmercator': '010100000000000000000037400000000000004840', #(23,48)
+                '_the_geom_webmercator': '010100000000000000000037400000000000004840', #(23,48)
                 'the_geom_2': '010100000000000000000037400000000000004840',
-                'geom': '010100000000000000000037400000000000004840',
+                '_geom': '010100000000000000000037400000000000004840',
                 'some_field_1': 'hello',
                 'some_field_2': 'again'
             }, {
                 'id': 3,
-                'the_geom_webmercator': None,
+                '_the_geom_webmercator': None,
                 'the_geom_2': None,
-                'geom': None,
+                '_geom': None,
                 'some_field_1': 'hello',
                 'some_field_2': 'hello'
             }, {
                 'id': 4,
-                'the_geom_webmercator': '010100000000000000000059400000000000005940', #(100,100)
+                '_the_geom_webmercator': '010100000000000000000059400000000000005940', #(100,100)
                 'the_geom_2': '010100000000000000000059400000000000005940',
-                'geom': '010100000000000000000059400000000000005940',
+                '_geom': '010100000000000000000059400000000000005940',
                 'some_field_1': 'all your bases',
                 'some_field_2': 'are belong to us'
             }]
@@ -196,8 +211,8 @@ class TestTileFetching(tests.WsgiAppCase):
         called_url = urlparse.urlparse(mock_urlopen.call_args[0][0])
         called_query = urlparse.parse_qs(called_url.query)
         sql = '''
-          SELECT the_geom_webmercator
-            FROM (SELECT DISTINCT ON (the_geom_webmercator) "{rid}".the_geom_webmercator AS the_geom_webmercator
+          SELECT _the_geom_webmercator
+            FROM (SELECT DISTINCT ON (_the_geom_webmercator) "{rid}"._the_geom_webmercator AS _the_geom_webmercator
                     FROM "{rid}") AS _mapplugin_sub ORDER BY random()
         '''.format(rid=TestTileFetching.resource['resource_id']).strip()
         assert re.sub('\s+', ' ', sql).strip() == re.sub('\s+', ' ', called_query['sql'][0]), '''Map tile plugin did not
@@ -219,11 +234,11 @@ class TestTileFetching(tests.WsgiAppCase):
         called_url = urlparse.urlparse(mock_urlopen.call_args[0][0])
         called_query = urlparse.parse_qs(called_url.query)
         sql = '''
-          SELECT the_geom_webmercator
-          FROM (SELECT DISTINCT ON (the_geom_webmercator) "{rid}".the_geom_webmercator AS the_geom_webmercator
+          SELECT _the_geom_webmercator
+          FROM (SELECT DISTINCT ON (_the_geom_webmercator) "{rid}"._the_geom_webmercator AS _the_geom_webmercator
                 FROM "{rid}"
                 WHERE "{rid}".some_field_1 = 'value' AND
-                ST_Intersects("{rid}".the_geom_webmercator, ST_Transform(ST_GeomFromText('POLYGON ((20.302734375 53.38332836757156, 31.376953125 56.75272287205736, 38.408203125 49.724479188713005, 27.59765625 48.748945343432936, 20.302734375 53.38332836757156))', 4326), 3857)))
+                ST_Intersects("{rid}"._the_geom_webmercator, ST_Transform(ST_GeomFromText('POLYGON ((20.302734375 53.38332836757156, 31.376953125 56.75272287205736, 38.408203125 49.724479188713005, 27.59765625 48.748945343432936, 20.302734375 53.38332836757156))', 4326), 3857)))
                 AS _mapplugin_sub ORDER BY random()
         '''.format(rid=TestTileFetching.resource['resource_id']).strip()
         assert re.sub('\s+', ' ', sql).strip() == re.sub('\s+', ' ', called_query['sql'][0]), '''Map tile plugin did not
