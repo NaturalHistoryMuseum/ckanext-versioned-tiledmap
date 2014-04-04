@@ -7,8 +7,6 @@ set -e
 sudo apt-get update -qq
 sudo apt-get install solr-jetty
 
-# Install postgis extention
-sudo -u postgres psql -c "create extension postgis"
 
 # Setup postgres' users and databases
 sudo -u postgres psql -c "CREATE USER ckan_default WITH PASSWORD 'pass';"
@@ -16,11 +14,8 @@ sudo -u postgres psql -c "CREATE USER datastore_default WITH PASSWORD 'pass';"
 sudo -u postgres psql -c 'CREATE DATABASE ckan_test WITH OWNER ckan_default;'
 sudo -u postgres psql -c 'CREATE DATABASE datastore_test WITH OWNER ckan_default;'
 
-# Enable postgis
-sudo -u postgres psql -d datastore_test -f /usr/share/postgresql/9.3/contrib/postgis-2.1/postgis.sql
-sudo -u postgres psql -d datastore_test -c "ALTER TABLE geometry_columns OWNER TO ckan_default"
-sudo -u postgres psql -d datastore_test -c "ALTER TABLE spatial_ref_sys OWNER TO ckan_default"
-sudo -u postgres psql -d datastore_test -f /usr/share/postgresql/9.3/contrib/postgis-2.1/spatial_ref_sys.sql
+# Install postgis extention
+sudo -u postgres psql -d datastore_test -c "create extension postgis"
 
 # Install ckan from our repo and other dependencies
 pip install -e git+https://github.com/NaturalHistoryMuseum/ckan.git#egg=ckan
@@ -33,6 +28,9 @@ cd ${CKAN_PATH}/..
 pip install -r requirements.txt
 pip install -r dev-requirements.txt
 
+# Get latest versions of sqlalchemy-migrate, as they are issues with the one in the repo
+pip install sqlalchemy-migrate==0.9
+
 python setup.py develop
 paster db init -c test-core.ini
 
@@ -41,3 +39,4 @@ paster datastore set-permissions postgres -c test-core.ini
 
 cat test-core.ini
 cd ${CKANEXT_MAP_PATH}
+python setup.py develop
