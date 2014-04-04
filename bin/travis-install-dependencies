@@ -39,3 +39,4 @@ paster datastore set-permissions postgres -c test-core.ini
 
 cat test-core.ini
 cd ${CKANEXT_MAP_PATH}
+python setup.py develop
