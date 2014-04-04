@@ -28,6 +28,9 @@ cd ${CKAN_PATH}/..
 pip install -r requirements.txt
 pip install -r dev-requirements.txt
 
+# Get latest versions of sqlalchemy-migrate, as they are issues with the one in the repo
+pip install sqlalchemy-migrate==0.9
+
 python setup.py develop
 paster db init -c test-core.ini
 
