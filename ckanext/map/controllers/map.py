@@ -7,7 +7,7 @@ from sqlalchemy import Table, Column, Integer, String, MetaData
 from sqlalchemy import create_engine
 import geoalchemy.functions as geo_functions
 from sqlalchemy.dialects.postgresql import ARRAY
-from sqlalchemy import func
+from sqlalchemy import func, not_
 from sqlalchemy.sql import desc
 from sqlalchemy.exc import ProgrammingError
 
@@ -471,7 +471,7 @@ class MapController(base.BaseController):
         geo_table = self._geo_table()
 
         query = select(bind=self.engine)
-        query = query.where(geo_table.c[self.geom_field].isnot(None))
+        query = query.where(not_(geo_table.c[self.geom_field] == None))
 
         if filters:
             for input_filters in json.loads(filters):
