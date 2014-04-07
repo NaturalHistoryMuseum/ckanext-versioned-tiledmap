@@ -144,14 +144,6 @@ my.NHMMap = Backbone.View.extend({
         opacity: this.map_info.tile_layer.opacity
     }).addTo(this.map);
 
-    var drawControl = new L.Control.Draw({
-     draw: {
-        polyline: false,
-        marker: false,
-        circle: false
-      }
-    });
-    this.map.addControl(drawControl);
     this.drawLayer = null;
 
     this.tilejson = {
@@ -171,36 +163,15 @@ my.NHMMap = Backbone.View.extend({
     this.tiles_url = '/map-tile/{z}/{x}/{y}.png';
     this.grids_url = '/map-grid/{z}/{x}/{y}.grid.json?callback={cb}';
 
-    this.info = L.control();
-    this.info.options.position = 'bottomright';
-
-    this.info.onAdd = function (map) {
-      this._div = L.DomUtil.create('div', 'info'); // create a div with a class "info"
-      this.update();
-      return this._div;
-    };
-
-    this.info.update = function (props) {
-      var template;
-      if (props) {
-        template = [
-          '<h4>' + self.model.attributes.name + ' Records</h4>',
-          '<b>{{ data.species }}</b><br />',
-          '{{ data._id }}<br />',
-          '{{ data.scientific_name }}<br/>',
-          '{{ data.count }} records overlapping'
-        ].join('');
-      } else {
-        template = [
-          '<h4>' + self.model.attributes.name + ' Records</h4>',
-          '<p>Hover over a marker</p>'
-        ].join('');
-      }
-      this._div.innerHTML = Mustache.render(template, props);
-    };
+    // Set up the controls used by the map. These are assigned during redraw.
+    this.controls = {
+      'drawShape': new my.DrawShapeControl(this, this.map_info.control_options['drawShape']),
+      'mapType': new my.MapTypeControl(this, this.map_info.control_options['mapType']),
+      'pointInfo': new my.PointInfoControl(this, this.map_info.control_options['pointInfo']),
+      'gridInfo': new my.GridInfoControl(this, this.map_info.control_options['gridInfo'])
+    }
 
     this.layers = [];
-    this.controls = [];
   },
 
   /**
@@ -286,6 +257,7 @@ my.NHMMap = Backbone.View.extend({
     }
 
     params['resource_id'] = this.model.id;
+    params['style'] = this.map_info.map_style;
 
     this.tilejson.tiles = [this.tiles_url + "?" + $.param(params)];
     this.tilejson.grids = [this.grids_url + "&" + $.param(params)];
@@ -294,26 +266,180 @@ my.NHMMap = Backbone.View.extend({
         self.map.removeLayer(layer)
     });
 
-    _.each(this.controls, function(control) {
-        self.map.removeControl(control)
-    });
-
     this.layers = [];
-    this.controls = [];
 
     var testMap = L.tileLayer(this.tilejson.tiles[0]).addTo(this.map);
-    var utfGrid = new L.UtfGrid(this.tilejson.grids[0], {
-      resolution: 4,
-    });
-
-    utfGrid.on('mouseover', function(e){ self.info.update(e);}).on('mouseout', function(e){ self.info.update();})
-    this.map.addLayer(utfGrid);
-    this.map.addControl(this.info);
-
-    this.controls.push(this.info);
-    this.layers.push(utfGrid);
     this.layers.push(testMap);
+
+    // Update controls
+    var grid_controls = [];
+    if (typeof this._current_controls === 'undefined'){
+      this._current_controls = [];
+    }
+    var new_controls = [];
+    for (var i in this.map_info.map_styles[this.map_info.map_style].controls){
+      var control = this.map_info.map_styles[this.map_info.map_style].controls[i];
+      new_controls.push(control);
+      if (!_.contains(this._current_controls, control)){
+        this.map.addControl(this.controls[control]);
+      }
+      if (typeof this.controls[control].setGrid !== 'undefined'){
+        grid_controls.push(this.controls[control]);
+      }
+    }
+    for (var i in this._current_controls){
+      var control = this._current_controls[i];
+      if (!_.contains(new_controls, control)){
+        this.map.removeControl(this.controls[control]);
+      }
+    }
+    this._current_controls = new_controls;
+
+    // Add the grid layer. We only need it if we have a control that subscribes to it.
+    if (grid_controls.length > 0) {
+      var utfGrid = new L.UtfGrid(this.tilejson.grids[0], {
+        resolution: 4,
+      });
+
+      this.map.addLayer(utfGrid);
+      this.layers.push(utfGrid);
+      for (var i in grid_controls){
+        grid_controls[i].setGrid(utfGrid)
+      }
+    }
   }
+
+});
+
+/**
+ * MapTypeControl
+ *
+ * Custom control interface for Leaflet allowing users to switch between map styles.
+ *
+ */
+my.MapTypeControl = L.Control.extend({
+    initialize: function(view, options) {
+        this.view = view;
+        L.Util.setOptions(this, options);
+    },
+
+    getItemClickHandler: function(style) {
+        return $.proxy(function(e){
+            var $active = $('a.active-selection', this.$bar);
+            if ($active.length > 0 && $active.attr('stylecontrol') == style){
+                return;
+            }
+            this.view.map_info.map_style = style;
+            $active.removeClass('active-selection');
+            $('a[stylecontrol=' + style + ']').addClass('active-selection');
+            this.view.redraw();
+            e.stopPropagation();
+            return false;
+        }, this);
+    },
+
+     onAdd: function(map){
+       this.$bar = $('<div>').addClass('leaflet-bar');
+       for (var style in this.view.map_info.map_styles){
+           var title = this.view.map_info.map_styles[style].name;
+           var icon = this.view.map_info.map_styles[style].icon;
+           var $elem = $('<a></a>').attr('href', '#').attr('title', title).html(icon).attr('stylecontrol', style)
+               .appendTo(this.$bar)
+               .click(this.getItemClickHandler(style));
+           if (style == this.view.map_info.map_style){
+             $elem.addClass('active-selection')
+           }
+       }
+       return L.DomUtil.get(this.$bar.get(0));
+     }
+});
+
+/**
+ * DrawShapeControl
+ *
+ * Control used to draw shapes on the map.
+ * We only extend the base Draw control to have a uniform API.
+ */
+my.DrawShapeControl = L.Control.Draw.extend({
+    initialize: function(view, options) {
+        L.Control.Draw.prototype.initialize.call(this, options);
+        L.Util.setOptions(this, options);
+    }
+});
+
+/**
+ * PointInfoControl
+ *
+ * Custom control to display info about specific map points
+ * (used for plot maps only).
+ *
+ */
+my.PointInfoControl = L.Control.extend({
+    initialize: function(view, options) {
+        this.view = view;
+        L.Util.setOptions(this, options);
+    },
+
+    onAdd: function(map){
+      this._div = L.DomUtil.create('div', 'info'); // create a div with a class "info"
+      this.pointOut();
+      return this._div;
+    },
+
+    pointOut: function(){
+      var template = [
+        '<h4>' + this.view.model.attributes.name + ' Records</h4>',
+        '<p>Hover over a marker</p>'
+      ].join('');
+      this._div.innerHTML = Mustache.render(template);
+    },
+
+    pointOver: function(props){
+      var template = [
+        '<h4>' + this.view.model.attributes.name + ' Records</h4>',
+        '<b>{{ data.species }}</b><br />',
+        '{{ data._id }}<br />',
+        '{{ data.scientific_name }}<br/>',
+        '{{ data.count }} records overlapping'
+      ].join('');
+      this._div.innerHTML = Mustache.render(template, props);
+    },
+
+    setGrid: function(grid){
+      grid.on('mouseover', $.proxy(this, 'pointOver'));
+      grid.on('mouseout', $.proxy(this, 'pointOut'));
+    }
+});
+
+/**
+ * GridInfoControl
+ *
+ * Custom control to display info about specific grid sections
+ * (used for grid maps only).
+ *
+ */
+my.GridInfoControl = L.Control.extend({
+    initialize: function(view, options) {
+        this.view = view;
+        L.Util.setOptions(this, options);
+    },
+
+    onAdd: function(map){
+      this._div = L.DomUtil.create('div', 'small-info'); // create a div with a class "small-info"
+      return this._div;
+    },
+
+    setGrid: function(grid){
+      grid.on('mouseover', $.proxy(function(props){
+        var template = [
+          '{{ data.count }} records'
+        ].join('');
+        this._div.innerHTML = Mustache.render(template, props);
+      }, this));
+      grid.on('mouseout', $.proxy(function(){
+        this._div.innerHTML = '';
+      }, this));
+    }
 });
 
 })(jQuery, recline.View);

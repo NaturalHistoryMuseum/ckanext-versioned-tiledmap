@@ -9,6 +9,17 @@
   min-height: 10em;
 }
 
+.small-info{
+  color:#555;
+  padding: 6px 8px;
+  font: 14px/16px Arial, Helvetica, sans-serif;
+  background: rgba(255,255,255,0.95);
+  box-shadow: 0 0 15px rgba(0,0,0,0.7);
+  border-radius: 10px;
+  width: 300px;
+  min-height: 2em;
+}
+
 .leaflet-container {
   background: #fff;
 }
@@ -20,4 +31,8 @@
 
 .leaflet-retina .leaflet-draw-toolbar a {
     background-image: url('/images/spritesheet-2x.png');
+}
+
+.leaflet-bar a.active-selection {
+  font-weight: bold;
 }

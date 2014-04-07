@@ -106,7 +106,7 @@ class MapController(base.BaseController):
 
     heatmap_mss = """
                   @size: 20;
-                  #{resource_id}[zoom >= 4] {{
+                  #{resource_id} {{
                     marker-file: url('symbols/marker.svg');
                     marker-allow-overlap: true;
                     marker-opacity: 0.2;
@@ -310,7 +310,7 @@ class MapController(base.BaseController):
         # positions. Note that there's an overhead to doing so for small datasets, and also that
         # it only has an effect for records with *identical* geometries.
         if style == 'heatmap':
-            sub = select(geo_table.c[self.geom_field])
+            sub = select([geo_table.c[self.geom_field]])
         elif style == 'gridded':
             sub = select([func.count(geo_table.c[self.geom_field]).label('count'),
                           func.ST_SnapToGrid(geo_table.c[self.geom_field], width * 8, height * 8).label(
@@ -486,6 +486,43 @@ class MapController(base.BaseController):
             'bounds': ((51.496830, -0.178812), (51.496122, -0.173877)),
             'initial_zoom': self.initial_zoom,
             'tile_layer': self.tile_layer,
+            'map_styles': {
+                'plot': {
+                    'name': _('Plot Map'),
+                    'icon': 'P',
+                    'controls': ['drawShape', 'pointInfo', 'mapType']
+                },
+                'heatmap': {
+                    'name': _('Distribution Map'),
+                    'icon': 'D',
+                    'controls': ['drawShape', 'mapType']
+                },
+                'gridded': {
+                    'name': _('Grid Map'),
+                    'icon': 'G',
+                    'controls': ['drawShape', 'gridInfo', 'mapType']
+                }
+            },
+            'control_options': {
+                'drawShape': {
+                    'draw': {
+                        'polyline': False,
+                        'marker': False,
+                        'circle': False
+                    },
+                    'position': 'topleft'
+                },
+                'mapType': {
+                    'position': 'bottomleft'
+                },
+                'pointInfo': {
+                    'position': 'bottomright'
+                },
+                'gridInfo': {
+                    'position': 'bottomright'
+                }
+            },
+            'map_style': 'plot',
             'fetch_id': fetch_id
         }
 
