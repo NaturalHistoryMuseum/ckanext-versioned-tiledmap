@@ -16,6 +16,8 @@ import ckan.lib.base as base
 from ckan.common import json, request, _, response
 import ckanext.map.lib.helpers as helpers
 
+import ckan.lib.base as base
+
 
 class MapController(base.BaseController):
     """Controller for displaying map tiles and grids
@@ -58,70 +60,6 @@ class MapController(base.BaseController):
     - map.initial_zoom.max: Maximum zoom level for initial display of dataset, defaults to 6
     """
 
-    standard_mss = """
-                    #{resource_id} {{
-                      marker-fill: #ee0000;
-                      marker-opacity: 1;
-                      marker-width: 8;
-                      marker-line-color: white;
-                      marker-line-width: 1;
-                      marker-line-opacity: 0.9;
-                      marker-placement: point;
-                      marker-type: ellipse;
-                      marker-allow-overlap: true;
-                    }}
-                    """
-
-    gridded_mss = """
-                  @color: #f02323;
-                  @color1: spin(@color, 80);
-                  @color2: spin(@color, 70);
-                  @color3: spin(@color, 60);
-                  @color4: spin(@color, 50);
-                  @color5: spin(@color, 40);
-                  @color6: spin(@color, 30);
-                  @color7: spin(@color, 20);
-                  @color8: spin(@color, 10);
-                  @color9: spin(@color, 0);
-
-                  #{resource_id} {{
-                    marker-fill: @color1;
-                    marker-opacity: 1;
-                    marker-width: 7;
-                    marker-placement: point;
-                    marker-type: ellipse;
-                    marker-line-width: 1.0;
-                    marker-line-color: white;
-                    marker-allow-overlap: true;
-                    [count > 5] {{ marker-fill: @color2; }}
-                    [count > 10] {{ marker-fill: @color3; }}
-                    [count > 15] {{ marker-fill: @color4; }}
-                    [count > 20] {{ marker-fill: @color5; }}
-                    [count > 25] {{ marker-fill: @color6; }}
-                    [count > 30] {{ marker-fill: @color7; }}
-                    [count > 35] {{ marker-fill: @color8; }}
-                    [count > 40] {{ marker-fill: @color9; }}
-                  }}
-                  """
-
-    heatmap_mss = """
-                  @size: 20;
-                  #{resource_id} {{
-                    marker-file: url('symbols/marker.svg');
-                    marker-allow-overlap: true;
-                    marker-opacity: 0.2;
-                    marker-width: @size;
-                    marker-height: @size;
-                    marker-clip: false;
-                    image-filters: colorize-alpha(blue, cyan, green, yellow , orange, red);
-                    opacity: 0.8;
-                    [zoom >= 7] {{
-                      marker-width: @size * 2;
-                      marker-height: @size * 2;
-                    }}
-                  }}
-                  """
-
     def __init__(self):
         """Setup the controller's variables
 
@@ -137,6 +75,7 @@ class MapController(base.BaseController):
         self.geom_field_4326 = ''
         self.tile_layer = {}
         self.initial_zoom = {}
+        self.mss_options = {}
 
     def __before__(self, action, **params):
         """Setup the request
@@ -144,12 +83,14 @@ class MapController(base.BaseController):
         This will return a 500 error if there are missing configuration items, and a 400
         error if the resource_id parameter is missing.
         """
+        # Run super and setup engine
         super(MapController, self).__before__(action, **params)
         try:
             self.engine = create_engine(config['ckan.datastore.write_url'])
         except KeyError:
             base.abort(500, _("Missing configuration options"))
 
+        # Read configuration
         self.windshaft_host = config.get('map.windshaft.host', '127.0.0.1')
         self.windshaft_port = config.get('map.windshaft.port', '4000')
         self.windshaft_database = config.get('map.windshaft.database', None) or self.engine.url.database
@@ -164,7 +105,15 @@ class MapController(base.BaseController):
             'min': config.get('map.initial_zoom.min', 2),
             'max': config.get('map.initial_zoom.max', 6)
         }
+        self.mss_options = {
+            'fill_color': config.get('map.style.plot.fill_color', '#EE0000'),
+            'line_color': config.get('map.style.plot.line_color', '#FFFFFF'),
+            'grid_base_color': config.get('map.style.gridded.base_color', '#F02323'),
+            'heatmap_gradient': config.get('map.style.heatmap.gradient',
+                                           '#0000FF, #00FFFF, #00FF00, #FFFF00, #FFA500, #FF0000')
+        }
 
+        # Get request resource_id
         if not request.params.get('resource_id'):
             base.abort(400, _("Missing resource id"))
 
@@ -298,6 +247,11 @@ class MapController(base.BaseController):
         geom = request.params.get('geom')
         style = request.params.get('style')
 
+        if not style:
+            style = 'plot'
+        if style not in ['plot', 'gridded', 'heatmap']:
+            base.abort(400, _("Incorrect style parameter"))
+
         geo_table = self._geo_table()
 
         width = helpers.MapnikPlaceholderColumn('pixel_width')
@@ -353,12 +307,9 @@ class MapController(base.BaseController):
             outer = select([self.geom_field]).select_from(sub).order_by(func.random())
             sql = helpers.interpolateQuery(outer, self.engine)
 
-        if style == 'heatmap':
-            mss = self.heatmap_mss.format(resource_id=resource_id)
-        elif style == 'gridded':
-            mss = self.gridded_mss.format(resource_id=resource_id)
-        else:
-            mss = self.standard_mss.format(resource_id=resource_id)
+        mss_options = self.mss_options.copy()
+        mss_options['resource_id'] = self.resource_id
+        mss = base.render('mss/{}.mss'.format(style), mss_options)
 
         url = self._tile_url(z, x, y, sql=sql, style=mss)
         response.headers['Content-type'] = 'image/png'
