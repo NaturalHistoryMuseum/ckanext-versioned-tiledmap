@@ -36,3 +36,42 @@
 .leaflet-bar a.active-selection {
   font-weight: bold;
 }
+
+/* Tabbed view for the sidebar */
+.tabview .tabview-navigation {
+}
+.tabview .tabview-navigation a {
+  display: block;
+  float: left;
+  margin: 0 4px 0 0;
+  padding: 4px;
+  border-width: 1px 1px 0 1px;
+  border-color: #444;
+  border-radius: 4px 4px 0 0;
+  background: #CCC;
+  text-decoration: none;
+  color: #000;
+  font-size: 1.1em;
+}
+
+.tabview .tabview-navigation a.tabview-active {
+  background: #F5F5F5;
+}
+
+.tabview .tabview-container {
+    clear:both;
+}
+
+.tabview .well {
+  border: none;
+  box-shadow: none;
+  border-radius: 0 4px 4px 4px;
+}
+
+.tabview .recline-filter-editor h3 {
+  display: none;
+}
+
+.tabview .tabview-container .editor select {
+  max-width: 100%;
+}

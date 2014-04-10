@@ -9,6 +9,89 @@
  */
 this.ckan.module('nhm-reclinepreview', function (jQuery, _) {
 
+  /**
+   * Tabbed view for sidebar
+   */
+  var TabbedView = Backbone.View.extend({
+    template: [
+      '<div class="tabview">',
+        '<div class="tabview-navigation" data-toggle="tab">',
+          '{{#views}}',
+          '<a href="#{{id}}" data-view="{{id}}" class="tab">{{label}}</a>',
+          '{{/views}}',
+        '</div>',
+        '<div class="tabview-container"></div>',
+      '</div>'
+    ].join("\n"),
+    events: {
+      'click .tabview-navigation a': '_onSwitchTab'
+    },
+    initialize: function(options) {
+      this.el = $(this.el); // Ckan expects this
+      this.views = options.views;
+      this.render();
+      if (options.default){
+        this.selectTab(options.default);
+      } else if (this.views.length > 0) {
+        this.selectTab(this.views[0].id);
+      }
+    },
+    render: function() {
+      var template = Mustache.render(this.template, {views: this.views});
+      this.el.html(template);
+
+      // now create and append other views
+      var $dataViewContainer = this.el.find('.tabview-container');
+      for (var i in this.views){
+        this.views[i].view.render();
+        $dataViewContainer.append(this.views[i].view.el)
+      }
+
+      // Reset the current tab
+      this.current_tab = false;
+    },
+    _onSwitchTab: function(e) {
+      e.preventDefault();
+      var view_name = $(e.target).attr('data-view');
+      this.selectTab(view_name);
+    },
+    selectTab: function(view_name) {
+      if (this.current_tab == view_name){
+        return;
+      }
+      this.current_tab = view_name;
+      this.el.find('.tabview-navigation a').removeClass('tabview-active');
+      var $el = this.el.find('.tabview-navigation a[data-view="' + view_name+ '"]');
+      $el.addClass('tabview-active');
+
+      // Show/hide relevant views.
+      for (var i in this.views){
+        var view = this.views[i];
+        if (view.id === view_name){
+          // User 'display' property rather than calling show/hide as the latter only look at element properties,
+          // not CSS classes (some views are hidden by default in CSS).
+          $(view.view.el).css('display', 'block');
+        } else {
+          $(view.view.el).css('display', 'none');
+        }
+      }
+    },
+    enableTabs: function(tabs){
+      if (tabs.length > 0){
+        if ($.inArray(this.current_tab, tabs) == -1){
+          this.selectTab(tabs[0]);
+        }
+      }
+      this.el.find('.tabview-navigation a').css('display', 'none');
+      for (var i in tabs){
+        this.el.find('.tabview-navigation a[data-view="' + tabs[i] + '"]').css('display', 'block');
+      }
+    }
+  });
+
+  /**
+   * The module definition
+   */
   return {
     options: {
       i18n: {
@@ -129,39 +212,68 @@ this.ckan.module('nhm-reclinepreview', function (jQuery, _) {
 
       };
 
-      var views = [
-        {
+      var views = {
+        grid: {
           id: 'grid',
           label: 'Grid',
           view: new recline.View.SlickGrid({
             model: dataset
-          })
+          }),
+          tabs: ['valueFilter']
         },
-        {
+        graph:  {
           id: 'graph',
           label: 'Graph',
           view: new recline.View.Graph({
             model: dataset
-          })
+          }),
+          tabs: ['valueFilter', 'graphControl'],
+          activate_tab: 'graphControl'
         },
-        {
+        map: {
           id: 'map',
           label: 'Map',
           view: new recline.View.NHMMap({
             model: dataset
-          })
+          }),
+          tabs: ['valueFilter']
         }
-      ];
+      };
+      var flat_views = $.map(views, function(v,k){return v;});
 
-      var sidebarViews = [
+      /* We skip recline's sidebar views; instead we create a single tabbed view that we set as non-optional sidebar
+         element for all the views in the multi-view. We then check when the element gets hidden/shown to known which
+         tabs to enable or disable.
+       */
+      var tabbedView = new TabbedView({views: [
         {
           id: 'valueFilter',
           label: 'Filters',
           view: new recline.View.ValueFilter({
             model: dataset
           })
+        },
+        {
+          id: 'graphControl',
+          label: 'Graph options',
+          view: views['graph'].view.editor
         }
-      ];
+      ]});
+      views['graph'].view.editor.el.addClass('well');
+      var get_view_selector = function(view_name){
+        return function(){
+          tabbedView.enableTabs(views[view_name].tabs);
+          if (views[view_name].activate_tab){
+            tabbedView.selectTab(views[view_name].activate_tab);
+          }
+        }
+      }
+      for (var i in views){
+        var element = $.extend({}, tabbedView.el);
+        element.show = get_view_selector(i);
+        element.hide = function(){};
+        views[i].view.elSidebar = element;
+      }
 
       // TODO: There is a bug here. MultiView reloads all of the data and discards field renderers
       // I have commented out lines 4076 - 4079 in recline.js to fix this but needs further investigation
@@ -170,8 +282,8 @@ this.ckan.module('nhm-reclinepreview', function (jQuery, _) {
       var dataExplorer = new recline.View.MultiView({
         el: this.el,
         model: dataset,
-        views: views,
-        sidebarViews: sidebarViews,
+        views: flat_views,
+        sidebarViews: [],
         config: {
           readOnly: true
         }
@@ -192,6 +304,3 @@ this.ckan.module('nhm-reclinepreview', function (jQuery, _) {
     }
   };
 });
-
-
-   

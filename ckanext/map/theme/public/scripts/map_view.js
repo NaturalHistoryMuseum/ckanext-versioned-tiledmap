@@ -10,7 +10,7 @@ this.recline.View = this.recline.View || {};
  * Custom backbone view to display the Windshaft based maps.
  */
 my.NHMMap = Backbone.View.extend({
-  className: 'recline-nhm-map well',
+  className: 'recline-nhm-map',
   template: '\
     <div class="recline-map"> \
       <div class="panel map"></div> \
