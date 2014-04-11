@@ -144,14 +144,12 @@ my.NHMMap = Backbone.View.extend({
         opacity: this.map_info.tile_layer.opacity
     }).addTo(this.map);
 
-    this.drawLayer = null;
-
     this.tilejson = {
             tilejson: '1.0.0',
             scheme: 'xyz',
             tiles: [],
             grids: [],
-            formatter: function(options, data) { return data._id + "/" + data.species + "/" + data.scientific_name }
+            formatter: function(options, data) { return 'yo' /*data._id + "/" + data.species + "/" + data.scientific_name*/ }
     };
 
     this.map.on('draw:created', function (e) {
@@ -163,15 +161,16 @@ my.NHMMap = Backbone.View.extend({
     this.tiles_url = '/map-tile/{z}/{x}/{y}.png';
     this.grids_url = '/map-grid/{z}/{x}/{y}.grid.json?callback={cb}';
 
-    // Set up the controls used by the map. These are assigned during redraw.
+    // Set up the controls available to the map. These are assigned during redraw.
     this.controls = {
       'drawShape': new my.DrawShapeControl(this, this.map_info.control_options['drawShape']),
-      'mapType': new my.MapTypeControl(this, this.map_info.control_options['mapType']),
-      'pointInfo': new my.PointInfoControl(this, this.map_info.control_options['pointInfo']),
-      'gridInfo': new my.GridInfoControl(this, this.map_info.control_options['gridInfo'])
+      'mapType': new my.MapTypeControl(this, this.map_info.control_options['mapType'])
     }
-
-    this.layers = [];
+    // Set up the plugins available to the map. These are assigned during redraw.
+    this.plugins = {
+      'tooltipInfo': new my.TooltipPlugin(this, this.map_info.plugin_options['tooltipInfo']),
+      'tooltipCount': new my.TooltipPlugin(this, this.map_info.plugin_options['tooltipCount'])
+    }
   },
 
   /**
@@ -232,83 +231,116 @@ my.NHMMap = Backbone.View.extend({
    *
    */
   redraw: function(){
-    var self = this;
-    var params = {};
-
     if (!this.map_ready || !this.map_info.draw){
       return;
     }
-
-    if (self.drawLayer) {
-      self.map.removeLayer(self.drawLayer);
-    }
-
-    self.drawLayer = L.geoJson(this.model.queryState.attributes.geom);
-    self.map.addLayer(self.drawLayer);
-
+    // Setup tile request parameters
+    var params = {};
     params['filters'] = JSON.stringify(this.model.queryState.attributes.filters);
-
     if (this.model.queryState.attributes.q){
       params['q'] = this.model.queryState.attributes.q;
     }
-
     if (this.model.queryState.attributes.geom) {
       params['geom'] = Terraformer.WKT.convert(this.model.queryState.attributes.geom);
     }
-
     params['resource_id'] = this.model.id;
     params['style'] = this.map_info.map_style;
 
+    // Prepare layers
     this.tilejson.tiles = [this.tiles_url + "?" + $.param(params)];
     this.tilejson.grids = [this.grids_url + "&" + $.param(params)];
-
-    _.each(this.layers, function(layer){
-        self.map.removeLayer(layer)
-    });
-
-    this.layers = [];
-
-    var testMap = L.tileLayer(this.tilejson.tiles[0]).addTo(this.map);
-    this.layers.push(testMap);
-
-    // Update controls
-    var grid_controls = [];
-    if (typeof this._current_controls === 'undefined'){
-      this._current_controls = [];
+    if (typeof this.layers === 'undefined'){
+      this.layers = {};
     }
-    var new_controls = [];
-    for (var i in this.map_info.map_styles[this.map_info.map_style].controls){
-      var control = this.map_info.map_styles[this.map_info.map_style].controls[i];
-      new_controls.push(control);
-      if (!_.contains(this._current_controls, control)){
-        this.map.addControl(this.controls[control]);
-      }
-      if (typeof this.controls[control].setGrid !== 'undefined'){
-        grid_controls.push(this.controls[control]);
-      }
+    for (var i in this.layers){
+      this.map.removeLayer(this.layers[i]);
     }
-    for (var i in this._current_controls){
-      var control = this._current_controls[i];
-      if (!_.contains(new_controls, control)){
-        this.map.removeControl(this.controls[control]);
-      }
+    this.layers = {
+      'selection': L.geoJson(this.model.queryState.attributes.geom),
+      'plot': L.tileLayer(this.tilejson.tiles[0]),
+      'grid': new L.UtfGrid(this.tilejson.grids[0], {resolution: 4})
+    };
+    for (var i in this.layers){
+      this.map.addLayer(this.layers[i]);
     }
-    this._current_controls = new_controls;
 
-    // Add the grid layer. We only need it if we have a control that subscribes to it.
-    if (grid_controls.length > 0) {
-      var utfGrid = new L.UtfGrid(this.tilejson.grids[0], {
-        resolution: 4,
-      });
+    // Update controls & plugins
+    this.updateControls();
+    this.updatePlugins();
+    this.callPlugins('redraw', this.layers);
+  },
 
-      this.map.addLayer(utfGrid);
-      this.layers.push(utfGrid);
-      for (var i in grid_controls){
-        grid_controls[i].setGrid(utfGrid)
+  /**
+   * updateControls
+   *
+   * Updates the controls used on the map for the current style
+   */
+  updateControls: function (){
+    this._updateAddons('controls', $.proxy(function(control){
+      this.map.addControl(this.controls[control]);
+    }, this), $.proxy(function(control){
+      this.map.removeControl(this.controls[control]);
+    }, this));
+  },
+
+  /**
+   * updatePlugins
+   *
+   * Updates the plugins used on this map
+   */
+  updatePlugins: function(){
+    this._updateAddons('plugins', $.proxy(function(plugin){
+      this.plugins[plugin].enable();
+    }, this), $.proxy(function(plugin){
+      this.plugins[plugin].disable();
+    }, this));
+  },
+
+  /**
+   * callPlugins
+   *
+   * Invoke a particular hook on enabled plugins
+   */
+  callPlugins: function(hook, args){
+    for (var i in this._current_addons['plugins']){
+      var plugin = this.plugins[this._current_addons['plugins'][i]];
+      if (typeof plugin[hook] == 'function'){
+        plugin[hook](args)
       }
     }
+  },
+
+  /**
+   * _updateAddons
+   *
+   * Generic function for updating controls and plugins.
+   */
+  _updateAddons: function(type, add_cb, remove_cb){
+    if (typeof this._current_addons === 'undefined'){
+      this._current_addons = {};
+    }
+    if (typeof this._current_addons[type] === 'undefined'){
+      this._current_addons[type] = [];
+    }
+    var style = this.map_info.map_styles[this.map_info.map_style];
+    var new_addons = [];
+    if (typeof style[type] !== 'undefined'){
+      for (var i in style[type]){
+        var addon = style[type][i];
+        new_addons.push(addon);
+        if (add_cb && !_.contains(this._current_addons[type], addon)){
+          add_cb(addon);
+        }
+      }
+    }
+    for (var i in this._current_addons[type]){
+      var addon = this._current_addons[type][i];
+      if (remove_cb && !_.contains(new_addons, addon)){
+        remove_cb(addon);
+      }
+    }
+    this._current_addons[type] = new_addons;
   }
-
 });
 
 /**
@@ -368,78 +400,122 @@ my.DrawShapeControl = L.Control.Draw.extend({
 });
 
 /**
- * PointInfoControl
+ * TooltipPlugin
  *
- * Custom control to display info about specific map points
- * (used for plot maps only).
- *
+ * Plugin used to add a tooltip on point hover
  */
-my.PointInfoControl = L.Control.extend({
-    initialize: function(view, options) {
-        this.view = view;
-        L.Util.setOptions(this, options);
-    },
+my.TooltipPlugin = function(view, options){
+  /**
+   * enable this plugin
+   */
+  this.enable = function(){
+    this.grid = null;
+    this.$el = $('<div>').addClass('map-hover-tooltip').css({
+      display: 'none',
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      zIndex: 100
+    }).appendTo(view.map.getContainer());
+  }
 
-    onAdd: function(map){
-      this._div = L.DomUtil.create('div', 'info'); // create a div with a class "info"
-      this.pointOut();
-      return this._div;
-    },
+  /**
+   * Disable this plugin
+   */
+  this.disable = function(){
+    this._disable_event_handlers();
+    this.$el.remove();
+    this.$el = null;
+  }
 
-    pointOut: function(){
-      var template = [
-        '<h4>' + this.view.model.attributes.name + ' Records</h4>',
-        '<p>Hover over a marker</p>'
-      ].join('');
-      this._div.innerHTML = Mustache.render(template);
-    },
-
-    pointOver: function(props){
-      var template = [
-        '<h4>' + this.view.model.attributes.name + ' Records</h4>',
-        '<b>{{ data.species }}</b><br />',
-        '{{ data._id }}<br />',
-        '{{ data.scientific_name }}<br/>',
-        '{{ data.count }} records overlapping'
-      ].join('');
-      this._div.innerHTML = Mustache.render(template, props);
-    },
-
-    setGrid: function(grid){
-      grid.on('mouseover', $.proxy(this, 'pointOver'));
-      grid.on('mouseout', $.proxy(this, 'pointOut'));
+  /**
+   * Remove event handlers
+   */
+  this._disable_event_handlers = function(){
+    if (this.grid !== null){
+      this.grid.off('mouseover', $.proxy(this, "_mouseover"));
+      this.grid.off('mouseout', $.proxy(this, "_mouseout"));
+      this.grid = null;
     }
-});
+  }
 
-/**
- * GridInfoControl
- *
- * Custom control to display info about specific grid sections
- * (used for grid maps only).
- *
- */
-my.GridInfoControl = L.Control.extend({
-    initialize: function(view, options) {
-        this.view = view;
-        L.Util.setOptions(this, options);
-    },
-
-    onAdd: function(map){
-      this._div = L.DomUtil.create('div', 'small-info'); // create a div with a class "small-info"
-      return this._div;
-    },
-
-    setGrid: function(grid){
-      grid.on('mouseover', $.proxy(function(props){
-        var template = [
-          '{{ data.count }} records'
-        ].join('');
-        this._div.innerHTML = Mustache.render(template, props);
-      }, this));
-      grid.on('mouseout', $.proxy(function(){
-        this._div.innerHTML = '';
-      }, this));
+  /**
+   * Mouseover handler
+   */
+  this._mouseover = function(props) {
+    var has_count = options.count_field && props.data[options.count_field];
+    var has_info = options.info_field && props.data[options.info_field];
+    var str = false;
+    if (has_info && (!has_count || props.data[options.count_field] == 1)){
+      str = props.data[options.info_field];
+    } else if (has_count) {
+      str = props.data[options.count_field] + ' records';
     }
-});
+    if (str){
+      this.$el.html(str);
+      // Place the element with visibility 'hidden' so we can get it's actual height/width.
+      this.$el.css({
+        top: 0,
+        left: 0,
+        visibility: 'hidden',
+        display: 'block'
+      });
+      if (typeof this.initial_opacity === 'undefined'){
+        this.initial_opacity = this.$el.css('opacity'); // Store CSS value
+        this.$el.css('opacity', 0);
+      }
+      // Tooltip placement algorithm.
+      var point = view.map.latLngToContainerPoint(props.latlng);
+      var width = this.$el.width();
+      var height = this.$el.height();
+      var map_size = view.map.getSize();
+      var top, left;
+      if (point.x > map_size.x * 4 / 5 || point.x + width + 16 > map_size.x){
+        left = point.x - width - 16;
+      } else {
+        left = point.x + 16;
+      }
+      if (point.y < map_size.y / 5){
+        top = point.y + height * 0.5 + 8;
+      } else {
+        top = point.y - height * 1.5 - 8;
+      }
+      this.$el.css({
+        top: top,
+        left: left,
+        visibility: 'visible'
+      }).stop().animate({
+        opacity: this.initial_opacity
+      }, {
+        duration: 100
+      });
+    }
+  }
+
+  /**
+   * Mouseout handler
+   */
+  this._mouseout = function(){
+    this.$el.stop().animate({
+      'opacity': 0
+    }, {
+      duration: 100,
+      complete: function(){
+        $(this).html('');
+        $(this).css('display', 'none');
+      }
+    });
+  }
+
+  /**
+   * redraw handler
+   */
+  this.redraw = function(layers){
+    this._disable_event_handlers();
+    this.grid = layers['grid'];
+    this.grid.on('mouseover', $.proxy(this, "_mouseover"));
+    this.grid.on('mouseout', $.proxy(this, "_mouseout"));
+  }
+}
 
 })(jQuery, recline.View);

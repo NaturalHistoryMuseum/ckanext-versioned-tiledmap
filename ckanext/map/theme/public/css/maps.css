@@ -75,3 +75,13 @@
 .tabview .tabview-container .editor select {
   max-width: 100%;
 }
+
+/* Map tooltips */
+div.map-hover-tooltip {
+  color: #FFF;
+  background: #888;
+  font-size: 1em;
+  padding: 2px;
+  border-radius: 2px;
+  opacity: 0.9;
+}

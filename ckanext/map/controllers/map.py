@@ -70,7 +70,9 @@ class MapController(base.BaseController):
         self.windshaft_database = ''
         self.engine = None
         self.resource_id = ''
-        self.interactivity = ''
+        self.interactivity = []
+        self.quick_info_field = ''
+        self.query_fields = []
         self.geom_field = ''
         self.geom_field_4326 = ''
         self.tile_layer = {}
@@ -95,6 +97,9 @@ class MapController(base.BaseController):
         self.windshaft_port = config.get('map.windshaft.port', '4000')
         self.windshaft_database = config.get('map.windshaft.database', None) or self.engine.url.database
         self.interactivity = [i.strip() for i in config.get('map.interactivity', '_id,count').split(',')]
+        self.quick_info_field = config.get('map.quick_info_field', 'scientificName')
+        # Leaflet UtfGrid plugin will break on duplicate fields!
+        self.query_fields = set(self.interactivity + [self.quick_info_field])
         self.geom_field = config.get('map.geom_field', '_the_geom_webmercator')
         self.geom_field_4326 = config.get('map.geom_field_4326', '_geom')
         self.tile_layer = {
@@ -181,7 +186,7 @@ class MapController(base.BaseController):
         @param y: the Y coordinate of the tile
         @param callback: Javascript callback function.
         @param sql: Sql to provide to the server.
-        @param interactivity: SQL fields to display in information popup/box
+        @param interactivity: SQL fields to make available to the front end (for info box, hover, etc.)
         @param query: A dictionary defining any other query strings for the URL
         @rtype: str
         @return: The Windshaft URL that will serve a grid.
@@ -215,7 +220,7 @@ class MapController(base.BaseController):
                     self.columns[input_filters['field']] = Column(input_filters['field'], String(255))
 
         # Add the interactivity fields. We ignore the special 'count' column.
-        for column_name in self.interactivity:
+        for column_name in self.query_fields:
             if column_name not in ['count']:
                 self.columns[column_name] = Column(column_name, String(255))
 
@@ -350,7 +355,7 @@ class MapController(base.BaseController):
         # information in order to later return the "top" record from the stack of overlapping records
 
         sub_cols = []
-        for i in self.interactivity:
+        for i in self.query_fields:
             if i not in ['count', '_mapplugin_center', self.geom_field, '_mapplugin_sub']:
                 sub_cols.append(func.array_agg(geo_table.c[i]).label(i))
         sub_cols.append(func.count(geo_table.c[self.geom_field]).label('count'))
@@ -390,7 +395,7 @@ class MapController(base.BaseController):
         # However, geoalchemy breaks on SQLAlchemy >= 0.9, so be careful.
 
         outer_cols = []
-        for i in self.interactivity:
+        for i in self.query_fields:
             if i in ['_mapplugin_center', '_mapplugin_sub', self.geom_field]:
                 continue
             elif i in ['count']:
@@ -402,7 +407,7 @@ class MapController(base.BaseController):
         s = select(outer_cols).select_from(sub)
         sql = helpers.interpolateQuery(s, self.engine)
 
-        url = self._grid_url(z, x, y, callback=callback, sql=sql, interactivity=','.join(self.interactivity))
+        url = self._grid_url(z, x, y, callback=callback, sql=sql, interactivity=",".join(self.query_fields))
         response.headers['Content-type'] = 'text/javascript'
         # TODO: Detect if the incoming connection has been dropped, and if so stop the query.
         grid = cStringIO.StringIO(urllib.urlopen(url).read())
@@ -441,17 +446,19 @@ class MapController(base.BaseController):
                 'plot': {
                     'name': _('Plot Map'),
                     'icon': 'P',
-                    'controls': ['drawShape', 'pointInfo', 'mapType']
+                    'controls': ['drawShape', 'mapType'],
+                    'plugins': ['tooltipInfo']
                 },
                 'heatmap': {
                     'name': _('Distribution Map'),
                     'icon': 'D',
-                    'controls': ['drawShape', 'mapType']
+                    'controls': ['drawShape', 'mapType'],
                 },
                 'gridded': {
                     'name': _('Grid Map'),
                     'icon': 'G',
-                    'controls': ['drawShape', 'gridInfo', 'mapType']
+                    'controls': ['drawShape', 'mapType'],
+                    'plugins': ['tooltipCount']
                 }
             },
             'control_options': {
@@ -471,6 +478,15 @@ class MapController(base.BaseController):
                 },
                 'gridInfo': {
                     'position': 'bottomright'
+                }
+            },
+            'plugin_options': {
+                'tooltipInfo': {
+                    'count_field': 'count',
+                    'info_field': self.quick_info_field
+                },
+                'tooltipCount': {
+                    'count_field': 'count'
                 }
             },
             'map_style': 'plot',
