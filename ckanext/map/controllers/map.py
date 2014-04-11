@@ -50,10 +50,12 @@ class MapController(base.BaseController):
         to the database name from the datastore URL.
     - map.geom_field: Geom field. Defaults to _the_geom_webmercator. Must be 3857 type field;
     - map.geom_field_4326: The 4326 geom field. Defaults to _geom ;
-    - map.interactivity: List of SQL fields to use for the interactivity layer. Defaults
-        to '_id, count'. Note that 'count' refers to the count, while all other fields
-        *must* exist in the database table. The plugin uses aliases starting with _mapplugin
-        while building the query, so there should be no fields named in this way.
+    - map.quick_info_field: SQL Field used for quick info (typically hover) of a given point. May be any SQL field
+        or one of the special fields 'count', 'lat', 'lng' which are computed (and would overshadow similarly named
+        fields in the database). Defaults to 'scientificName' ;
+    - map.info_fields: Comma separated list of "label:field" fields to use for the map information display. field may
+        be any SQL field, or one of the special fields 'count', 'lat', 'lng' (see quick_info_field).
+        Defaults to 'Scientific name:scientificName';
     - map.tile_layer.url: URL of the tile layer. Defaults to http://otile1.mqcdn.com/tiles/1.0.0/map/{z}/{x}/{y}.jpg
     - map.tile_layer.opacity: Opacity of the tile layer. Defaults to 0.8
     - map.initial_zoom.min: Minimum zoom level for initial display of dataset, defaults to 2
@@ -70,8 +72,8 @@ class MapController(base.BaseController):
         self.windshaft_database = ''
         self.engine = None
         self.resource_id = ''
-        self.interactivity = []
         self.quick_info_field = ''
+        self.info_fields = {}
         self.query_fields = []
         self.geom_field = ''
         self.geom_field_4326 = ''
@@ -96,10 +98,9 @@ class MapController(base.BaseController):
         self.windshaft_host = config.get('map.windshaft.host', '127.0.0.1')
         self.windshaft_port = config.get('map.windshaft.port', '4000')
         self.windshaft_database = config.get('map.windshaft.database', None) or self.engine.url.database
-        self.interactivity = [i.strip() for i in config.get('map.interactivity', '_id,count').split(',')]
+        info_field_list = config.get('map.info_fields', 'Scientific name:scientificName').split(',')
+        self.info_fields = dict((k, v) for k, v in (a.split(':') for a in info_field_list))
         self.quick_info_field = config.get('map.quick_info_field', 'scientificName')
-        # Leaflet UtfGrid plugin will break on duplicate fields!
-        self.query_fields = set(self.interactivity + [self.quick_info_field])
         self.geom_field = config.get('map.geom_field', '_the_geom_webmercator')
         self.geom_field_4326 = config.get('map.geom_field_4326', '_geom')
         self.tile_layer = {
@@ -129,6 +130,12 @@ class MapController(base.BaseController):
             base.abort(404, _('Resource not found'))
         except logic.NotAuthorized:
             base.abort(401, _('Unauthorized to read resources'))
+
+        # Fields that need to be added to the query. Note that postgres query fails with duplicate names
+        self.query_fields = [self.quick_info_field]
+        for i in self.info_fields.values():
+            if i not in ['count', 'lat', 'lng', self.geom_field, self.geom_field_4326] and i not in self.query_fields:
+                self.query_fields.append(i)
 
         # Build the list of columns needed for this request
         self._request_columns()
@@ -219,10 +226,9 @@ class MapController(base.BaseController):
                 if input_filters['type'] == 'term':
                     self.columns[input_filters['field']] = Column(input_filters['field'], String(255))
 
-        # Add the interactivity fields. We ignore the special 'count' column.
+        # Add all the fields we want for this query.
         for column_name in self.query_fields:
-            if column_name not in ['count']:
-                self.columns[column_name] = Column(column_name, String(255))
+            self.columns[column_name] = Column(column_name, String(255))
 
 
     def _geo_table(self):
@@ -356,9 +362,9 @@ class MapController(base.BaseController):
 
         sub_cols = []
         for i in self.query_fields:
-            if i not in ['count', '_mapplugin_center', self.geom_field, '_mapplugin_sub']:
-                sub_cols.append(func.array_agg(geo_table.c[i]).label(i))
+            sub_cols.append(func.array_agg(geo_table.c[i]).label(i))
         sub_cols.append(func.count(geo_table.c[self.geom_field]).label('count'))
+        sub_cols.append(func.array_agg(geo_table.c[self.geom_field_4326]).label(self.geom_field_4326))
         sub_cols.append(func.ST_SnapToGrid(geo_table.c[self.geom_field], width * grid_size, height * grid_size).label(
             '_mapplugin_center'
         ))
@@ -396,18 +402,17 @@ class MapController(base.BaseController):
 
         outer_cols = []
         for i in self.query_fields:
-            if i in ['_mapplugin_center', '_mapplugin_sub', self.geom_field]:
-                continue
-            elif i in ['count']:
-                outer_cols.append(Column('count', Integer))
-            else:
                 outer_cols.append(Column(i, ARRAY(String))[1].label(i))
+        # Always include count/lat/lng as various plugins excpet those.
+        outer_cols.append(Column('count', Integer))
+        outer_cols.append(func.st_y(Column(self.geom_field_4326, ARRAY(helpers.Geometry))[1]).label('lat'))
+        outer_cols.append(func.st_x(Column(self.geom_field_4326, ARRAY(helpers.Geometry))[1]).label('lng'))
         outer_cols.append(Column('_mapplugin_center', helpers.Geometry).label(self.geom_field))
 
         s = select(outer_cols).select_from(sub)
         sql = helpers.interpolateQuery(s, self.engine)
-
-        url = self._grid_url(z, x, y, callback=callback, sql=sql, interactivity=",".join(self.query_fields))
+        interactivity_fields = ",".join(set(self.query_fields + ['count', 'lat', 'lng']))
+        url = self._grid_url(z, x, y, callback=callback, sql=sql, interactivity=interactivity_fields)
         response.headers['Content-type'] = 'text/javascript'
         # TODO: Detect if the incoming connection has been dropped, and if so stop the query.
         grid = cStringIO.StringIO(urllib.urlopen(url).read())
@@ -447,7 +452,7 @@ class MapController(base.BaseController):
                     'name': _('Plot Map'),
                     'icon': 'P',
                     'controls': ['drawShape', 'mapType'],
-                    'plugins': ['tooltipInfo']
+                    'plugins': ['tooltipInfo', 'pointInfo']
                 },
                 'heatmap': {
                     'name': _('Distribution Map'),
@@ -487,6 +492,9 @@ class MapController(base.BaseController):
                 },
                 'tooltipCount': {
                     'count_field': 'count'
+                },
+                'pointInfo': {
+
                 }
             },
             'map_style': 'plot',
