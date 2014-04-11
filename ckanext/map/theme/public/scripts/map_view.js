@@ -435,6 +435,7 @@ my.TooltipPlugin = function(view, options){
     if (this.grid !== null){
       this.grid.off('mouseover', $.proxy(this, "_mouseover"));
       this.grid.off('mouseout', $.proxy(this, "_mouseout"));
+      view.map.off('mouseout', $.proxy(this, "_mouseout"));
       this.grid = null;
     }
   }
@@ -515,6 +516,7 @@ my.TooltipPlugin = function(view, options){
     this.grid = layers['grid'];
     this.grid.on('mouseover', $.proxy(this, "_mouseover"));
     this.grid.on('mouseout', $.proxy(this, "_mouseout"));
+    view.map.on('mouseout', $.proxy(this, "_mouseout")); // UtfGrid doesn't trigger mouseout when you leave the map
   }
 }
 
