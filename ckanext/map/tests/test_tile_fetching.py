@@ -180,7 +180,7 @@ class TestTileFetching(tests.WsgiAppCase):
         config['map.windshaft.port'] = '1234'
         config['map.windshaft.database'] = 'wdb'
         config['map.geom_field'] = 'the_geom_2'
-        config['map.interactivity'] = 'some_field_1,some_field_2'
+        config['map.info_fields'] = 'Some Field One:some_field_1,Some Field Two:some_field_2'
         mock_urlopen.return_value.read.return_value = 'data from windshaft :-)'
         self.app.get('/map-tile/2/3/4.png?resource_id={}'.format(TestTileFetching.resource['resource_id']))
         # Now check the URL that windshaft was called with
@@ -198,8 +198,8 @@ class TestTileFetching(tests.WsgiAppCase):
         self.app.get('/map-grid/2/3/4.grid.json?resource_id={}'.format(TestTileFetching.resource['resource_id']))
         called_url = urlparse.urlparse(mock_urlopen.call_args[0][0])
         called_query = urlparse.parse_qs(called_url.query)
-        assert 'some_field_1' in called_query['sql'][0] and 'some_field_2' in called_query['sql'][0], '''Grid tile not including
-                                                                                             defined interactivity'''
+        assert 'some_field_1' in called_query['sql'][0] and 'some_field_2' in called_query['sql'][0], '''Grid tile not
+                                                                                        including defined info fields'''
 
     @patch('urllib.urlopen')
     def test_fetch_tile_sql_plain(self, mock_urlopen):
@@ -258,7 +258,18 @@ class TestTileFetching(tests.WsgiAppCase):
         assert values['fetch_id'] == '44', 'The map-info controller did not pass fetch_id back'
         assert 'initial_zoom' in values, 'The map-info does not define max zoom'
         assert 'tile_layer' in values, 'The map-info does not define a tile layer'
-        assert values['bounds'] == [[-15, -11], [48, 23]], 'The map-info did return the correct bounds'
+        assert values['bounds'] == [[-15, -11], [48, 23]], 'The map-info did not return the correct bounds'
+        assert 'map_style' in values, 'Map info does set a default map style'
+        assert 'plot' in values['map_styles']
+        assert 'heatmap' in values['map_styles']
+        assert 'gridded' in values['map_styles'], 'The map info did not return expected map styles'
+        for control in ['drawShape', 'mapType']:
+            assert control in values['control_options'], "Control options not present"
+            assert 'position' in values['control_options'][control], "Control does not define position"
+        for plugin in ['tooltipInfo', 'pointInfo']:
+            assert plugin in values['plugin_options'], "Plugin options not present"
+        assert 'template' in values['plugin_options']['pointInfo'], "pointInfo plugin has no template"
+        assert 'template' in values['plugin_options']['tooltipInfo'], "tooltipInfo plugin has no template"
 
     def test_map_info_no_geo(self):
         """Test the map info controllers warns us of non-geo spatial datasets"""

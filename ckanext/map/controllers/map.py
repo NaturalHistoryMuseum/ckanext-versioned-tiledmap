@@ -489,9 +489,6 @@ class MapController(base.BaseController):
                 },
                 'mapType': {
                     'position': 'bottomleft'
-                },
-                'gridInfo': {
-                    'position': 'bottomright'
                 }
             },
             'plugin_options': {

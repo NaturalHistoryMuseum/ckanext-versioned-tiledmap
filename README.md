@@ -48,13 +48,22 @@ The plugin supports the following configuration options:
   doing. Must be 3857 type field;
 - map.geom_field_4326: The 4326 geom field. Defaults to ```_geom```. Do not change this unless you know what you are
   doing. Must be 4326 type field ;
-- map.interactivity: List of SQL fields to use for the interactivity layer. Defaults to ```_id, count```. Note that
-  ```count``` refers to the count, while all other fields *must* exist in the database table. The plugin uses aliases
-  starting with ```_mapplugin``` while building the query, so there should be no fields named in this way ;
 - map.tile_layer.url: URL of the tile layer. Defaults to http://otile1.mqcdn.com/tiles/1.0.0/map/{z}/{x}/{y}.jpg ;
 - map.tile_layer.opacity: Opacity of the tile layer. Defaults to 0.8 ;
 - map.initial_zoom.min: Minimum zoom level for initial display of dataset, defaults to 2 ;
-- map.initial_zoom.max: Maximum zoom level for initial display of dataset, defaults to 6.
+- map.initial_zoom.max: Maximum zoom level for initial display of dataset, defaults to 6 ;
+- map.info_fields: Comma separated list of "label:field" SQL fields that should be made available to the templates;
+- map.title_template: Name of the template used to generate the info sidebar title. The template is rendered with
+  info_fields available as a list of (label,field) tuples, and should return a Mustache template which can then
+  be rendered client side. All the values of the fields in info_fields are available during client side rendering.
+  In addition the fiels 'count', 'lat', 'lng' and 'multiple' are also available.
+  Defaults to point_detail_title.dwc.mustache ;
+- map.info_template: Name of the template to use for generating point info detail in the sidebar.
+  The template is rendered with 'info_fields' and 'title_template'. See map.title_template.
+        Defaults to point_detail.dwc.mustache;
+    - map.quick_info_template: Name of the template to use for generating hover information. The template is rendered
+        with 'info_fields' available. See map.title_template. Defaults to point_detail_hover.mustache;
+
 
 Usage
 =====
