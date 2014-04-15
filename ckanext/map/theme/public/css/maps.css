@@ -85,3 +85,48 @@ div.map-hover-tooltip {
   border-radius: 2px;
   opacity: 0.9;
 }
+
+/* Point info */
+div.point-detail div.point-detail-title {
+  font-size: 1.5em;
+  font-weight: bold;
+  margin-bottom: 1em;
+}
+
+div.point-detail .point-detail-label {
+  font-weight: bold;
+  display: block;
+  float: left;
+}
+
+div.point-detail .point-detail-value {
+  display: block;
+  text-indent: 10px;
+  margin-left: 10px;
+}
+
+div.point-detail .point-detail-info {
+  font-size: 0.9em;
+  color: #888;
+  margin-bottom: 1em;
+}
+
+div.point-detail .point-detail-tree-label {
+  color: #888;
+  font-size: 0.9em;
+}
+
+div.point-detail-tree {
+    font-size: 0.9em;
+    margin-bottom: 1em;
+}
+
+div.point-detail .point-detail-tree-detail:after {
+    content: '>';
+    font-weight: bold;
+}
+
+div.point-detail .point-detail-tree-detail:last-child:after {
+    content: '>';
+    font-weight: bold;
+}

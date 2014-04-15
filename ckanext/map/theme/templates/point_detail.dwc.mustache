@@ -1,0 +1,42 @@
+<div class="point-detail">
+    {{h.mustache('#multiple')}}
+        <div class="point-detail-info">There are multiple records at this location. The information displayed here is for one of the records only.</div>
+    {{h.mustache('/multiple')}}
+    <div class="point-detail-title">{{title_template}}</div>
+    <div class="point-detail-tree">
+        {% for (label,field) in [
+            ('Kingdom','kingdom'),
+            ('Phylum','phylum'),
+            ('Class','class'),
+            ('Order','order'),
+            ('Family','family'),
+            ('Genus','genus'),
+            ('Subgenus', 'subgenus')
+        ]%}
+            {{h.mustache('#' + field)}}
+                <span class="point-detail-tree-label">{{label}}:</span>
+                <span class="point-detail-tree-detail">{{h.mustache(field)}}</span>
+            {{h.mustache('/' + field)}}
+        {% endfor %}
+    </div>
+    {% for (label,field) in [
+        ('Institution Code', 'institutionCode'),
+        ('Catalogue Number', 'catalogNumber'),
+        ('Collection Code', 'collectionCode'),
+        ('Identified By', 'identifiedBy'),
+        ('Date', 'dateIdentified'),
+        ('Continent', 'continent'),
+        ('Country', 'country'),
+        ('State/Province', 'stateProvince'),
+        ('County', 'county'),
+        ('Locality', 'locality'),
+        ('Habitat', 'habitat')
+    ]%}
+        {{h.mustache('#' + field)}}
+            <div class="point-detail-row">
+                <span class="point-detail-label">{{label}}:</span>
+                <span class="point-detail-value">{{h.mustache(field)}}</span>
+            </div>
+        {{h.mustache('/' + field)}}
+    {% endfor %}
+</div>

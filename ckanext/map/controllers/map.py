@@ -50,16 +50,21 @@ class MapController(base.BaseController):
         to the database name from the datastore URL.
     - map.geom_field: Geom field. Defaults to _the_geom_webmercator. Must be 3857 type field;
     - map.geom_field_4326: The 4326 geom field. Defaults to _geom ;
-    - map.quick_info_field: SQL Field used for quick info (typically hover) of a given point. May be any SQL field
-        or one of the special fields 'count', 'lat', 'lng' which are computed (and would overshadow similarly named
-        fields in the database). Defaults to 'scientificName' ;
-    - map.info_fields: Comma separated list of "label:field" fields to use for the map information display. field may
-        be any SQL field, or one of the special fields 'count', 'lat', 'lng' (see quick_info_field).
-        Defaults to 'Scientific name:scientificName';
     - map.tile_layer.url: URL of the tile layer. Defaults to http://otile1.mqcdn.com/tiles/1.0.0/map/{z}/{x}/{y}.jpg
     - map.tile_layer.opacity: Opacity of the tile layer. Defaults to 0.8
     - map.initial_zoom.min: Minimum zoom level for initial display of dataset, defaults to 2
     - map.initial_zoom.max: Maximum zoom level for initial display of dataset, defaults to 6
+    - map.info_fields: Comma separated list of "label:field" SQL fields that should be made available to the templates;
+    - map.title_template: Name of the template used to generate the info sidebar title. The template is rendered with
+        info_fields available as a list of (label,field) tuples, and should return a Mustache template which can then
+        be rendered client side. All the values of the fields in info_fields are available during client side rendering.
+        In addition the fiels 'count', 'lat', 'lng' and 'multiple' are also available.
+         Defaults to point_detail_title.mustache ;
+    - map.info_template: Name of the template to use for generating point info detail in the sidebar.
+        The template is rendered with 'info_fields' and 'title_template'. See map.title_template.
+        Defaults to point_detail.dwc.mustache;
+    - map.quick_info_template: Name of the template to use for generating hover information. The template is rendered
+        with 'info_fields' available. See map.title_template. Defaults to point_detail_hover.mustache;
     """
 
     def __init__(self):
@@ -72,14 +77,16 @@ class MapController(base.BaseController):
         self.windshaft_database = ''
         self.engine = None
         self.resource_id = ''
-        self.quick_info_field = ''
-        self.info_fields = {}
-        self.query_fields = []
         self.geom_field = ''
         self.geom_field_4326 = ''
         self.tile_layer = {}
         self.initial_zoom = {}
         self.mss_options = {}
+        self.info_fields = {}
+        self.query_fields = []
+        self.title_template = ''
+        self.info_template = ''
+        self.quick_info_template = ''
 
     def __before__(self, action, **params):
         """Setup the request
@@ -98,9 +105,11 @@ class MapController(base.BaseController):
         self.windshaft_host = config.get('map.windshaft.host', '127.0.0.1')
         self.windshaft_port = config.get('map.windshaft.port', '4000')
         self.windshaft_database = config.get('map.windshaft.database', None) or self.engine.url.database
-        info_field_list = config.get('map.info_fields', 'Scientific name:scientificName').split(',')
-        self.info_fields = dict((k, v) for k, v in (a.split(':') for a in info_field_list))
-        self.quick_info_field = config.get('map.quick_info_field', 'scientificName')
+        info_field_list = config.get('map.info_fields', 'Record:_id,Scientific Name:scientificName,Kingdom:kingdom,Phylum:phylum,Class:class,Order:order,Family:family,Genus:genus,Subgenus:subgenus,Institution Code:institutionCode,Catalogue Number:catalogNumber,Collection Code:collectionCode,Identified By:identifiedBy,Date:dateIdentified,Continent:continent,Country:country,State/Province:stateProvince,County:county,Locality:locality,Habitat:habitat').split(',')
+        self.info_fields = [(l, v) for l, v in (a.split(':') for a in info_field_list)]
+        self.info_template = config.get('map.info_template', 'point_detail.dwc.mustache')
+        self.title_template = config.get('map.title_template', 'point_detail_title.dwc.mustache')
+        self.quick_info_template = config.get('map.quick_info_template', 'point_detail_hover.dwc.mustache')
         self.geom_field = config.get('map.geom_field', '_the_geom_webmercator')
         self.geom_field_4326 = config.get('map.geom_field_4326', '_geom')
         self.tile_layer = {
@@ -132,10 +141,7 @@ class MapController(base.BaseController):
             base.abort(401, _('Unauthorized to read resources'))
 
         # Fields that need to be added to the query. Note that postgres query fails with duplicate names
-        self.query_fields = [self.quick_info_field]
-        for i in self.info_fields.values():
-            if i not in ['count', 'lat', 'lng', self.geom_field, self.geom_field_4326] and i not in self.query_fields:
-                self.query_fields.append(i)
+        self.query_fields = set([v for (l, v) in self.info_fields])
 
         # Build the list of columns needed for this request
         self._request_columns()
@@ -411,7 +417,7 @@ class MapController(base.BaseController):
 
         s = select(outer_cols).select_from(sub)
         sql = helpers.interpolateQuery(s, self.engine)
-        interactivity_fields = ",".join(set(self.query_fields + ['count', 'lat', 'lng']))
+        interactivity_fields = ",".join(set(list(self.query_fields) + ['count', 'lat', 'lng']))
         url = self._grid_url(z, x, y, callback=callback, sql=sql, interactivity=interactivity_fields)
         response.headers['Content-type'] = 'text/javascript'
         # TODO: Detect if the incoming connection has been dropped, and if so stop the query.
@@ -441,6 +447,12 @@ class MapController(base.BaseController):
                     query = query.where(geo_table.c[input_filters['field']] == input_filters['term'])
 
         # Prepare result
+        title_template = base.render(self.title_template, {'info_fields': self.info_fields})
+        quick_info_template = base.render(self.quick_info_template, {'info_fields': self.info_fields})
+        info_template = base.render(self.info_template, {
+            'info_fields': self.info_fields,
+            'title_template': title_template
+        })
         result = {
             'geospatial': True,
             'geom_count': 0,
@@ -478,9 +490,6 @@ class MapController(base.BaseController):
                 'mapType': {
                     'position': 'bottomleft'
                 },
-                'pointInfo': {
-                    'position': 'bottomright'
-                },
                 'gridInfo': {
                     'position': 'bottomright'
                 }
@@ -488,13 +497,14 @@ class MapController(base.BaseController):
             'plugin_options': {
                 'tooltipInfo': {
                     'count_field': 'count',
-                    'info_field': self.quick_info_field
+                    'template': quick_info_template,
                 },
                 'tooltipCount': {
                     'count_field': 'count'
                 },
                 'pointInfo': {
-
+                    'template': info_template,
+                    'count_field': 'count'
                 }
             },
             'map_style': 'plot',

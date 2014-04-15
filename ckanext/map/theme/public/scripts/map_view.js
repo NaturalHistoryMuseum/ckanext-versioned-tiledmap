@@ -29,6 +29,9 @@ my.NHMMap = Backbone.View.extend({
     this.map_ready = false;
     this.visible = false;
     this.fetch_count = 0;
+    // Setup the sidebar
+    this.sidebar_view = new my.PointDetailView();
+    this.elSidebar = this.sidebar_view.el;
   },
 
   /**
@@ -129,6 +132,7 @@ my.NHMMap = Backbone.View.extend({
     var self = this;
 
     if (typeof this.map !== 'undefined'){
+        this.disablePlugins();
         this.map.remove();
     }
     this.map = new L.Map(this.$map.get(0));
@@ -298,6 +302,25 @@ my.NHMMap = Backbone.View.extend({
   },
 
   /**
+   * disablePlugins
+   *
+   * Disable all plugins
+   */
+  disablePlugins: function(){
+    if (typeof this._current_addons === 'undefined'){
+      this._current_addons = {};
+    }
+    if (typeof this._current_addons['plugins'] === 'undefined'){
+      this._current_addons['plugins'] = [];
+    }
+    for (var i in this._current_addons['plugins']){
+      var plugin = this._current_addons['plugins'][i];
+      this.plugins[plugin].disable();
+    }
+    this._current_addons['plugins'] = [];
+  },
+
+  /**
    * callPlugins
    *
    * Invoke a particular hook on enabled plugins
@@ -401,6 +424,31 @@ my.DrawShapeControl = L.Control.Draw.extend({
 });
 
 /**
+ * Recline sidebar view for map point information
+ */
+my.PointDetailView = Backbone.View.extend({
+  className: 'recline-map-point-detail well',
+  template: 'Click on a map point for more detail',
+  initialize: function() {
+    this.el = $(this.el); // Ckan expects this
+    this.render();
+  },
+  render: function(data, template) {
+    var out = '';
+    if (!data){
+      out = Mustache.render(this.template);
+    } else if (data && !template){
+      for (var i in data){
+        out = i.toString() + ": " + data.toString() + "<br/>";
+      }
+    } else {
+      out = Mustache.render(template, data);
+    }
+    this.el.html(out);
+  }
+});
+
+/**
  * PointInfoPlugin
  *
  * Plugin used to display information about a clicked point
@@ -420,13 +468,14 @@ my.PointInfoPlugin = function(view, options){
   this.disable = function(){
     // todo: remove detail tab
     // remove handlers
+    this._disable_event_handlers();
   }
 
   /**
    * Remove event handlers
    */
   this._disable_event_handlers = function(){
-    if (this.grid !== null){
+    if (this.grid){
       this.grid.off('click', $.proxy(this, "_on_click"));
     }
   }
@@ -492,8 +541,10 @@ my.PointInfoPlugin = function(view, options){
       // Create pulse layer
       this.layers['_point_info_plugin_1'] = L.circleMarker([lat, lng], {
         radius: 1,
-        stroke: false,
-        fill: true,
+        stroke: true,
+        weight: 4,
+        color: '#88F',
+        fill: false,
         fillColor: '#FFF',
         fillOpacity: 1,
         clickable: false
@@ -502,8 +553,14 @@ my.PointInfoPlugin = function(view, options){
       // Add the layers in order
       view.map.addLayer(this.layers['_point_info_plugin_1']);
       view.map.addLayer(this.layers['_point_info_plugin']);
+      // Add the info in the sidebar
+      template_data = $.extend({}, props.data);
+      template_data.multiple = options.count_field && props.data[options.count_field] > 1;
+      view.sidebar_view.render(template_data, options['template']);
     } else {
       delete this.layers['_point_info_plugin'];
+      delete this.layers['_point_info_plugin_1'];
+      view.sidebar_view.render(null);
     }
     // Todo: update details tab
   }
@@ -515,17 +572,20 @@ my.PointInfoPlugin = function(view, options){
     var plugin = this;
     this.animation = {
       radius: 1,
-      fillOpacity: 1
+      fillOpacity: 1,
+      drawOpacity: 1
     };
     $(this.animation).animate({
       radius: 20,
-      fillOpacity: 0
+      fillOpacity: 0,
+      drawOpacity: 0
     }, {
-      duration: 1000,
+      duration: 750,
       easing: 'swing',
       step: function(value, fx){
         layer.setRadius(this.radius);
         layer.setStyle({fillOpacity: this.fillOpacity});
+        layer.setStyle({opacity: this.drawOpacity});
       },
       complete: function(){
         plugin.animation_restart = setTimeout(function(){
@@ -557,6 +617,7 @@ my.TooltipPlugin = function(view, options){
       left: 0,
       zIndex: 100
     }).appendTo(view.map.getContainer());
+    this.hover = false;
   }
 
   /**
@@ -572,7 +633,7 @@ my.TooltipPlugin = function(view, options){
    * Remove event handlers
    */
   this._disable_event_handlers = function(){
-    if (this.grid !== null){
+    if (this.grid){
       this.grid.off('mouseover', $.proxy(this, "_mouseover"));
       this.grid.off('mouseout', $.proxy(this, "_mouseout"));
       view.map.off('mouseout', $.proxy(this, "_mouseout"));
@@ -584,16 +645,17 @@ my.TooltipPlugin = function(view, options){
    * Mouseover handler
    */
   this._mouseover = function(props) {
-    var has_count = options.count_field && props.data[options.count_field];
-    var has_info = options.info_field && props.data[options.info_field];
+    var count = options.count_field && props.data[options.count_field] ? props.data[options.count_field] : 1
     var str = false;
-    if (has_info && (!has_count || props.data[options.count_field] == 1)){
-      str = props.data[options.info_field];
-    } else if (has_count) {
-      str = props.data[options.count_field] + ' records';
+    if (options.template && count == 1){
+      var template_data = props;
+      template_data.multipe = count > 1;
+      str = Mustache.render(options.template, props.data);
+    } else {
+      str = count + ' record' + (count == 1 ? '' : 's');
     }
     if (str){
-      this.$el.html(str);
+      this.$el.stop().html(str);
       // Place the element with visibility 'hidden' so we can get it's actual height/width.
       this.$el.css({
         top: 0,
@@ -621,6 +683,7 @@ my.TooltipPlugin = function(view, options){
       } else {
         top = point.y - height * 1.5 - 8;
       }
+      this.hover = true;
       this.$el.css({
         top: top,
         left: left,
@@ -637,7 +700,8 @@ my.TooltipPlugin = function(view, options){
    * Mouseout handler
    */
   this._mouseout = function(){
-    if (this.$el){
+    if (this.hover && this.$el){
+      this.hover = false;
       this.$el.stop().animate({
         'opacity': 0
       }, {

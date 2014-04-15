@@ -236,7 +236,8 @@ this.ckan.module('nhm-reclinepreview', function (jQuery, _) {
           view: new recline.View.NHMMap({
             model: dataset
           }),
-          tabs: ['valueFilter']
+          tabs: ['valueFilter', 'pointDetail'],
+          activate_tab: 'pointDetail'
         }
       };
       var flat_views = $.map(views, function(v,k){return v;});
@@ -257,6 +258,11 @@ this.ckan.module('nhm-reclinepreview', function (jQuery, _) {
           id: 'graphControl',
           label: 'Graph options',
           view: views['graph'].view.editor
+        },
+        {
+          id: 'pointDetail',
+          label: 'Details',
+          view: views['map'].view.sidebar_view
         }
       ]});
       views['graph'].view.editor.el.addClass('well');

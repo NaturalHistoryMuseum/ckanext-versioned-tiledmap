@@ -65,3 +65,7 @@ class MapnikPlaceholderColumn(ColumnClause):
 @compiles(MapnikPlaceholderColumn)
 def compile_mapnikplaceholdercolumn(element, compiler, **kw):
     return "!%s!" % element.name
+
+# Template helpers
+def mustache_wrapper(str):
+    return '{{' + str + '}}'

@@ -1,6 +1,7 @@
 import ckan.plugins as p
 import ckanext.map.logic.action as map_action
 import ckanext.map.logic.auth as map_auth
+from ckanext.map.lib.helpers import mustache_wrapper
 
 import ckan.logic as logic
 get_action = logic.get_action
@@ -17,6 +18,7 @@ class MapPlugin(p.SingletonPlugin):
     p.implements(p.IRoutes, inherit=True)
     p.implements(p.IActions)
     p.implements(p.IAuthFunctions)
+    p.implements(p.ITemplateHelpers)
 
     ## IConfigurer
     def update_config(self, config):
@@ -47,4 +49,10 @@ class MapPlugin(p.SingletonPlugin):
         return {
             'create_geom_columns': map_auth.create_geom_columns,
             'update_geom_columns': map_auth.update_geom_columns
+        }
+
+    ## ITemplateHelpers
+    def get_helpers(self):
+        return {
+            'mustache': mustache_wrapper
         }
