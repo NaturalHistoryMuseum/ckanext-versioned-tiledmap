@@ -57,11 +57,11 @@ class TestMapActions(tests.WsgiAppCase):
             },
             'fields': [
                 {'id': 'id', 'type': 'integer'},
-                {'id': 'latitude', 'type': 'text'},
-                {'id': 'longitude', 'type': 'text'},
+                {'id': 'latitude', 'type': 'double precision'},
+                {'id': 'longitude', 'type': 'double precision'},
                 {'id': 'skip', 'type': 'text'},
-                {'id': 'lat2', 'type': 'text'},
-                {'id': 'long2', 'type': 'text'}
+                {'id': 'lat2', 'type': 'double precision'},
+                {'id': 'long2', 'type': 'double precision'}
             ],
             'primary_key': 'id'
         })
@@ -72,39 +72,32 @@ class TestMapActions(tests.WsgiAppCase):
             'method': 'upsert',
             'records': [{
                             'id': 1,
-                            'latitude': '-11',
-                            'longitude': '-15',
+                            'latitude': -11,
+                            'longitude': -15,
                             'skip': 'no',
-                            'lat2': '1',
-                            'long2': '1'
+                            'lat2': 1,
+                            'long2': 1
                         }, {
                             'id': 2,
-                            'latitude': '23',
-                            'longitude': '48',
+                            'latitude': 23,
+                            'longitude': 48,
                             'skip': 'no',
-                            'lat2': '2',
-                            'long2': '2'
+                            'lat2': 2,
+                            'long2': 2
                         }, {
                             'id': 3,
-                            'latitude': '',
-                            'longitude': '',
+                            'latitude': None,
+                            'longitude': None,
                             'skip': 'yes',
-                            'lat2': '',
-                            'long2': ''
+                            'lat2': None,
+                            'long2': None
                         }, {
                             'id': 4,
-                            'latitude': '1234',
-                            'longitude': '1234',
+                            'latitude': 1234,
+                            'longitude': 1234,
                             'skip': 'yes',
-                            'lat2': '',
-                            'long2': ''
-                        }, {
-                            'id': 5,
-                            'latitude': '{4,5}',
-                            'longitude': '{6,7}',
-                            'skip': 'yes',
-                            'lat2': '',
-                            'long2': ''
+                            'lat2': None,
+                            'long2': None
                         }]
         })
 
