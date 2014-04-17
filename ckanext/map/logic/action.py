@@ -84,8 +84,6 @@ def update_geom_columns(context, data_dict):
           UPDATE "{resource_id}"
           SET "{geom_field_4326}" = st_setsrid(st_makepoint("{long_field}"::float8, "{lat_field}"::float8), 4326)
           WHERE "{lat_field}" IS NOT NULL
-            AND "{lat_field}" <> ''
-            AND "{lat_field}"  NOT LIKE '%{{%'
         """.format(
             resource_id=resource_id,
             geom_field_4326=geom_field_4326,
