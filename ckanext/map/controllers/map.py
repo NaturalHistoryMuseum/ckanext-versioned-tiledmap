@@ -15,6 +15,7 @@ import ckan.logic as logic
 import ckan.lib.base as base
 from ckan.common import json, request, _, response
 import ckanext.map.lib.helpers as helpers
+import ckanext.map.lib.tileconv as tileconv
 
 import ckan.lib.base as base
 
@@ -302,6 +303,19 @@ class MapController(base.BaseController):
                 geo_functions.intersects(geo_table.c[self.geom_field], geo_functions.transform(geom, 3857))
             )
 
+        # Find bounding box based on tile X,Y,Z
+        bbox = tileconv.tile_to_latlng_bbox(float(x), float(y), float(z))
+        sub = sub.where(func.ST_Intersects(geo_table.c[self.geom_field],
+                         func.ST_Expand(func.ST_transform(
+                             func.ST_SetSrid(
+                                 func.ST_MakeBox2D(
+                                     func.ST_makepoint(bbox[0][1], bbox[0][0]),
+                                     func.ST_makepoint(bbox[1][1], bbox[1][0])
+                                 ),
+                             4326),
+                         3857), width.op('*')('4'))
+        ))
+
         if style == 'heatmap':
             # no need to shuffle (see below), so use the subquery directly
             sql = helpers.interpolateQuery(sub, self.engine)
@@ -389,11 +403,18 @@ class MapController(base.BaseController):
                 geo_functions.intersects(geo_table.c[self.geom_field], geo_functions.transform(geom, 3857))
             )
 
-        # We need to also filter the records to those in the area that we're looking at, otherwise the query causes
-        # every record in the database to be snapped to the grid. Mapnik can fill in the !bbox! token for us, which
-        # saves us trying to figure it out from the z/x/y numbers here.
+        # Find Bounding box of tile
+        bbox = tileconv.tile_to_latlng_bbox(float(x), float(y), float(z))
         sub = sub.where(func.ST_Intersects(geo_table.c[self.geom_field],
-                                           func.ST_SetSrid(helpers.MapnikPlaceholderColumn('bbox'), 3857)))
+                        func.ST_transform(
+                            func.ST_SetSrid(
+                                func.ST_MakeBox2D(
+                                    func.ST_makepoint(bbox[0][1], bbox[0][0]),
+                                    func.ST_makepoint(bbox[1][1], bbox[1][0])
+                                ),
+                            4326),
+                        3857)
+        ))
 
         # The group by needs to match the column chosen above, including by the size of the grid
         sub = sub.group_by(func.ST_SnapToGrid(geo_table.c[self.geom_field], width * grid_size, height * grid_size))
