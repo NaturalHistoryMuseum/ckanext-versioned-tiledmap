@@ -19,17 +19,17 @@ sudo -u postgres psql -d datastore_test -c "create extension postgis"
 
 # Install ckan from our repo and other dependencies
 pip install -e git+https://github.com/NaturalHistoryMuseum/ckan.git#egg=ckan
-pip install -r requirements.txt
+pip install -r requirements.txt --allow-all-external
 
 # We run the tests from ckan as we use the ckan test framework (around nosetest)
 CKANEXT_MAP_PATH=`pwd`
 CKAN_PATH=`python -c "import ckan; import os; print os.path.dirname(ckan.__file__)"`
 cd ${CKAN_PATH}/..
-pip install -r requirements.txt
-pip install -r dev-requirements.txt
+pip install -r requirements.txt --allow-all-external
+pip install -r dev-requirements.txt --allow-all-external
 
 # Get latest versions of sqlalchemy-migrate, as they are issues with the one in the repo
-pip install sqlalchemy-migrate==0.9
+pip install sqlalchemy-migrate==0.9 --allow-all-external
 
 python setup.py develop
 paster db init -c test-core.ini
