@@ -4,6 +4,7 @@ import nose
 from sqlalchemy import create_engine
 from sqlalchemy.sql import select
 from sqlalchemy import Table, MetaData, func
+from sqlalchemy.engine import reflection
 
 import ckan
 import ckan.tests as tests
@@ -142,6 +143,17 @@ class TestMapActions(tests.WsgiAppCase):
             raise
         finally:
             r.close()
+        # Test we have the expected indices
+        insp = reflection.Inspector.from_engine(TestMapActions.engine)
+        index_exists = False
+        for index in insp.get_indexes(self.resource['resource_id']):
+            if (index['name'] == u'_the_geom_webmercator_index'
+                and index['unique'] == False
+                and len(index['column_names']) == 1
+                and index['column_names'][0] == u'_the_geom_webmercator'):
+                index_exists = True
+                break
+        assert index_exists, "Index not created"
 
     def test_create_geom_columns_settings(self):
         """Ensure settings are used if defined when creating columns"""
@@ -170,6 +182,18 @@ class TestMapActions(tests.WsgiAppCase):
         table = Table(self.resource['resource_id'], metadata, autoload=True, autoload_with=TestMapActions.engine)
         assert 'alt_geom_2' in table.c, "Column alt_geom_2 was not created"
         assert 'alt_geom_webmercator_2' in table.c, "Column alt_geom_webmercator_2 was not created"
+
+        # Test we have the expected indices
+        insp = reflection.Inspector.from_engine(TestMapActions.engine)
+        index_exists = False
+        for index in insp.get_indexes(self.resource['resource_id']):
+            if (index['name']== u'alt_geom_webmercator_index'
+                and index['unique'] == False
+                and len(index['column_names']) == 1
+                and index['column_names'][0] == u'alt_geom_webmercator'):
+                index_exists = True
+                break
+        assert index_exists, "Index not created"
 
     def test_populate(self):
         """Ensure it's possible to first create the columns and populate/update them later"""

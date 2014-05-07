@@ -37,13 +37,25 @@ def create_geom_columns(context, data_dict):
         populate = True
 
     # Add the two geometry columns - one in degrees (EPSG:4326) and one in spherical mercator metres (EPSG:3857)
-    # the_geom_webmercator is used for windshaft
+    # the_geom_webmercator is used for windshaft. Also create a spatial index on the geom (mercator) field.
+    # TODO: should the index be optional/configurable?
     engine = create_engine(config['ckan.datastore.write_url'])
     with engine.begin() as connection:
         s = select([func.AddGeometryColumn('public', resource_id, geom_field_4326, 4326, 'POINT', 2)])
         connection.execute(s)
         s = select([func.AddGeometryColumn('public', resource_id, geom_field, 3857, 'POINT', 2)])
         connection.execute(s)
+        s = sqlalchemy.text("""
+          CREATE INDEX "{geom_field}_index"
+              ON "{resource_id}"
+           USING GIST("{geom_field}")
+           WHERE "{geom_field}" IS NOT NULL;
+        """.format(
+            resource_id=resource_id,
+            geom_field=geom_field
+        ))
+        connection.execute(s)
+
 
     if populate:
         ugc = toolkit.get_action('update_geom_columns')
@@ -79,6 +91,7 @@ def update_geom_columns(context, data_dict):
     # Create geometries from the latitude and longitude columns.
     engine = create_engine(config['ckan.datastore.write_url'])
     # TODO: change to sqlalchemy so we don't have to worry about escaping column names!
+    # TODO: should the ANALYZE be optional/configurable?
     with engine.begin() as connection:
         s = sqlalchemy.text("""
           UPDATE "{resource_id}"
@@ -99,5 +112,11 @@ def update_geom_columns(context, data_dict):
             resource_id=resource_id,
             geom_field=geom_field,
             geom_field_4326=geom_field_4326
+        ))
+        connection.execute(s)
+        s = sqlalchemy.text("""
+          ANALYZE "{resource_id}"
+        """.format(
+            resource_id=resource_id
         ))
         connection.execute(s)
