@@ -213,7 +213,8 @@ class TestTileFetching(tests.WsgiAppCase):
         sql = '''
           SELECT _the_geom_webmercator
             FROM (SELECT DISTINCT ON (_the_geom_webmercator) "{rid}"._the_geom_webmercator AS _the_geom_webmercator
-                    FROM "{rid}") AS _mapplugin_sub ORDER BY random()
+                    FROM "{rid}"
+                   WHERE ST_Intersects("{rid}"._the_geom_webmercator, ST_Expand(ST_transform(ST_SetSrid(ST_MakeBox2D(ST_makepoint(-67.5, 40.97989806962013), ST_makepoint(-45.0, 21.943045533438177)), 4326), 3857), !pixel_width! * '4'))) AS _mapplugin_sub ORDER BY random()
         '''.format(rid=TestTileFetching.resource['resource_id']).strip()
         assert re.sub('\s+', ' ', sql).strip() == re.sub('\s+', ' ', called_query['sql'][0]), '''Map tile plugin did not
                                           generate correct SQL : {} instead of {}'''.format(called_query['sql'][0], sql)
@@ -237,10 +238,10 @@ class TestTileFetching(tests.WsgiAppCase):
           SELECT _the_geom_webmercator
           FROM (SELECT DISTINCT ON (_the_geom_webmercator) "{rid}"._the_geom_webmercator AS _the_geom_webmercator
                 FROM "{rid}"
-                WHERE "{rid}".some_field_1 = 'value' AND
-                ST_Intersects("{rid}"._the_geom_webmercator, ST_Transform(ST_GeomFromText('POLYGON ((20.302734375 53.38332836757156, 31.376953125 56.75272287205736, 38.408203125 49.724479188713005, 27.59765625 48.748945343432936, 20.302734375 53.38332836757156))', 4326), 3857)))
-                AS _mapplugin_sub ORDER BY random()
+                WHERE "{rid}".some_field_1 = 'value'
+                AND ST_Intersects("{rid}"._the_geom_webmercator, ST_Transform(ST_GeomFromText('POLYGON ((20.302734375 53.38332836757156, 31.376953125 56.75272287205736, 38.408203125 49.724479188713005, 27.59765625 48.748945343432936, 20.302734375 53.38332836757156))', 4326), 3857)) AND ST_Intersects("{rid}"._the_geom_webmercator, ST_Expand(ST_transform(ST_SetSrid(ST_MakeBox2D(ST_makepoint(-67.5, 40.97989806962013), ST_makepoint(-45.0, 21.943045533438177)), 4326), 3857), !pixel_width! * '4'))) AS _mapplugin_sub ORDER BY random()
         '''.format(rid=TestTileFetching.resource['resource_id']).strip()
+
         assert re.sub('\s+', ' ', sql).strip() == re.sub('\s+', ' ', called_query['sql'][0]), '''Map tile plugin did not
                                           generate correct SQL : {} instead of {}'''.format(called_query['sql'][0], sql)
 
