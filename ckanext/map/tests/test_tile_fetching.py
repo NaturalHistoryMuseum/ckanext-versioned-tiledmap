@@ -18,6 +18,7 @@ from ckan.logic.action.create import package_create
 from ckan.logic.action.delete import package_delete
 from ckanext.datastore.logic.action import datastore_create, datastore_delete, datastore_upsert
 
+from nose.tools import assert_equal, assert_true, assert_false, assert_in
 
 class TestTileFetching(tests.WsgiAppCase):
     """Test cases for the Map plugin"""
@@ -158,20 +159,16 @@ class TestTileFetching(tests.WsgiAppCase):
         mock_urlopen.return_value.read.return_value = 'data from windshaft :-)'
         res = self.app.get('/map-tile/1/2/3.png?resource_id={}'.format(TestTileFetching.resource['resource_id']))
         # Ensure the mock urlopen was called
-        assert mock_urlopen.called, 'urlopen was not called'
-        assert mock_urlopen.return_value.read.called, 'read was not called'
-        assert 'data from windshaft :-)' in res, 'map tile action did not return content'
+        assert_true(mock_urlopen.called)
+        assert_true(mock_urlopen.return_value.read.called)
+        assert_in('data from windshaft :-)', res)
         # Now check the URL that windshaft was called with
         called_url = urlparse.urlparse(mock_urlopen.call_args[0][0])
         called_query = urlparse.parse_qs(called_url.query)
-        assert called_url.netloc == '127.0.0.1:4000', '''Map tile plugin did not use default values for
-                                                         Windshaft settings'''
-        assert 'database/{}/'.format(windshaft_database) in called_url.path, '''Map tile plugin did not use engine
-                                                                           database'''
-        assert 'table/{}/'.format(TestTileFetching.resource['resource_id']) in called_url.path, '''Map tile plugin did
-                                                                                              not use provided
-                                                                                              resource id'''
-        assert '/1/2/3.png' in called_url.path, 'Map tile plugin did not use correct coordinates'
+        assert_equal(called_url.netloc, '127.0.0.1:4000')
+        assert_in('database/{}/'.format(windshaft_database), called_url.path)
+        assert_in('table/{}/'.format(TestTileFetching.resource['resource_id']), called_url.path)
+        assert_in('/1/2/3.png', called_url.path)
 
     @patch('urllib.urlopen')
     def test_fetch_tile_settings(self, mock_urlopen):
@@ -184,13 +181,12 @@ class TestTileFetching(tests.WsgiAppCase):
         mock_urlopen.return_value.read.return_value = 'data from windshaft :-)'
         self.app.get('/map-tile/2/3/4.png?resource_id={}'.format(TestTileFetching.resource['resource_id']))
         # Now check the URL that windshaft was called with
-        assert mock_urlopen.return_value.read.called, 'url open was not called'
+        assert_true(mock_urlopen.return_value.read.called)
         called_url = urlparse.urlparse(mock_urlopen.call_args[0][0])
         called_query = urlparse.parse_qs(called_url.query)
-        assert called_url.netloc == 'example.com:1234' in called_url, '''Map tile plugin did not use config windshaft
-                                                                        values'''
-        assert 'database/wdb/' in called_url.path, '''Map tile plugin did not use config windshaft values'''
-        assert 'the_geom_2'in called_query['sql'][0], '''Map tile plugin did not use geom_field configuration option'''
+        assert_equal(called_url.netloc, 'example.com:1234')
+        assert_in('database/wdb/', called_url.path)
+        assert_in('the_geom_2', called_query['sql'][0])
         # Also check that interactivity fields are added
         mock_urlopen.return_value.read.reset_mock()
         mock_urlopen.reset_mock()
@@ -198,8 +194,8 @@ class TestTileFetching(tests.WsgiAppCase):
         self.app.get('/map-grid/2/3/4.grid.json?resource_id={}'.format(TestTileFetching.resource['resource_id']))
         called_url = urlparse.urlparse(mock_urlopen.call_args[0][0])
         called_query = urlparse.parse_qs(called_url.query)
-        assert 'some_field_1' in called_query['sql'][0] and 'some_field_2' in called_query['sql'][0], '''Grid tile not
-                                                                                        including defined info fields'''
+        assert_in('some_field_1', called_query['sql'][0])
+        assert_in('some_field_2', called_query['sql'][0])
 
     @patch('urllib.urlopen')
     def test_fetch_tile_sql_plain(self, mock_urlopen):
@@ -207,7 +203,7 @@ class TestTileFetching(tests.WsgiAppCase):
         mock_urlopen.return_value.read.return_value = 'data from windshaft :-)'
         self.app.get('/map-tile/4/5/6.png?resource_id={}'.format(TestTileFetching.resource['resource_id']))
         # Now check the URL that windshaft was called with
-        assert mock_urlopen.called, 'url open not called'
+        assert_true(mock_urlopen.called)
         called_url = urlparse.urlparse(mock_urlopen.call_args[0][0])
         called_query = urlparse.parse_qs(called_url.query)
         sql = '''
@@ -216,8 +212,7 @@ class TestTileFetching(tests.WsgiAppCase):
                     FROM "{rid}"
                    WHERE ST_Intersects("{rid}"._the_geom_webmercator, ST_Expand(ST_transform(ST_SetSrid(ST_MakeBox2D(ST_makepoint(-67.5, 40.97989806962013), ST_makepoint(-45.0, 21.943045533438177)), 4326), 3857), !pixel_width! * '4'))) AS _mapplugin_sub ORDER BY random()
         '''.format(rid=TestTileFetching.resource['resource_id']).strip()
-        assert re.sub('\s+', ' ', sql).strip() == re.sub('\s+', ' ', called_query['sql'][0]), '''Map tile plugin did not
-                                          generate correct SQL : {} instead of {}'''.format(called_query['sql'][0], sql)
+        assert_equal(re.sub('\s+', ' ', sql).strip(), re.sub('\s+', ' ', called_query['sql'][0]))
 
     @patch('urllib.urlopen')
     def test_fetch_tile_sql_param(self, mock_urlopen):
@@ -231,7 +226,7 @@ class TestTileFetching(tests.WsgiAppCase):
             geom=urllib.quote_plus(geom)
         ))
         # Now check the URL that windshaft was called with
-        assert mock_urlopen.called, 'url open not called'
+        assert_true(mock_urlopen.called)
         called_url = urlparse.urlparse(mock_urlopen.call_args[0][0])
         called_query = urlparse.parse_qs(called_url.query)
         sql = '''
@@ -242,8 +237,7 @@ class TestTileFetching(tests.WsgiAppCase):
                 AND ST_Intersects("{rid}"._the_geom_webmercator, ST_Transform(ST_GeomFromText('POLYGON ((20.302734375 53.38332836757156, 31.376953125 56.75272287205736, 38.408203125 49.724479188713005, 27.59765625 48.748945343432936, 20.302734375 53.38332836757156))', 4326), 3857)) AND ST_Intersects("{rid}"._the_geom_webmercator, ST_Expand(ST_transform(ST_SetSrid(ST_MakeBox2D(ST_makepoint(-67.5, 40.97989806962013), ST_makepoint(-45.0, 21.943045533438177)), 4326), 3857), !pixel_width! * '4'))) AS _mapplugin_sub ORDER BY random()
         '''.format(rid=TestTileFetching.resource['resource_id']).strip()
 
-        assert re.sub('\s+', ' ', sql).strip() == re.sub('\s+', ' ', called_query['sql'][0]), '''Map tile plugin did not
-                                          generate correct SQL : {} instead of {}'''.format(called_query['sql'][0], sql)
+        assert_equal(re.sub('\s+', ' ', sql).strip(), re.sub('\s+', ' ', called_query['sql'][0]))
 
     def test_map_info(self):
         """Test the map-info controller returns the expected data"""
@@ -254,23 +248,23 @@ class TestTileFetching(tests.WsgiAppCase):
             fetch_id=44
         ))
         values = json.loads(res.body)
-        assert values['geospatial'], 'The map-info claims this is not geo spatially enabled'
-        assert values['geom_count'] == 2, 'The map-info controller returned the wrong number of rows'
-        assert values['fetch_id'] == '44', 'The map-info controller did not pass fetch_id back'
-        assert 'initial_zoom' in values, 'The map-info does not define max zoom'
-        assert 'tile_layer' in values, 'The map-info does not define a tile layer'
-        assert values['bounds'] == [[-15, -11], [48, 23]], 'The map-info did not return the correct bounds'
-        assert 'map_style' in values, 'Map info does set a default map style'
-        assert 'plot' in values['map_styles']
-        assert 'heatmap' in values['map_styles']
-        assert 'gridded' in values['map_styles'], 'The map info did not return expected map styles'
+        assert_true(values['geospatial'])
+        assert_equal(values['geom_count'], 2)
+        assert_equal(values['fetch_id'], '44')
+        assert_in('initial_zoom', values)
+        assert_in('tile_layer', values)
+        assert_equal(values['bounds'], [[-15, -11], [48, 23]])
+        assert_in('map_style', values)
+        assert_in('plot', values['map_styles'])
+        assert_in('heatmap', values['map_styles'])
+        assert_in('gridded', values['map_styles'])
         for control in ['drawShape', 'mapType']:
-            assert control in values['control_options'], "Control options not present"
-            assert 'position' in values['control_options'][control], "Control does not define position"
+            assert_in(control, values['control_options'])
+            assert_in('position', values['control_options'][control])
         for plugin in ['tooltipInfo', 'pointInfo']:
-            assert plugin in values['plugin_options'], "Plugin options not present"
-        assert 'template' in values['plugin_options']['pointInfo'], "pointInfo plugin has no template"
-        assert 'template' in values['plugin_options']['tooltipInfo'], "tooltipInfo plugin has no template"
+            assert_in(plugin in values['plugin_options'])
+        assert_in('template', values['plugin_options']['pointInfo'])
+        assert_in('template', values['plugin_options']['tooltipInfo'])
 
     def test_map_info_no_geo(self):
         """Test the map info controllers warns us of non-geo spatial datasets"""
@@ -279,5 +273,5 @@ class TestTileFetching(tests.WsgiAppCase):
             fetch_id=58
         ))
         values = json.loads(res.body)
-        assert values['geospatial'] is False, 'The map-info claims this is geo spatially enabled'
-        assert values['fetch_id'] == '58', 'The map-info does not return fetch_id for non-geo spatial data sets'
+        assert_false(values['geospatial'])
+        assert_equal(values['fetch_id'], '58')
