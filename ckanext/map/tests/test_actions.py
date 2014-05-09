@@ -131,7 +131,7 @@ class TestMapActions(tests.WsgiAppCase):
             func.st_x(table.c['_geom']).label('x'),
             func.st_y(table.c['_geom']).label('y'),
             table.c['skip']
-        ]).where(table.c['_the_geom_webmercator'].isnot(None))
+        ]).where(table.c['_the_geom_webmercator'] != None)
         r = TestMapActions.engine.execute(s)
         try:
             assert r.rowcount == 2, "Did not report the expected rows. Expecting {}, got {}".format(2, r.rowcount)
@@ -205,7 +205,7 @@ class TestMapActions(tests.WsgiAppCase):
         # Test the result did not populate the geom field
         metadata = MetaData()
         table = Table(self.resource['resource_id'], metadata, autoload=True, autoload_with=TestMapActions.engine)
-        s = select(['*']).where(table.c['_the_geom_webmercator'].isnot(None))
+        s = select(['*']).where(table.c['_the_geom_webmercator'] != None)
         r = TestMapActions.engine.execute(s)
         try:
             assert r.rowcount == 0, "Table was populated"
@@ -229,7 +229,7 @@ class TestMapActions(tests.WsgiAppCase):
             func.st_x(table.c['_geom']).label('x'),
             func.st_y(table.c['_geom']).label('y'),
             table.c['skip']
-        ]).where(table.c['_the_geom_webmercator'].isnot(None))
+        ]).where(table.c['_the_geom_webmercator'] != None)
         r = TestMapActions.engine.execute(s)
         try:
             assert r.rowcount == 2, "Did not report the expected rows. Expecting {}, got {}".format(2, r.rowcount)

@@ -206,13 +206,9 @@ class TestTileFetching(tests.WsgiAppCase):
         assert_true(mock_urlopen.called)
         called_url = urlparse.urlparse(mock_urlopen.call_args[0][0])
         called_query = urlparse.parse_qs(called_url.query)
-        sql = '''
-          SELECT _the_geom_webmercator
-            FROM (SELECT DISTINCT ON (_the_geom_webmercator) "{rid}"._the_geom_webmercator AS _the_geom_webmercator
-                    FROM "{rid}"
-                   WHERE ST_Intersects("{rid}"._the_geom_webmercator, ST_Expand(ST_transform(ST_SetSrid(ST_MakeBox2D(ST_makepoint(-67.5, 40.97989806962013), ST_makepoint(-45.0, 21.943045533438177)), 4326), 3857), !pixel_width! * '4'))) AS _mapplugin_sub ORDER BY random()
-        '''.format(rid=TestTileFetching.resource['resource_id']).strip()
-        assert_equal(re.sub('\s+', ' ', sql).strip(), re.sub('\s+', ' ', called_query['sql'][0]))
+        sql = 'SELECT "_the_geom_webmercator" FROM (SELECT DISTINCT ON ("{rid}"."_the_geom_webmercator") "{rid}"."_the_geom_webmercator" FROM "{rid}" WHERE ( ST_Intersects("{rid}"."_the_geom_webmercator", ST_Expand( ST_Transform( ST_SetSrid( ST_MakeBox2D( ST_Makepoint(-67.5, 40.9798980696), ST_Makepoint(-45.0, 21.9430455334) ), 4326), 3857), !pixel_width! * 4)))) AS _mapplugin_sub ORDER BY random()'
+        sql = sql.format(rid=TestTileFetching.resource['resource_id'])
+        assert_equal(sql, called_query['sql'][0])
 
     @patch('urllib.urlopen')
     def test_fetch_tile_sql_param(self, mock_urlopen):
@@ -229,15 +225,13 @@ class TestTileFetching(tests.WsgiAppCase):
         assert_true(mock_urlopen.called)
         called_url = urlparse.urlparse(mock_urlopen.call_args[0][0])
         called_query = urlparse.parse_qs(called_url.query)
-        sql = '''
-          SELECT _the_geom_webmercator
-          FROM (SELECT DISTINCT ON (_the_geom_webmercator) "{rid}"._the_geom_webmercator AS _the_geom_webmercator
-                FROM "{rid}"
-                WHERE "{rid}".some_field_1 = 'value'
-                AND ST_Intersects("{rid}"._the_geom_webmercator, ST_Transform(ST_GeomFromText('POLYGON ((20.302734375 53.38332836757156, 31.376953125 56.75272287205736, 38.408203125 49.724479188713005, 27.59765625 48.748945343432936, 20.302734375 53.38332836757156))', 4326), 3857)) AND ST_Intersects("{rid}"._the_geom_webmercator, ST_Expand(ST_transform(ST_SetSrid(ST_MakeBox2D(ST_makepoint(-67.5, 40.97989806962013), ST_makepoint(-45.0, 21.943045533438177)), 4326), 3857), !pixel_width! * '4'))) AS _mapplugin_sub ORDER BY random()
-        '''.format(rid=TestTileFetching.resource['resource_id']).strip()
+        sql = 'SELECT "_the_geom_webmercator" FROM (SELECT DISTINCT ON ("{rid}"."_the_geom_webmercator") "{rid}"."_the_geom_webmercator" FROM "{rid}" WHERE ("{rid}"."some_field_1" = \'value\') AND (ST_Intersects("{rid}"."_the_geom_webmercator", ST_Transform(ST_GeomFromText(\'{geom}\', 4326), 3857))) AND ( ST_Intersects("{rid}"."_the_geom_webmercator", ST_Expand( ST_Transform( ST_SetSrid( ST_MakeBox2D( ST_Makepoint(-67.5, 40.9798980696), ST_Makepoint(-45.0, 21.9430455334) ), 4326), 3857), !pixel_width! * 4)))) AS _mapplugin_sub ORDER BY random()'
+        sql = sql.format(
+            rid=TestTileFetching.resource['resource_id'],
+            geom=geom
+        )
 
-        assert_equal(re.sub('\s+', ' ', sql).strip(), re.sub('\s+', ' ', called_query['sql'][0]))
+        assert_equal(sql, called_query['sql'][0])
 
     def test_map_info(self):
         """Test the map-info controller returns the expected data"""
@@ -262,7 +256,7 @@ class TestTileFetching(tests.WsgiAppCase):
             assert_in(control, values['control_options'])
             assert_in('position', values['control_options'][control])
         for plugin in ['tooltipInfo', 'pointInfo']:
-            assert_in(plugin in values['plugin_options'])
+            assert_in(plugin, values['plugin_options'])
         assert_in('template', values['plugin_options']['pointInfo'])
         assert_in('template', values['plugin_options']['tooltipInfo'])
 

@@ -2,13 +2,10 @@ import urllib
 import cStringIO
 
 from pylons import config
+
 from sqlalchemy.sql import select
-from sqlalchemy import Table, Column, Integer, String, MetaData
-from sqlalchemy import create_engine
-import geoalchemy.functions as geo_functions
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy import Table, Column, MetaData, String
 from sqlalchemy import func, not_
-from sqlalchemy.sql import desc
 from sqlalchemy.exc import ProgrammingError
 
 import ckan.logic as logic
@@ -16,8 +13,8 @@ import ckan.lib.base as base
 from ckan.common import json, request, _, response
 import ckanext.map.lib.helpers as helpers
 import ckanext.map.lib.tileconv as tileconv
-
-import ckan.lib.base as base
+from ckanext.map.lib.sqlgenerator import Select
+from ckanext.map.db import _get_engine
 
 
 class MapController(base.BaseController):
@@ -69,48 +66,12 @@ class MapController(base.BaseController):
     """
 
     def __init__(self):
-        """Setup the controller's variables
-
-        Actual values are assigned during __before__
+        """Setup the controller's parameters that are not request-dependent
         """
-        self.windshaft_host = '127.0.0.1'
-        self.windshaft_port = '4000'
-        self.windshaft_database = ''
-        self.engine = None
-        self.resource_id = ''
-        self.geom_field = ''
-        self.geom_field_4326 = ''
-        self.tile_layer = {}
-        self.initial_zoom = {}
-        self.mss_options = {}
-        self.info_fields = {}
-        self.query_fields = []
-        self.title_template = ''
-        self.info_template = ''
-        self.quick_info_template = ''
-
-    def __before__(self, action, **params):
-        """Setup the request
-
-        This will return a 500 error if there are missing configuration items, and a 400
-        error if the resource_id parameter is missing.
-        """
-        # Run super and setup engine
-        super(MapController, self).__before__(action, **params)
-        try:
-            self.engine = create_engine(config['ckan.datastore.write_url'])
-        except KeyError:
-            base.abort(500, _("Missing configuration options"))
-
         # Read configuration
         self.windshaft_host = config.get('map.windshaft.host', '127.0.0.1')
         self.windshaft_port = config.get('map.windshaft.port', '4000')
-        self.windshaft_database = config.get('map.windshaft.database', None) or self.engine.url.database
-        info_field_list = config.get('map.info_fields', 'Record:_id,Scientific Name:scientificName,Kingdom:kingdom,Phylum:phylum,Class:class,Order:order,Family:family,Genus:genus,Subgenus:subgenus,Institution Code:institutionCode,Catalogue Number:catalogNumber,Collection Code:collectionCode,Identified By:identifiedBy,Date:dateIdentified,Continent:continent,Country:country,State/Province:stateProvince,County:county,Locality:locality,Habitat:habitat').split(',')
-        self.info_fields = [(l, v) for l, v in (a.split(':') for a in info_field_list)]
-        self.info_template = config.get('map.info_template', 'point_detail.dwc.mustache')
-        self.title_template = config.get('map.title_template', 'point_detail_title.dwc.mustache')
-        self.quick_info_template = config.get('map.quick_info_template', 'point_detail_hover.dwc.mustache')
+        self.windshaft_database = config.get('map.windshaft.database', None) or _get_engine().url.database
         self.geom_field = config.get('map.geom_field', '_the_geom_webmercator')
         self.geom_field_4326 = config.get('map.geom_field_4326', '_geom')
         self.tile_layer = {
@@ -128,6 +89,21 @@ class MapController(base.BaseController):
             'heatmap_gradient': config.get('map.style.heatmap.gradient',
                                            '#0000FF, #00FFFF, #00FF00, #FFFF00, #FFA500, #FF0000')
         }
+        # Empty values for request dependent parameters
+        self.resource_id = ''
+        self.info_fields = []
+        self.info_template = ''
+        self.title_template = ''
+        self.quick_info_template = ''
+        self.query_fields = []
+
+    def __before__(self, action, **params):
+        """Setup the request
+
+        This will trigger a 400 error if the resource_id parameter is missing.
+        """
+        # Run super
+        super(MapController, self).__before__(action, **params)
 
         # Get request resource_id
         if not request.params.get('resource_id'):
@@ -141,11 +117,15 @@ class MapController(base.BaseController):
         except logic.NotAuthorized:
             base.abort(401, _('Unauthorized to read resources'))
 
+        # Read resource-dependent parameters
+        info_field_list = config.get('map.info_fields', 'Record:_id,Scientific Name:scientificName,Kingdom:kingdom,Phylum:phylum,Class:class,Order:order,Family:family,Genus:genus,Subgenus:subgenus,Institution Code:institutionCode,Catalogue Number:catalogNumber,Collection Code:collectionCode,Identified By:identifiedBy,Date:dateIdentified,Continent:continent,Country:country,State/Province:stateProvince,County:county,Locality:locality,Habitat:habitat').split(',')
+        self.info_fields = [(l, v) for l, v in (a.split(':') for a in info_field_list)]
+        self.info_template = config.get('map.info_template', 'point_detail.dwc.mustache')
+        self.title_template = config.get('map.title_template', 'point_detail_title.dwc.mustache')
+        self.quick_info_template = config.get('map.quick_info_template', 'point_detail_hover.dwc.mustache')
+
         # Fields that need to be added to the query. Note that postgres query fails with duplicate names
         self.query_fields = set([v for (l, v) in self.info_fields])
-
-        # Build the list of columns needed for this request
-        self._request_columns()
 
     def _base_url(self, z, x, y, ext, query=None):
         """Return the base Windshaft URL that will serve the tiles and grids.
@@ -215,38 +195,59 @@ class MapController(base.BaseController):
             query['interactivity'] = interactivity
         return self._base_url(z, x, y, 'grid.json', query)
 
-    def _request_columns(self):
-        """Setup a dict of SQLAlchemy columns needed for the current request
-
-        We don't use reflection for this as SqlAlchemy doesn't support materialized views.
+    def _base_query(self, z, x, y, filters, geom, grid_size=4):
+        """Return a base SqlGenerator Select query with components that are common to all styles of grid and tile
+        queries
+        @param filters: List of filters for the request
+        @param geom: Geometry filter for the request
+        @param grid_size: Grid size for the request (grid tiles only)
+        @return: sqlgenerator.Select object
         """
-        self.columns = {}
-        # Add geom columns
-        self.columns[self.geom_field] = Column(self.geom_field, helpers.Geometry)
-        self.columns[self.geom_field_4326] = Column(self.geom_field_4326, helpers.Geometry)
-        # Add filter columns. Note that this will fail for integer and date fields - however
-        # that is how the datastore queries are build, so we replicate the behaviour here.
-        filters = request.params.get('filters')
+        query = Select(options={'compact': True}, identifiers={
+            'resource': self.resource_id,
+            'geom_field': (self.resource_id, self.geom_field),
+            'geom_field_label': self.geom_field,
+            'geom_field_4326': (self.resource_id, self.geom_field_4326),
+            'geom_field_4326_label': self.geom_field_4326
+        }, values={
+            'grid_size': grid_size
+        })
+        query.select_from('{resource}')
+
         if filters:
             for input_filters in json.loads(filters):
                 # TODO - other types of filters
                 if input_filters['type'] == 'term':
-                    self.columns[input_filters['field']] = Column(input_filters['field'], String(255))
+                    query.where("{field} = {value}", identifiers={
+                        'field': (self.resource_id, input_filters['field'])
+                    }, values={
+                        'value': input_filters['term']
+                    })
 
-        # Add all the fields we want for this query.
-        for column_name in self.query_fields:
-            self.columns[column_name] = Column(column_name, String(255))
+        if geom:
+            query.where("ST_Intersects({geom_field}, ST_Transform(ST_GeomFromText({geom}, 4326), 3857))", values={
+                'geom': geom
+            })
 
+        # Find bounding box based on tile X,Y,Z
+        bbox = tileconv.tile_to_latlng_bbox(float(x), float(y), float(z))
+        query.where('''
+            ST_Intersects({geom_field}, ST_Expand(
+                ST_Transform(
+                    ST_SetSrid(
+                        ST_MakeBox2D(
+                            ST_Makepoint({lng0}, {lat0}),
+                            ST_Makepoint({lng1}, {lat1})
+                        ),
+                    4326),
+                3857), !pixel_width! * 4))''', values={
+            'lng0': bbox[0][1],
+            'lat0': bbox[0][0],
+            'lng1': bbox[1][1],
+            'lat1': bbox[1][0]
+        })
 
-    def _geo_table(self):
-        """Return the table used to build the Windshaft query
-
-        @rtype: Table
-        @return: Return the SQLAlchemy table corresponding to the geo table in Windshaft
-        """
-        metadata = MetaData()
-        table = Table(self.resource_id, metadata, *self.columns.values())
-        return table
+        return query
 
     def tile(self, z, x, y):
         """Controller action that returns a map tile
@@ -260,7 +261,6 @@ class MapController(base.BaseController):
         @return: A PNG image representing the required style
         """
 
-        resource_id = request.params.get('resource_id')
         filters = request.params.get('filters')
         geom = request.params.get('geom')
         style = request.params.get('style')
@@ -270,10 +270,7 @@ class MapController(base.BaseController):
         if style not in ['plot', 'gridded', 'heatmap']:
             base.abort(400, _("Incorrect style parameter"))
 
-        geo_table = self._geo_table()
-
-        width = helpers.MapnikPlaceholderColumn('pixel_width')
-        height = helpers.MapnikPlaceholderColumn('pixel_height')
+        query = self._base_query(z, x, y, filters, geom)
 
         # If we're drawing dots, then we can ignore the ones with identical positions by
         # selecting DISTINCT ON (_the_geom_webmercator), but we need keep them for heatmaps
@@ -282,61 +279,37 @@ class MapController(base.BaseController):
         # positions. Note that there's an overhead to doing so for small datasets, and also that
         # it only has an effect for records with *identical* geometries.
         if style == 'heatmap':
-            sub = select([geo_table.c[self.geom_field]])
-        elif style == 'gridded':
-            sub = select([func.count(geo_table.c[self.geom_field]).label('count'),
-                          func.ST_SnapToGrid(geo_table.c[self.geom_field], width * 8, height * 8).label(
-                              self.geom_field)])
-        else:
-            sub = select([geo_table.c[self.geom_field].label(self.geom_field)],
-                         distinct=self.geom_field,
-                         from_obj=geo_table)
-
-        if filters:
-            for input_filters in json.loads(filters):
-                # TODO - other types of filters
-                if input_filters['type'] == 'term':
-                    sub = sub.where(geo_table.c[input_filters['field']] == input_filters['term'])
-
-        if geom:
-            sub = sub.where(
-                geo_functions.intersects(geo_table.c[self.geom_field], geo_functions.transform(geom, 3857))
-            )
-
-        # Find bounding box based on tile X,Y,Z
-        bbox = tileconv.tile_to_latlng_bbox(float(x), float(y), float(z))
-        sub = sub.where(func.ST_Intersects(geo_table.c[self.geom_field],
-                         func.ST_Expand(func.ST_transform(
-                             func.ST_SetSrid(
-                                 func.ST_MakeBox2D(
-                                     func.ST_makepoint(bbox[0][1], bbox[0][0]),
-                                     func.ST_makepoint(bbox[1][1], bbox[1][0])
-                                 ),
-                             4326),
-                         3857), width.op('*')('4'))
-        ))
-
-        if style == 'heatmap':
+            query.select('{geom_field}')
             # no need to shuffle (see below), so use the subquery directly
-            sql = helpers.interpolateQuery(sub, self.engine)
+            sql = query.to_sql()
         elif style == 'gridded':
-            sub = sub.where(func.ST_Intersects(geo_table.c[self.geom_field],
-                                               func.ST_SetSrid(helpers.MapnikPlaceholderColumn('bbox'), 3857)))
+            query.select("ST_SnapToGrid({geom_field}, !pixel_width! * 8, !pixel_height! * 8) AS {geom_field_label}")
+            query.select("COUNT({geom_field}) AS count")
+                        # The group by needs to match the column chosen above, including by the size of the grid
+            query.group_by('ST_SnapToGrid({geom_field}, !pixel_width! * 8, !pixel_height! * 8)')
+            query.order_by('count DESC')
 
-            # The group by needs to match the column chosen above, including by the size of the grid
-            sub = sub.group_by(func.ST_SnapToGrid(geo_table.c[self.geom_field], width * 8, height * 8))
-            sub = sub.order_by(desc('count')).alias('_mapplugin_sub')
-
-            outer = select(['count', self.geom_field]).select_from(sub).order_by(func.random())
-            sql = helpers.interpolateQuery(outer, self.engine)
+            outer_q = Select(options={'compact': True}, identifiers={
+                'geom_field_label': self.geom_field
+            })
+            outer_q.select_from('({query}) AS _mapplugin_sub', values={'query': query})
+            outer_q.select('count')
+            outer_q.select('{geom_field_label}')
+            outer_q.order_by('random()')
+            sql = outer_q.to_sql()
         else:
+            query.select('{geom_field}')
+            query.distinct_on('{geom_field}')
             # The SELECT ... DISTINCT ON query silently orders the results by lat and lon which leads to a nasty
             # overlapping effect when rendered. To avoid this, we shuffle the points in an outer
             # query.
-
-            sub = sub.alias('_mapplugin_sub')
-            outer = select([self.geom_field]).select_from(sub).order_by(func.random())
-            sql = helpers.interpolateQuery(outer, self.engine)
+            outer_q = Select(options={'compact': True}, identifiers={
+                'geom_field_label': self.geom_field
+            })
+            outer_q.select_from('({query}) AS _mapplugin_sub', values={'query': query})
+            outer_q.select('{geom_field_label}')
+            outer_q.order_by('random()')
+            sql = outer_q.to_sql()
 
         mss_options = self.mss_options.copy()
         mss_options['resource_id'] = self.resource_id
@@ -359,85 +332,55 @@ class MapController(base.BaseController):
         @return: A JSON encoded string representing the tile's grid
         """
 
-        callback = request.params.get('callback')
         filters = request.params.get('filters')
         geom = request.params.get('geom')
+        callback = request.params.get('callback')
         style = request.params.get('style')
-
-        geo_table = self._geo_table()
 
         if style == 'gridded':
             grid_size = 8
         else:
             grid_size = 4
 
-        # Set mapnik placeholders for the size of each pixel. Allows the grid to adjust automatically to the pixel size
-        # at whichever zoom we happen to be at.
-        width = helpers.MapnikPlaceholderColumn('pixel_width')
-        height = helpers.MapnikPlaceholderColumn('pixel_height')
-
         # To calculate the number of overlapping points, we first snap them to a grid roughly four pixels wide, and then
         # group them by that grid. This allows us to count the records, but we need to aggregate the rest of the
         # information in order to later return the "top" record from the stack of overlapping records
-
-        sub_cols = []
-        for i in self.query_fields:
-            sub_cols.append(func.array_agg(geo_table.c[i]).label(i))
-        sub_cols.append(func.count(geo_table.c[self.geom_field]).label('count'))
-        sub_cols.append(func.array_agg(geo_table.c[self.geom_field_4326]).label(self.geom_field_4326))
-        sub_cols.append(func.ST_SnapToGrid(geo_table.c[self.geom_field], width * grid_size, height * grid_size).label(
-            '_mapplugin_center'
-        ))
-
-        # Filter the records by department, using any filters, and by the geometry drawn
-        sub = select(sub_cols)
-
-        if filters:
-            for filter in json.loads(filters):
-                # TODO - other types of filters
-                if filter['type'] == 'term':
-                    sub = sub.where(geo_table.c[filter['field']] == filter['term'])
-
-        if geom:
-            sub = sub.where(
-                geo_functions.intersects(geo_table.c[self.geom_field], geo_functions.transform(geom, 3857))
-            )
-
-        # Find Bounding box of tile
-        bbox = tileconv.tile_to_latlng_bbox(float(x), float(y), float(z))
-        sub = sub.where(func.ST_Intersects(geo_table.c[self.geom_field],
-                        func.ST_transform(
-                            func.ST_SetSrid(
-                                func.ST_MakeBox2D(
-                                    func.ST_makepoint(bbox[0][1], bbox[0][0]),
-                                    func.ST_makepoint(bbox[1][1], bbox[1][0])
-                                ),
-                            4326),
-                        3857)
-        ))
+        query = self._base_query(z, x, y, filters, geom, grid_size)
+        for col in self.query_fields:
+            query.select('array_agg({col}) AS {col}', identifiers={
+                'col': col
+            })
+        query.select('COUNT({geom_field}) AS count')
+        query.select('array_agg({geom_field_4326}) AS {geom_field_4326_label}')
+        query.select('ST_SnapToGrid({geom_field}, !pixel_width! * {grid_size}, !pixel_height! * {grid_size}) AS _mapplugin_center')
 
         # The group by needs to match the column chosen above, including by the size of the grid
-        sub = sub.group_by(func.ST_SnapToGrid(geo_table.c[self.geom_field], width * grid_size, height * grid_size))
-        sub = sub.order_by(desc('count')).alias('_mapplugin_sub')
+        query.group_by('ST_SnapToGrid({geom_field}, !pixel_width! * {grid_size}, !pixel_height! * {grid_size})')
+        query.order_by('count DESC')
 
         # In the outer query we can use the overlapping records count and the location, but we also need to pop the
         # first record off of the array. If we were to return e.g. all the overlapping names, the json grids would
         # unbounded in size.
 
-        # Note that the c.foo[1] syntax needs SQLAlchemy >= 0.8
-        # However, geoalchemy breaks on SQLAlchemy >= 0.9, so be careful.
+        outer_query = Select(options={'compact': True}, identifiers={
+            'resource': self.resource_id,
+            'geom_field_label': self.geom_field,
+            'geom_field_4326_label': self.geom_field_4326,
+        }, values={
+            'query': query
+        })
 
-        outer_cols = []
-        for i in self.query_fields:
-                outer_cols.append(Column(i, ARRAY(String))[1].label(i))
-        # Always include count/lat/lng as various plugins excpet those.
-        outer_cols.append(Column('count', Integer))
-        outer_cols.append(func.st_y(Column(self.geom_field_4326, ARRAY(helpers.Geometry))[1]).label('lat'))
-        outer_cols.append(func.st_x(Column(self.geom_field_4326, ARRAY(helpers.Geometry))[1]).label('lng'))
-        outer_cols.append(Column('_mapplugin_center', helpers.Geometry).label(self.geom_field))
+        outer_query.select_from('({query}) AS _mapplugin_sub')
+        for col in self.query_fields:
+            outer_query.select('{col}[1] AS {col}', identifiers={
+                'col': col
+            })
+        outer_query.select('count')
+        outer_query.select('st_y({geom_field_4326_label}[1]) AS lat')
+        outer_query.select('st_x({geom_field_4326_label}[1]) AS lng')
+        outer_query.select('_mapplugin_center AS {geom_field_label}')
+        sql = outer_query.to_sql()
 
-        s = select(outer_cols).select_from(sub)
-        sql = helpers.interpolateQuery(s, self.engine)
         interactivity_fields = ",".join(set(list(self.query_fields) + ['count', 'lat', 'lng']))
         url = self._grid_url(z, x, y, callback=callback, sql=sql, interactivity=interactivity_fields)
         response.headers['Content-type'] = 'text/javascript'
@@ -456,15 +399,19 @@ class MapController(base.BaseController):
         filters = request.params.get('filters')
         fetch_id = request.params.get('fetch_id')
 
-        geo_table = self._geo_table()
+        engine = _get_engine()
+        metadata = MetaData()
+        geo_table = Table(self.resource_id, metadata, Column(self.geom_field, helpers.Geometry),
+                          Column(self.geom_field_4326, helpers.Geometry))
 
-        query = select(bind=self.engine)
+        query = select(bind=engine)
         query = query.where(not_(geo_table.c[self.geom_field] == None))
 
         if filters:
             for input_filters in json.loads(filters):
                 # TODO - other types of filters
                 if input_filters['type'] == 'term':
+                    geo_table.append_column(Column(input_filters['field'], String(255)))
                     query = query.where(geo_table.c[input_filters['field']] == input_filters['term'])
 
         # Prepare result
@@ -539,7 +486,7 @@ class MapController(base.BaseController):
             func.st_xmax(func.st_extent(inner_col)).label('xmax')
         ]).select_from(inner_query)
         try:
-            query_result = self.engine.execute(outer_query)
+            query_result = engine.execute(outer_query)
         except ProgrammingError:
             response.headers['Content-type'] = 'application/json'
             return json.dumps({

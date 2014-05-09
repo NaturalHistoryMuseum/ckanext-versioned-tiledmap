@@ -1,9 +1,11 @@
 from pylons import config
 import sqlalchemy
-from sqlalchemy import create_engine, func
+from sqlalchemy import func
 from sqlalchemy.sql import select
 
 import ckan.plugins.toolkit as toolkit
+
+from ckanext.map.db import _get_engine
 
 
 def create_geom_columns(context, data_dict):
@@ -39,7 +41,7 @@ def create_geom_columns(context, data_dict):
     # Add the two geometry columns - one in degrees (EPSG:4326) and one in spherical mercator metres (EPSG:3857)
     # the_geom_webmercator is used for windshaft. Also create a spatial index on the geom (mercator) field.
     # TODO: should the index be optional/configurable?
-    engine = create_engine(config['ckan.datastore.write_url'])
+    engine = _get_engine(write=True)
     with engine.begin() as connection:
         s = select([func.AddGeometryColumn('public', resource_id, geom_field_4326, 4326, 'POINT', 2)])
         connection.execute(s)
@@ -55,7 +57,6 @@ def create_geom_columns(context, data_dict):
             geom_field=geom_field
         ))
         connection.execute(s)
-
 
     if populate:
         ugc = toolkit.get_action('update_geom_columns')
@@ -89,7 +90,7 @@ def update_geom_columns(context, data_dict):
         geom_field_4326 = config.get('map.geom_field_4326', '_geom')
 
     # Create geometries from the latitude and longitude columns.
-    engine = create_engine(config['ckan.datastore.write_url'])
+    engine = _get_engine(write=True)
     # TODO: change to sqlalchemy so we don't have to worry about escaping column names!
     # TODO: should the ANALYZE be optional/configurable?
     with engine.begin() as connection:
