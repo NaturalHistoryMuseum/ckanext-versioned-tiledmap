@@ -195,7 +195,7 @@ class MapController(base.BaseController):
             query['interactivity'] = interactivity
         return self._base_url(z, x, y, 'grid.json', query)
 
-    def _base_query(self, z, x, y, filters, geom, grid_size=4):
+    def _base_query(self, z, x, y, filters, fulltext, geom, grid_size=4):
         """Return a base SqlGenerator Select query with components that are common to all styles of grid and tile
         queries
         @param filters: List of filters for the request
@@ -223,6 +223,12 @@ class MapController(base.BaseController):
                     }, values={
                         'value': input_filters['term']
                     })
+
+        if fulltext:
+            query.where('_full_text @@ plainto_tsquery({search})', values={
+                'language': 'english',
+                'search': fulltext
+            })
 
         if geom:
             query.where("ST_Intersects({geom_field}, ST_Transform(ST_GeomFromText({geom}, 4326), 3857))", values={
@@ -262,6 +268,7 @@ class MapController(base.BaseController):
         """
 
         filters = request.params.get('filters')
+        fulltext = request.params.get('q')
         geom = request.params.get('geom')
         style = request.params.get('style')
 
@@ -270,7 +277,7 @@ class MapController(base.BaseController):
         if style not in ['plot', 'gridded', 'heatmap']:
             base.abort(400, _("Incorrect style parameter"))
 
-        query = self._base_query(z, x, y, filters, geom)
+        query = self._base_query(z, x, y, filters, fulltext, geom)
 
         # If we're drawing dots, then we can ignore the ones with identical positions by
         # selecting DISTINCT ON (_the_geom_webmercator), but we need keep them for heatmaps
@@ -333,6 +340,7 @@ class MapController(base.BaseController):
         """
 
         filters = request.params.get('filters')
+        fulltext = request.params.get('q')
         geom = request.params.get('geom')
         callback = request.params.get('callback')
         style = request.params.get('style')
@@ -345,7 +353,7 @@ class MapController(base.BaseController):
         # To calculate the number of overlapping points, we first snap them to a grid roughly four pixels wide, and then
         # group them by that grid. This allows us to count the records, but we need to aggregate the rest of the
         # information in order to later return the "top" record from the stack of overlapping records
-        query = self._base_query(z, x, y, filters, geom, grid_size)
+        query = self._base_query(z, x, y, filters, fulltext, geom, grid_size)
         for col in self.query_fields:
             query.select('array_agg({col}) AS {col}', identifiers={
                 'col': col
