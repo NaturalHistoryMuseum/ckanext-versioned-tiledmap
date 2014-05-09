@@ -236,6 +236,7 @@ my.NHMMap = Backbone.View.extend({
    *
    */
   redraw: function(){
+    var self = this;
     if (!this.map_ready || !this.map_info.draw){
       return;
     }
@@ -268,6 +269,10 @@ my.NHMMap = Backbone.View.extend({
     for (var i in this.layers){
       this.map.addLayer(this.layers[i]);
     }
+    // Ensure that click events on the selection get passed to the map.
+    this.layers['selection'].on('click', function(e) {
+      self.map.fire('click', e);
+    });
 
     // Update controls & plugins
     this.updateControls();
