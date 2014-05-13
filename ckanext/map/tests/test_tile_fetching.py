@@ -206,7 +206,7 @@ class TestTileFetching(tests.WsgiAppCase):
         assert_true(mock_urlopen.called)
         called_url = urlparse.urlparse(mock_urlopen.call_args[0][0])
         called_query = urlparse.parse_qs(called_url.query)
-        sql = 'SELECT "_the_geom_webmercator" FROM (SELECT DISTINCT ON ("{rid}"."_the_geom_webmercator") "{rid}"."_the_geom_webmercator" FROM "{rid}" WHERE ( ST_Intersects("{rid}"."_the_geom_webmercator", ST_Expand( ST_Transform( ST_SetSrid( ST_MakeBox2D( ST_Makepoint(-67.5, 40.9798980696), ST_Makepoint(-45.0, 21.9430455334) ), 4326), 3857), !pixel_width! * 4)))) AS _mapplugin_sub ORDER BY random()'
+        sql = 'SELECT "_the_geom_webmercator" FROM (SELECT DISTINCT ON ("{rid}"."_the_geom_webmercator") "{rid}"."_the_geom_webmercator" FROM "{rid}" WHERE ( ST_Intersects("{rid}"."_the_geom_webmercator", ST_Expand( ST_Transform( ST_SetSrid( ST_MakeBox2D( ST_Makepoint(-67.5, 40.9798980696), ST_Makepoint(-45.0, 21.9430455334) ), 4326), 3857), !pixel_width! * 4.0)))) AS _mapplugin_sub ORDER BY random()'
         sql = sql.format(rid=TestTileFetching.resource['resource_id'])
         assert_equal(sql, called_query['sql'][0])
 
@@ -225,7 +225,7 @@ class TestTileFetching(tests.WsgiAppCase):
         assert_true(mock_urlopen.called)
         called_url = urlparse.urlparse(mock_urlopen.call_args[0][0])
         called_query = urlparse.parse_qs(called_url.query)
-        sql = 'SELECT "_the_geom_webmercator" FROM (SELECT DISTINCT ON ("{rid}"."_the_geom_webmercator") "{rid}"."_the_geom_webmercator" FROM "{rid}" WHERE ("{rid}"."some_field_1" = \'value\') AND (ST_Intersects("{rid}"."_the_geom_webmercator", ST_Transform(ST_GeomFromText(\'{geom}\', 4326), 3857))) AND ( ST_Intersects("{rid}"."_the_geom_webmercator", ST_Expand( ST_Transform( ST_SetSrid( ST_MakeBox2D( ST_Makepoint(-67.5, 40.9798980696), ST_Makepoint(-45.0, 21.9430455334) ), 4326), 3857), !pixel_width! * 4)))) AS _mapplugin_sub ORDER BY random()'
+        sql = 'SELECT "_the_geom_webmercator" FROM (SELECT DISTINCT ON ("{rid}"."_the_geom_webmercator") "{rid}"."_the_geom_webmercator" FROM "{rid}" WHERE ("{rid}"."some_field_1" = \'value\') AND (ST_Intersects("{rid}"."_the_geom_webmercator", ST_Transform(ST_GeomFromText(\'{geom}\', 4326), 3857))) AND ( ST_Intersects("{rid}"."_the_geom_webmercator", ST_Expand( ST_Transform( ST_SetSrid( ST_MakeBox2D( ST_Makepoint(-67.5, 40.9798980696), ST_Makepoint(-45.0, 21.9430455334) ), 4326), 3857), !pixel_width! * 4.0)))) AS _mapplugin_sub ORDER BY random()'
         sql = sql.format(
             rid=TestTileFetching.resource['resource_id'],
             geom=geom

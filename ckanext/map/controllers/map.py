@@ -1,4 +1,3 @@
-import math
 import urllib
 import cStringIO
 
@@ -268,7 +267,7 @@ class MapController(base.BaseController):
             'lat0': bbox[0][0],
             'lng1': bbox[1][1],
             'lat1': bbox[1][0],
-            'marker_radius': math.ceil(marker_size/2)
+            'marker_radius': marker_size/2.0
         })
 
         return query
