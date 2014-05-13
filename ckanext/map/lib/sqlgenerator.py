@@ -35,13 +35,14 @@ class Select:
                    hand-code values into your expressions, those will get compacted too!
     """
 
-    def __init__(self, options={}, identifiers={}, values={}):
+    def __init__(self, options=None, identifiers=None, values=None):
         """ Create a new SqlGenerator
         @param options: Dictionary of options
         @param identifiers: Dictionary of identifier label to value
         @param values: Dictionary of value label to value
         """
-        self._global_context = (identifiers, values)
+        options = options or {}
+        self._global_context = (identifiers or {}, values or {})
         self._options = dict({'nl': False, 'compact': False}.items() + options.items())
         self._query = {
             'from': [],
@@ -82,7 +83,7 @@ class Select:
         else:
             return " ".join(query)
 
-    def select_from(self, expr, identifiers={}, values={}):
+    def select_from(self, expr, identifiers=None, values=None):
         """ Add a table/expression to the from clause of the query
         @param from_expr: The from clause
         @param identifiers: Dictionary of identifier label to value for the from clause only
@@ -91,7 +92,7 @@ class Select:
         """
         return self._add_expr('from', expr, identifiers, values)
 
-    def distinct_on(self, expr, identifiers={}, values={}):
+    def distinct_on(self, expr, identifiers=None, values=None):
         """ Add a distinct on clause to the query
         @param expr: Expression to add to the distinct on
         @param identifiers: Dictionary of identifier label to value for that expression
@@ -100,7 +101,7 @@ class Select:
         """
         return self._add_expr('distinct_on', expr, identifiers, values)
 
-    def select(self, expr, identifiers={}, values={}):
+    def select(self, expr, identifiers=None, values=None):
         """ Add a field/expression to the select clause
         @param expr: An expression for the select clause
         @param identifiers: Dictionary of identifier label to value for that expression
@@ -109,7 +110,7 @@ class Select:
         """
         return self._add_expr('select', expr, identifiers, values)
 
-    def where(self, expr, identifiers={}, values={}):
+    def where(self, expr, identifiers=None, values=None):
         """ Add an expression to the where clause
 
         Where clauses are always joined with an 'AND' operator
@@ -121,7 +122,7 @@ class Select:
         """
         return self._add_expr('where', expr, identifiers, values)
 
-    def order_by(self, expr, identifiers={}, values={}):
+    def order_by(self, expr, identifiers=None, values=None):
         """ Add an order by clause
         @param expr: An expression for the order by clause
         @param identifiers: Dictionary of identifier label to value for that expression
@@ -130,7 +131,7 @@ class Select:
         """
         return self._add_expr('order_by', expr, identifiers, values)
 
-    def group_by(self, expr, identifiers={}, values={}):
+    def group_by(self, expr, identifiers=None, values=None):
         """ Add a group by clause
         @param expr: An expression for the group by clause
         @param identifiers: Dictionary of identifier label to value for that expression
@@ -157,6 +158,8 @@ class Select:
         @param values: Dictionary of value label to value
         @return: Context defined as tuple of identifier dictionary and value dictionary
         """
+        identifiers = identifiers or {}
+        values = values or {}
         context_identifiers = dict(self._global_context[0].items() + identifiers.items())
         context_values = dict(self._global_context[1].items() + values.items())
         return context_identifiers, context_values
