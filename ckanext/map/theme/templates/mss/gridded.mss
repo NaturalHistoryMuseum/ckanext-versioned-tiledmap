@@ -1,4 +1,4 @@
-@color: {{grid_base_color}};
+@color: {{base_color}};
 @color1: spin(@color, 80);
 @color2: spin(@color, 70);
 @color3: spin(@color, 60);
@@ -12,7 +12,7 @@
 #{{resource_id}} {
     marker-fill: @color1;
     marker-opacity: 1;
-    marker-width: 7;
+    marker-width: {{marker_size}}-1;
     marker-placement: point;
     marker-type: ellipse;
     marker-line-width: 1.0;

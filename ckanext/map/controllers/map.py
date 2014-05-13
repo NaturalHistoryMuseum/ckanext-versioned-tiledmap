@@ -1,3 +1,4 @@
+import math
 import urllib
 import cStringIO
 
@@ -83,11 +84,26 @@ class MapController(base.BaseController):
             'max': config.get('map.initial_zoom.max', 6)
         }
         self.mss_options = {
-            'fill_color': config.get('map.style.plot.fill_color', '#EE0000'),
-            'line_color': config.get('map.style.plot.line_color', '#FFFFFF'),
-            'grid_base_color': config.get('map.style.gridded.base_color', '#F02323'),
-            'heatmap_gradient': config.get('map.style.heatmap.gradient',
-                                           '#0000FF, #00FFFF, #00FF00, #FFFF00, #FFA500, #FF0000')
+            'plot': {
+                'fill_color': config.get('map.style.plot.fill_color', '#EE0000'),
+                'line_color': config.get('map.style.plot.line_color', '#FFFFFF'),
+                'marker_size': config.get('map.style.plot.marker_size', 8),
+                # Ideally half the marker size
+                'grid_resolution': config.get('map.style.plot.grid_resolution', 4)
+            },
+            'gridded': {
+                'base_color': config.get('map.style.gridded.base_color', '#F02323'),
+                'marker_size': config.get('map.style.gridded.marker_size', 8),
+                # Should really be the same as marker size!
+                'grid_resolution': config.get('map.style.gridded.grid_resolution', 8)
+            },
+            'heatmap': {
+                'intensity': config.get('map.style.heatmap.intensity', 0.1),
+                'gradient': config.get('map.style.heatmap.gradient',
+                                       '#0000FF, #00FFFF, #00FF00, #FFFF00, #FFA500, #FF0000'),
+                'marker_url': config.get('map.style.heatmap.marker_url', '!markers!/alpharadiantdeg20px.png'),
+                'marker_size': config.get('map.style.heatmap.marker_size', 20)
+            }
         }
         # Empty values for request dependent parameters
         self.resource_id = ''
@@ -195,7 +211,7 @@ class MapController(base.BaseController):
             query['interactivity'] = interactivity
         return self._base_url(z, x, y, 'grid.json', query)
 
-    def _base_query(self, z, x, y, filters, fulltext, geom, grid_size=4):
+    def _base_query(self, z, x, y, filters, fulltext, geom, marker_size, grid_size=4):
         """Return a base SqlGenerator Select query with components that are common to all styles of grid and tile
         queries
         @param filters: List of filters for the request
@@ -210,7 +226,8 @@ class MapController(base.BaseController):
             'geom_field_4326': (self.resource_id, self.geom_field_4326),
             'geom_field_4326_label': self.geom_field_4326
         }, values={
-            'grid_size': grid_size
+            'grid_size': grid_size,
+            'marker_size': marker_size
         })
         query.select_from('{resource}')
 
@@ -246,11 +263,12 @@ class MapController(base.BaseController):
                             ST_Makepoint({lng1}, {lat1})
                         ),
                     4326),
-                3857), !pixel_width! * 4))''', values={
+                3857), !pixel_width! * {marker_radius}))''', values={
             'lng0': bbox[0][1],
             'lat0': bbox[0][0],
             'lng1': bbox[1][1],
-            'lat1': bbox[1][0]
+            'lat1': bbox[1][0],
+            'marker_radius': math.ceil(marker_size/2)
         })
 
         return query
@@ -277,7 +295,7 @@ class MapController(base.BaseController):
         if style not in ['plot', 'gridded', 'heatmap']:
             base.abort(400, _("Incorrect style parameter"))
 
-        query = self._base_query(z, x, y, filters, fulltext, geom)
+        query = self._base_query(z, x, y, filters, fulltext, geom, self.mss_options[style]['marker_size'])
 
         # If we're drawing dots, then we can ignore the ones with identical positions by
         # selecting DISTINCT ON (_the_geom_webmercator), but we need keep them for heatmaps
@@ -290,10 +308,11 @@ class MapController(base.BaseController):
             # no need to shuffle (see below), so use the subquery directly
             sql = query.to_sql()
         elif style == 'gridded':
-            query.select("ST_SnapToGrid({geom_field}, !pixel_width! * 8, !pixel_height! * 8) AS {geom_field_label}")
+            query.select("ST_SnapToGrid({geom_field}, !pixel_width! * {marker_size}" ", !pixel_height! * {marker_size})"
+                         " AS {geom_field_label}")
             query.select("COUNT({geom_field}) AS count")
                         # The group by needs to match the column chosen above, including by the size of the grid
-            query.group_by('ST_SnapToGrid({geom_field}, !pixel_width! * 8, !pixel_height! * 8)')
+            query.group_by('ST_SnapToGrid({geom_field}, !pixel_width! * {marker_size}, !pixel_height! * {marker_size})')
             query.order_by('count DESC')
 
             outer_q = Select(options={'compact': True}, identifiers={
@@ -318,7 +337,7 @@ class MapController(base.BaseController):
             outer_q.order_by('random()')
             sql = outer_q.to_sql()
 
-        mss_options = self.mss_options.copy()
+        mss_options = self.mss_options[style].copy()
         mss_options['resource_id'] = self.resource_id
         mss = base.render('mss/{}.mss'.format(style), mss_options)
 
@@ -345,15 +364,17 @@ class MapController(base.BaseController):
         callback = request.params.get('callback')
         style = request.params.get('style')
 
-        if style == 'gridded':
-            grid_size = 8
-        else:
-            grid_size = 4
+        if not style:
+            style = 'plot'
+        if style not in ['plot', 'gridded', 'heatmap']:
+            base.abort(400, _("Incorrect style parameter"))
 
         # To calculate the number of overlapping points, we first snap them to a grid roughly four pixels wide, and then
         # group them by that grid. This allows us to count the records, but we need to aggregate the rest of the
         # information in order to later return the "top" record from the stack of overlapping records
-        query = self._base_query(z, x, y, filters, fulltext, geom, grid_size)
+        query = self._base_query(z, x, y, filters, fulltext, geom,
+                                 self.mss_options[style]['marker_size'],
+                                 self.mss_options[style]['grid_resolution'])
         for col in self.query_fields:
             query.select('array_agg({col}) AS {col}', identifiers={
                 'col': col
@@ -440,18 +461,23 @@ class MapController(base.BaseController):
                     'name': _('Plot Map'),
                     'icon': 'P',
                     'controls': ['drawShape', 'mapType'],
-                    'plugins': ['tooltipInfo', 'pointInfo']
+                    'plugins': ['tooltipInfo', 'pointInfo'],
+                    'has_grid': True,
+                    'grid_resolution': self.mss_options['plot']['grid_resolution']
                 },
                 'heatmap': {
                     'name': _('Distribution Map'),
                     'icon': 'D',
                     'controls': ['drawShape', 'mapType'],
+                    'has_grid': False,
                 },
                 'gridded': {
                     'name': _('Grid Map'),
                     'icon': 'G',
                     'controls': ['drawShape', 'mapType'],
-                    'plugins': ['tooltipCount']
+                    'plugins': ['tooltipCount'],
+                    'has_grid': True,
+                    'grid_resolution': self.mss_options['plot']['grid_resolution']
                 }
             },
             'control_options': {

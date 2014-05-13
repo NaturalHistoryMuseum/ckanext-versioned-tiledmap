@@ -263,9 +263,12 @@ my.NHMMap = Backbone.View.extend({
     }
     this.layers = {
       'selection': L.geoJson(this.model.queryState.attributes.geom),
-      'plot': L.tileLayer(this.tilejson.tiles[0]),
-      'grid': new L.UtfGrid(this.tilejson.grids[0], {resolution: 4})
+      'plot': L.tileLayer(this.tilejson.tiles[0])
     };
+    var style = this.map_info.map_styles[this.map_info.map_style];
+    if (style.has_grid){
+      this.layers['grid'] = new L.UtfGrid(this.tilejson.grids[0], {resolution: style.grid_resolution});
+    }
     for (var i in this.layers){
       this.map.addLayer(this.layers[i]);
     }

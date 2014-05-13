@@ -1,7 +1,7 @@
 #{{resource_id}} {
     marker-fill: {{fill_color}};
     marker-opacity: 1;
-    marker-width: 8;
+    marker-width: {{marker_size}} - 1;
     marker-line-color: {{line_color}};
     marker-line-width: 1;
     marker-line-opacity: 0.9;
