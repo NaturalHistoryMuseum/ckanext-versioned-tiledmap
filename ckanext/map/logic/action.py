@@ -1,11 +1,35 @@
 from pylons import config
 import sqlalchemy
 from sqlalchemy import func
-from sqlalchemy.sql import select
+from sqlalchemy.sql import select, table
+from sqlalchemy.exc import ProgrammingError
 
 import ckan.plugins.toolkit as toolkit
+from ckan.logic.action.create import resource_view_create as ckan_resource_view_create
+from ckan.logic.action.delete import resource_view_delete as ckan_resource_view_delete
+from ckan.logic.action.update import resource_view_update as ckan_resource_view_update
 
 from ckanext.map.db import _get_engine
+
+
+def has_geom_column(context, data_dict):
+    """Returns TRUE if the given resource already has geom columns
+
+    @param context: Current context
+    @param data_dict: Parameters:
+      - resource_id: The resource to check. REQUIRED.
+    """
+    geom_field = config.get('map.geom_field', '_the_geom_webmercator')
+    geom_field_4326 = config.get('map.geom_field_4326', '_geom')
+
+    engine = _get_engine()
+    found = False
+    with engine.begin() as connection:
+        t = table(data_dict['resource_id'])
+        s = select('*', from_obj=t).limit(0)
+        fields = connection.execute(s).keys()
+        found = found or ((geom_field in fields) and (geom_field_4326 in fields))
+    return found
 
 
 def create_geom_columns(context, data_dict):
@@ -14,25 +38,15 @@ def create_geom_columns(context, data_dict):
     @param context: Current context
     @param data_dict: Parameters:
       - resource_id: The resource for which to create geom columns; REQUIRED
-      - lat_field: The existing latitude field in the column, optional unless populate is true
-      - long_field: The existing longitude field in the column, optional unless populate is true
+      - latitude_field: The existing latitude field in the column, optional unless populate is true
+      - longitude_field: The existing longitude field in the column, optional unless populate is true
       - populate: If true then pre-populate the geom fields using the latitude
                   and longitude fields. Defaults to true.
-      - geom_field: The name of the 3587 geom field to create. Defaults to the one defined by
-                    config. Only override if you know what you are doing.
-      - geom_field_4326: The name of the 4326 geom field to create. Defaults to the one defined by
-                          config. Only override if you know what you are doing.
     """
     # Read parameters
     resource_id = data_dict['resource_id']
-    if 'geom_field' in data_dict:
-        geom_field = data_dict['geom_field']
-    else:
-        geom_field = config.get('map.geom_field', '_the_geom_webmercator')
-    if 'geom_field_4326' in data_dict:
-        geom_field_4326 = data_dict['geom_field_4326']
-    else:
-        geom_field_4326 = config.get('map.geom_field_4326', '_geom')
+    geom_field = config.get('map.geom_field', '_the_geom_webmercator')
+    geom_field_4326 = config.get('map.geom_field_4326', '_geom')
     if 'populate' in data_dict:
         populate = data_dict['populate']
     else:
@@ -69,25 +83,15 @@ def update_geom_columns(context, data_dict):
     @param context: Current context
     @param data_dict: Paramters:
       - resource_id: The resource to populate; REQUIRED
-      - lat_field: The existing latitude field in the column, REQUIRED
-      - long_field: The existing longitude field in the column, REQUIRED
-      - geom_field: The name of the 3587 geom field to create. Defaults to the one defined by
-                    config. Only override if you know what you are doing.
-      - geom_field_4326: The name of the 4326 geom field to create. Defaults to the one defined by
-                          config. Only override if you know what you are doing.
+      - latitude_field: The existing latitude field in the column, REQUIRED
+      - longitude_field: The existing longitude field in the column, REQUIRED
     """
     # Read parameters
     resource_id = data_dict['resource_id']
-    lat_field = data_dict['lat_field']
-    long_field = data_dict['long_field']
-    if 'geom_field' in data_dict:
-        geom_field = data_dict['geom_field']
-    else:
-        geom_field = config.get('map.geom_field', '_the_geom_webmercator')
-    if 'geom_field_4326' in data_dict:
-        geom_field_4326 = data_dict['geom_field_4326']
-    else:
-        geom_field_4326 = config.get('map.geom_field_4326', '_geom')
+    lat_field = data_dict['latitude_field']
+    long_field = data_dict['longitude_field']
+    geom_field = config.get('map.geom_field', '_the_geom_webmercator')
+    geom_field_4326 = config.get('map.geom_field_4326', '_geom')
 
     # Create geometries from the latitude and longitude columns.
     engine = _get_engine(write=True)
@@ -121,3 +125,42 @@ def update_geom_columns(context, data_dict):
             resource_id=resource_id
         ))
         connection.execute(s)
+
+
+def resource_view_create(context, data_dict):
+    """Override ckan's resource_view_create so we can create geom fields when new tiled map views are added"""
+    # Invoke ckan resource_view_create
+    r = ckan_resource_view_create(context, data_dict)
+    # If this was a tiled map view, create our geom fields
+    if data_dict['view_type'] == 'tiled_map':
+        if not has_geom_column(context, data_dict):
+            create_geom_columns(context, data_dict)
+        else:
+            try:
+                update_geom_columns(context, data_dict)
+            except ProgrammingError:
+                # TODO: we cannot run this on materialized views.
+                pass
+    return r
+
+
+def resource_view_update(context, data_dict):
+    # Invoke ckan resource_view_update
+    r = ckan_resource_view_update(context, data_dict)
+    # If this was a tiled map view, update values in our geom fields
+    if r['view_type'] == 'tiled_map':
+        if not has_geom_column(context, data_dict):
+            create_geom_columns(context, data_dict)
+        else:
+            try:
+                update_geom_columns(context, data_dict)
+            except ProgrammingError:
+                # TODO We cannot run this on materialized views.
+                pass
+    return r
+
+
+def resource_view_delete(context, data_dict):
+    # TODO: We need to check if there any other tiled map view on the given resource. If not, we can drop the fields.
+    r = ckan_resource_view_delete(context, data_dict)
+    return r
