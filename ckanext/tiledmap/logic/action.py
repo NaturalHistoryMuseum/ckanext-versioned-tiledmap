@@ -9,7 +9,7 @@ from ckan.logic.action.create import resource_view_create as ckan_resource_view_
 from ckan.logic.action.delete import resource_view_delete as ckan_resource_view_delete
 from ckan.logic.action.update import resource_view_update as ckan_resource_view_update
 
-from ckanext.map.db import _get_engine
+from ckanext.tiledmap.db import _get_engine
 
 
 def has_geom_column(context, data_dict):
@@ -132,7 +132,7 @@ def resource_view_create(context, data_dict):
     # Invoke ckan resource_view_create
     r = ckan_resource_view_create(context, data_dict)
     # If this was a tiled map view, create our geom fields
-    if data_dict['view_type'] == 'tiled_map':
+    if data_dict['view_type'] == 'tiledmap':
         if not has_geom_column(context, data_dict):
             create_geom_columns(context, data_dict)
         else:
@@ -148,7 +148,7 @@ def resource_view_update(context, data_dict):
     # Invoke ckan resource_view_update
     r = ckan_resource_view_update(context, data_dict)
     # If this was a tiled map view, update values in our geom fields
-    if r['view_type'] == 'tiled_map':
+    if r['view_type'] == 'tiledmap':
         if not has_geom_column(context, data_dict):
             create_geom_columns(context, data_dict)
         else:

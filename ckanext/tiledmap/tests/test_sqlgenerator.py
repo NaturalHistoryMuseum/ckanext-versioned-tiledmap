@@ -5,8 +5,8 @@ import string
 from nose.tools import assert_equal
 from nose.tools import assert_raises
 
-from ckanext.map.lib.sqlgenerator import Select
-from ckanext.map.lib.sqlgenerator import MissingSection
+from ckanext.tiledmap.lib.sqlgenerator import Select
+from ckanext.tiledmap.lib.sqlgenerator import MissingSection
 
 class TestSelect:
     def test_raise(self):

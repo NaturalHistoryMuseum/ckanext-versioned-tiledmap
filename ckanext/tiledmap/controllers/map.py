@@ -11,10 +11,10 @@ from sqlalchemy.exc import ProgrammingError
 import ckan.logic as logic
 import ckan.lib.base as base
 from ckan.common import json, request, _, response
-import ckanext.map.lib.helpers as helpers
-import ckanext.map.lib.tileconv as tileconv
-from ckanext.map.lib.sqlgenerator import Select
-from ckanext.map.db import _get_engine
+import ckanext.tiledmap.lib.helpers as helpers
+import ckanext.tiledmap.lib.tileconv as tileconv
+from ckanext.tiledmap.lib.sqlgenerator import Select
+from ckanext.tiledmap.db import _get_engine
 
 
 class MapController(base.BaseController):

@@ -2,15 +2,15 @@ from pylons import config
 import ckan.plugins as p
 from ckan.common import json
 import ckan.plugins.toolkit as toolkit
-import ckanext.map.logic.action as map_action
-import ckanext.map.logic.auth as map_auth
-from ckanext.map.lib.helpers import mustache_wrapper
+import ckanext.tiledmap.logic.action as map_action
+import ckanext.tiledmap.logic.auth as map_auth
+from ckanext.tiledmap.lib.helpers import mustache_wrapper
 
 import ckan.logic as logic
 get_action = logic.get_action
 
 
-class MapPlugin(p.SingletonPlugin):
+class TiledMapPlugin(p.SingletonPlugin):
     """Windshaft map plugin
 
     This plugin replaces the recline preview template to use a custom map engine.
@@ -34,9 +34,9 @@ class MapPlugin(p.SingletonPlugin):
     ## IRoutes
     def before_map(self, map):
         """Add routes to our tile/grid serving functionality"""
-        map.connect('/map-tile/{z}/{x}/{y}.png', controller='ckanext.map.controllers.map:MapController', action='tile')
-        map.connect('/map-grid/{z}/{x}/{y}.grid.json', controller='ckanext.map.controllers.map:MapController', action='grid')
-        map.connect('/map-info', controller='ckanext.map.controllers.map:MapController', action='map_info')
+        map.connect('/map-tile/{z}/{x}/{y}.png', controller='ckanext.tiledmap.controllers.map:MapController', action='tile')
+        map.connect('/map-grid/{z}/{x}/{y}.grid.json', controller='ckanext.tiledmap.controllers.map:MapController', action='grid')
+        map.connect('/map-info', controller='ckanext.tiledmap.controllers.map:MapController', action='map_info')
 
         return map
 
@@ -70,7 +70,7 @@ class MapPlugin(p.SingletonPlugin):
     def info(self):
         """Return generic info about the plugin"""
         return {
-            'name': 'tiled_map',
+            'name': 'tiledmap',
             'title': 'Tiled map',
             'schema': {
                 'latitude_field': [self._is_datastore_field],
@@ -83,10 +83,10 @@ class MapPlugin(p.SingletonPlugin):
         }
 
     def view_template(self, context, data_dict):
-        return 'tiled_map_view.html'
+        return 'tiledmap_view.html'
 
     def form_template(self, context, data_dict):
-        return 'tiled_map_form.html'
+        return 'tiledmap_form.html'
 
     def can_view(self, data_dict):
         """Specificy which resources can be viewed by this plugin"""
