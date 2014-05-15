@@ -1,5 +1,0 @@
-{% import 'macros/form.html' as form %}
-
-<p>Note: You may only use one map tiled view per resource. If you create a second map tiled view using different latitude and longitude fields, these will override the existing map tile view.</p>
-{{ form.select('latitude_field', label=_('Latitude field'), options=map_fields, selected=data.latitude_field, error=errors.latitude_field) }}
-{{ form.select('longitude_field', label=_('Longitude field'), options=map_fields, selected=data.longitude_field, error=errors.longitude_field) }}
