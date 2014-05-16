@@ -17,10 +17,11 @@ import ckan.lib.create_test_data as ctd
 from ckan.logic.action.create import package_create
 from ckan.logic.action.delete import package_delete
 from ckanext.datastore.logic.action import datastore_create, datastore_delete, datastore_upsert
+from ckanext.tiledmap.config import config as tm_config
 
 from nose.tools import assert_equal, assert_true, assert_false, assert_in
 
-class TileFetching(tests.WsgiAppCase):
+class TestTileFetching(tests.WsgiAppCase):
     """Test cases for the Map plugin"""
     dataset = None
     resource = None
@@ -44,8 +45,18 @@ class TileFetching(tests.WsgiAppCase):
                        'user': ckan.model.User.get('testsysadmin').name}
 
         # Load plugins
-        p.load('map')
+        p.load('tiledmap')
         p.load('datastore')
+
+        # Set windshaft host/port as these settings do not have a default.
+        # TODO: Test that calls fail if not set
+        tm_config.update({
+            'tiledmap.windshaft.host': '127.0.0.1',
+            'tiledmap.windshaft.port': '4000'
+        })
+
+        # Copy tiledmap settings
+        cls.config = dict(tm_config.items())
 
         # datastore won't let us create a fields starting with _. When running the application
         # this is not how the geometry fields are created - but this is not what we are
@@ -133,16 +144,12 @@ class TileFetching(tests.WsgiAppCase):
         """Clean up after the test"""
         datastore_delete(cls.context, {'resource_id': cls.resource['resource_id']})
         package_delete(cls.context, {'id': cls.dataset['id']})
-        p.unload('map')
+        p.unload('tiledmap')
         p.unload('datastore')
 
     def teardown(self):
         # Ensure all settings are reset to default.
-        tod = ['map.windshaft.host', 'map.windshaft.port', 'map.windshaft.database', 'map.geom_field',
-               'map.interactivity']
-        for opt in tod:
-            if config.get(opt, None) != None:
-                del config[opt]
+        tm_config.update(TestTileFetching.config)
 
     @patch('urllib.urlopen')
     def test_fetch_tile_invoke(self, mock_urlopen):
@@ -173,11 +180,10 @@ class TileFetching(tests.WsgiAppCase):
     @patch('urllib.urlopen')
     def test_fetch_tile_settings(self, mock_urlopen):
         """Test that configuration settings are used if present"""
-        config['map.windshaft.host'] = 'example.com'
-        config['map.windshaft.port'] = '1234'
-        config['map.windshaft.database'] = 'wdb'
-        config['map.geom_field'] = 'the_geom_2'
-        config['map.info_fields'] = 'Some Field One:some_field_1,Some Field Two:some_field_2'
+        tm_config['tiledmap.windshaft.host'] = 'example.com'
+        tm_config['tiledmap.windshaft.port'] = '1234'
+        tm_config['tiledmap.geom_field'] = 'the_geom_2'
+        tm_config['tiledmap.info_fields'] = 'Some Field One:some_field_1,Some Field Two:some_field_2'
         mock_urlopen.return_value.read.return_value = 'data from windshaft :-)'
         self.app.get('/map-tile/2/3/4.png?resource_id={}'.format(TestTileFetching.resource['resource_id']))
         # Now check the URL that windshaft was called with
@@ -185,7 +191,6 @@ class TileFetching(tests.WsgiAppCase):
         called_url = urlparse.urlparse(mock_urlopen.call_args[0][0])
         called_query = urlparse.parse_qs(called_url.query)
         assert_equal(called_url.netloc, 'example.com:1234')
-        assert_in('database/wdb/', called_url.path)
         assert_in('the_geom_2', called_query['sql'][0])
         # Also check that interactivity fields are added
         mock_urlopen.return_value.read.reset_mock()
