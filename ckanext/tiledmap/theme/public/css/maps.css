@@ -5,6 +5,21 @@ div.tiled-map {
   color: #333;
 }
 
+div.tiled-map a {
+    color: #08c;
+    text-decoration: none;
+}
+
+div.tiled-map a:visited {
+    color: #08c;
+    text-decoration: none;
+}
+
+div.tiled-map a:hover {
+    color: #005580;
+    text-decoration: underline;
+}
+
 div.tiled-map-info{
     padding: 12px;
 }
