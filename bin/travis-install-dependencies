@@ -28,10 +28,6 @@ cd ${CKAN_PATH}/..
 pip install -r requirements.txt --allow-all-external
 pip install -r dev-requirements.txt --allow-all-external
 
-# Get latest SqlAlchemy & sqlalchemy-migrate as the map extention currently requires newer version than ckan.
-pip install SQLAlchemy==0.8.4 --allow-all-external
-pip install sqlalchemy-migrate==0.9 --allow-all-external
-
 python setup.py develop
 paster db init -c test-core.ini
 
