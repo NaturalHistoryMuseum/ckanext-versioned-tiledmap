@@ -1,3 +1,14 @@
+div.tiled-map {
+  font-size: 13px;
+  font-family: "Helvetica Neuee", Helvetica, Arial, sans-serif;
+  line-height: 18px;
+  color: #333;
+}
+
+div.tiled-map-info{
+    padding: 12px;
+}
+
 .info {
   color:#555;
   padding: 6px 8px;
@@ -37,43 +48,22 @@
   font-weight: bold;
 }
 
-/* Tabbed view for the sidebar */
-.tabview .tabview-navigation {
-}
-.tabview .tabview-navigation a {
-  display: block;
-  float: left;
-  margin: 0 4px 0 0;
-  padding: 4px;
-  border-width: 1px 1px 0 1px;
-  border-color: #444;
-  border-radius: 4px 4px 0 0;
-  background: #CCC;
-  text-decoration: none;
-  color: #000;
-  font-size: 1.1em;
+.panel {
+  border-radius: 4px;
+  box-shadow: 4px 4px 16px 0px #888;
 }
 
-.tabview .tabview-navigation a.tabview-active {
-  background: #F5F5F5;
+.panel.map {
+    width: 85%;
+    height: 500px;
+    float: left;
 }
 
-.tabview .tabview-container {
-    clear:both;
-}
-
-.tabview .well {
-  border: none;
-  box-shadow: none;
-  border-radius: 0 4px 4px 4px;
-}
-
-.tabview .recline-filter-editor h3 {
-  display: none;
-}
-
-.tabview .tabview-container .editor select {
-  max-width: 100%;
+.panel.sidebar {
+    width: 13%;
+    height: 500px;
+    margin-left: 86%;
+    background: #EEE;
 }
 
 /* Map tooltips */
@@ -87,6 +77,10 @@ div.map-hover-tooltip {
 }
 
 /* Point info */
+div.tiled-map-point-detail {
+  padding: 8px;
+}
+
 div.point-detail div.point-detail-title {
   font-size: 1.5em;
   font-weight: bold;

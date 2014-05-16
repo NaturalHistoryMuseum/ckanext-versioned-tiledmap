@@ -30,7 +30,7 @@ class TiledMapPlugin(p.SingletonPlugin):
         """Add our template directories to the list of available templates"""
         p.toolkit.add_template_directory(config, 'theme/templates')
         p.toolkit.add_public_directory(config, 'theme/public')
-        p.toolkit.add_resource('theme/public', 'map')
+        p.toolkit.add_resource('theme/public', 'ckanext-tiledmap')
 
     ## IRoutes
     def before_map(self, map):

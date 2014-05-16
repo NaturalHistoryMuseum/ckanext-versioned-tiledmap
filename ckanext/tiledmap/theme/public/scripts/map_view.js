@@ -1,21 +1,40 @@
-// Integrating the NHM Map
+/**
+ * Define the tilemap module
+ */
+this.ckan.module('tiledmap', function ($) {
+  return {
+    initialize: function(){
+      this.el = $(this.el);
+      this.options.resource = JSON.parse(this.options.resource);
 
-this.recline = this.recline || {};
-this.recline.View = this.recline.View || {};
+      this.el.ready($.proxy(this, '_onReady'));
+    },
 
-(function($, my) {
+    _onReady: function(){
+      this.view = new (_get_tiledmap_view(this, $))({
+        resource_id: this.options.resource.id,
+        filters: {
+          fields: {},
+          geom: '',
+          q: ''
+        }
+      });
+      this.view.render();
+      $(this.el).append(this.view.el);
+      this.view.show();
+    }
+  };
+});
+
 /**
  * NHMMap
  *
  * Custom backbone view to display the Windshaft based maps.
  */
+function _get_tiledmap_view(my, $, _){
 my.NHMMap = Backbone.View.extend({
-  className: 'recline-nhm-map',
-  template: '\
-    <div class="recline-map"> \
-      <div class="panel map"></div> \
-    </div> \
-  ',
+  className: 'tiled-map',
+  template: '<div class="tiled-map-info"></div><div class="panel map"></div><div class="panel sidebar"></div>',
 
   /**
    * Initialize
@@ -24,14 +43,14 @@ my.NHMMap = Backbone.View.extend({
    */
   initialize: function() {
     this.el = $(this.el);
-    _.bindAll(this, 'render');
-    this.model.queryState.bind('change', this.render);
+    // Setup options
     this.map_ready = false;
-    this.visible = false;
+    this.visible = true;
     this.fetch_count = 0;
+    this.resource_id = this.options.resource_id;
+    this.filters = this.options.filters;
     // Setup the sidebar
     this.sidebar_view = new my.PointDetailView();
-    this.elSidebar = this.sidebar_view.el;
   },
 
   /**
@@ -42,8 +61,10 @@ my.NHMMap = Backbone.View.extend({
    */
   render: function() {
     var out = Mustache.render(this.template);
-    $(this.el).html(out);
+    this.el.html(out);
+    this.el.css('width', '100%');
     this.$map = this.el.find('.panel.map');
+    $('.panel.sidebar', this.el).append(this.sidebar_view.el);
     this.map_ready = false;
     this._fetchMapInfo($.proxy(function(info){
       this.map_info = info;
@@ -52,7 +73,7 @@ my.NHMMap = Backbone.View.extend({
       this._setupMap();
       this.redraw();
       if (this.visible){
-          this.show()
+        this.show()
       }
     }, this), $.proxy(function(message){
       this.map_info = {
@@ -73,20 +94,17 @@ my.NHMMap = Backbone.View.extend({
    * Called when the map visulisation is selected.
    */
   show: function() {
-    /* Update Recline's meta-info */
-    $('.recline-pager').hide();
-
-    var $rri = $('.recline-results-info');
+    var $rri = $('.tiled-map-info', this.el);
     if (this.map_ready){
       if (this.map_info.draw){
           var template = [
-            '<span class="doc-count">{{geoRecordCount}}</span>',
+            'Displaying <span class="doc-count">{{geoRecordCount}}</span>',
             ' of ',
             '</span><span class="doc-count">{{recordCount}}</span>',
             'records'
           ].join(' ');
           $rri.html(Mustache.render(template, {
-            recordCount: this.model.recordCount ? this.model.recordCount.toString() : '0',
+            recordCount: '?', //this.model.recordCount ? this.model.recordCount.toString() : '0',
             geoRecordCount: this.map_info.geom_count ? this.map_info.geom_count.toString() : '0'
           }));
       } else {
@@ -104,6 +122,7 @@ my.NHMMap = Backbone.View.extend({
         this._zoomPending = false;
       }
     }
+    this.el.css('display', 'block');
     this.visible = true;
   },
 
@@ -113,12 +132,7 @@ my.NHMMap = Backbone.View.extend({
    * This is called when the grid or graph views are selected.
    */
   hide: function() {
-     // Restore recline pager & row count
-     $('.recline-pager').show();
-     var template = '</span><span class="doc-count">{{recordCount}}</span> records';
-     $('.recline-results-info').html(Mustache.render(template, {
-        recordCount: this.model.recordCount ? this.model.recordCount.toString() : '0'
-     }));
+     this.el.css('display', 'none');
      this.visible = false
   },
 
@@ -158,7 +172,7 @@ my.NHMMap = Backbone.View.extend({
 
     this.map.on('draw:created', function (e) {
       // Set the the geometry in the queryState to persist it between filter/search updates
-      self.model.queryState.attributes.geom = e.layer.toGeoJSON().geometry;
+      this.filters.geom = e.layer.toGeoJSON().geometry;
       self.redraw();
     });
 
@@ -188,17 +202,17 @@ my.NHMMap = Backbone.View.extend({
     this.fetch_count++;
 
     var params = {
-        resource_id: this.model.id,
+        resource_id: this.resource_id,
         fetch_id: this.fetch_count
     };
-    params['filters'] = JSON.stringify(this.model.queryState.attributes.filters);
+    params['filters'] = this.filters.fields;
 
-    if (this.model.queryState.attributes.q){
-      params['q'] = this.model.queryState.attributes.q;
+    if (this.filters.q){
+      params['q'] = this.filters.q;
     }
 
-    if (this.model.queryState.attributes.geom) {
-      params['geom'] = Terraformer.WKT.convert(this.model.queryState.attributes.geom);
+    if (this.filters.geom) {
+      params['geom'] = Terraformer.WKT.convert(this.filters.geom);
     }
 
     if (typeof this.jqxhr !== 'undefined' && this.jqxhr !== null){
@@ -242,14 +256,14 @@ my.NHMMap = Backbone.View.extend({
     }
     // Setup tile request parameters
     var params = {};
-    params['filters'] = JSON.stringify(this.model.queryState.attributes.filters);
-    if (this.model.queryState.attributes.q){
-      params['q'] = this.model.queryState.attributes.q;
+    params['filters'] = this.filters.fields;
+    if (this.filters.q){
+      params['q'] = this.filters.q;
     }
-    if (this.model.queryState.attributes.geom) {
-      params['geom'] = Terraformer.WKT.convert(this.model.queryState.attributes.geom);
+    if (this.filters.geom) {
+      params['geom'] = Terraformer.WKT.convert(this.filters.geom);
     }
-    params['resource_id'] = this.model.id;
+    params['resource_id'] = this.resource_id;
     params['style'] = this.map_info.map_style;
 
     // Prepare layers
@@ -262,7 +276,7 @@ my.NHMMap = Backbone.View.extend({
       this.map.removeLayer(this.layers[i]);
     }
     this.layers = {
-      'selection': L.geoJson(this.model.queryState.attributes.geom),
+      'selection': L.geoJson(this.filters.geom),
       'plot': L.tileLayer(this.tilejson.tiles[0])
     };
     var style = this.map_info.map_styles[this.map_info.map_style];
@@ -273,9 +287,11 @@ my.NHMMap = Backbone.View.extend({
       this.map.addLayer(this.layers[i]);
     }
     // Ensure that click events on the selection get passed to the map.
-    this.layers['selection'].on('click', function(e) {
-      self.map.fire('click', e);
-    });
+    if (typeof this.layers['slection'] !== 'undefined'){
+      this.layers['selection'].on('click', function(e) {
+        self.map.fire('click', e);
+      });
+    }
 
     // Update controls & plugins
     this.updateControls();
@@ -360,14 +376,14 @@ my.NHMMap = Backbone.View.extend({
       for (var i in style[type]){
         var addon = style[type][i];
         new_addons.push(addon);
-        if (add_cb && !_.contains(this._current_addons[type], addon)){
+        if (add_cb && $.inArray(addon, this._current_addons[type]) == -1){
           add_cb(addon);
         }
       }
     }
     for (var i in this._current_addons[type]){
       var addon = this._current_addons[type][i];
-      if (remove_cb && !_.contains(new_addons, addon)){
+      if (remove_cb && $.inArray(addon, new_addons) == -1){
         remove_cb(addon);
       }
     }
@@ -435,10 +451,10 @@ my.DrawShapeControl = L.Control.Draw.extend({
  * Recline sidebar view for map point information
  */
 my.PointDetailView = Backbone.View.extend({
-  className: 'recline-map-point-detail well',
-  template: 'Click on a map point for more detail',
+  className: 'tiled-map-point-detail',
+  template: '<div class="tiled-map-point-detail">Click on a map point for more detail</div>',
   initialize: function() {
-    this.el = $(this.el); // Ckan expects this
+    this.el = $(this.el);
     this.render();
   },
   render: function(data, template) {
@@ -734,4 +750,5 @@ my.TooltipPlugin = function(view, options){
   }
 }
 
-})(jQuery, recline.View);
+return my.NHMMap;
+}

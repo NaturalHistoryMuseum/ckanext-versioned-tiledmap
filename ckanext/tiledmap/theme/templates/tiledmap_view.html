@@ -1,1 +1,11 @@
-<p>Hello world!</p>
+{% extends "dataviewer/base.html" %}
+
+{% block page %}
+  <div data-module="tiledmap"
+       data-module-site_url="{{ h.dump_json(h.url('/', locale='default', qualified=true)) }}"
+       data-module-resource = "{{ h.dump_json(resource_json) }}"
+  >
+  </div>
+
+  {% resource 'ckanext-tiledmap/main' %}
+{% endblock %}
