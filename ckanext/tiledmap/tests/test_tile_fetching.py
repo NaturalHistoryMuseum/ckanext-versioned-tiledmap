@@ -20,7 +20,7 @@ from ckanext.datastore.logic.action import datastore_create, datastore_delete, d
 
 from nose.tools import assert_equal, assert_true, assert_false, assert_in
 
-class TestTileFetching(tests.WsgiAppCase):
+class TileFetching(tests.WsgiAppCase):
     """Test cases for the Map plugin"""
     dataset = None
     resource = None

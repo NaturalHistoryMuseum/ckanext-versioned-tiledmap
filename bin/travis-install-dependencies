@@ -18,7 +18,7 @@ sudo -u postgres psql -c 'CREATE DATABASE datastore_test WITH OWNER ckan_default
 sudo -u postgres psql -d datastore_test -c "create extension postgis"
 
 # Install ckan from our repo and other dependencies
-pip install -e git+https://github.com/NaturalHistoryMuseum/ckan.git#egg=ckan
+pip install -e git+https://github.com/NaturalHistoryMuseum/ckan.git@1251-resource-view#egg=ckan
 pip install -r requirements.txt --allow-all-external
 
 # We run the tests from ckan as we use the ckan test framework (around nosetest)

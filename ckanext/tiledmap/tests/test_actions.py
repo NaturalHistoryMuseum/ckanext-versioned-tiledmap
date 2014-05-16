@@ -16,6 +16,8 @@ from ckan.logic.action.create import package_create
 from ckan.logic.action.delete import package_delete
 from ckanext.datastore.logic.action import datastore_create, datastore_delete, datastore_upsert
 
+from ckanext.tiledmap.config import config as tm_config
+
 
 class TestMapActions(tests.WsgiAppCase):
     """Test cases for the Map plugin actions"""
@@ -39,13 +41,13 @@ class TestMapActions(tests.WsgiAppCase):
         cls.engine = create_engine(config['ckan.datastore.write_url'])
 
         # Load plugins
-        p.load('map')
+        p.load('tiledmap')
         p.load('datastore')
 
     @classmethod
     def teardown_class(cls):
         """Clean up"""
-        p.unload('map')
+        p.unload('tiledmap')
         p.unload('datastore')
 
     def setup(self):
@@ -106,10 +108,10 @@ class TestMapActions(tests.WsgiAppCase):
         """Clean up after each test"""
         datastore_delete(TestMapActions.context, {'resource_id': self.resource['resource_id']})
         package_delete(TestMapActions.context, {'id': self.dataset['id']})
-        tod = ['map.geom_field', 'map.geom_field_4326']
-        for opt in tod:
-            if config.get(opt, None) is not None:
-                del config[opt]
+        tm_config.update({
+            'tiledmap.geom_field': '_the_geom_webmercator',
+            'tiledmap.geom_field_4326': '_geom'
+        })
 
     def test_create_geom_columns(self):
         """ Test creating geom columns using default settings."""
@@ -117,8 +119,8 @@ class TestMapActions(tests.WsgiAppCase):
         create_geom_columns = toolkit.get_action('create_geom_columns')
         create_geom_columns(TestMapActions.context, {
             'resource_id': self.resource['resource_id'],
-            'lat_field': 'latitude',
-            'long_field': 'longitude'
+            'latitude_field': 'latitude',
+            'longitude_field': 'longitude'
         })
         # Test we have the expected columns
         metadata = MetaData()
@@ -157,8 +159,8 @@ class TestMapActions(tests.WsgiAppCase):
 
     def test_create_geom_columns_settings(self):
         """Ensure settings are used if defined when creating columns"""
-        config['map.geom_field'] = 'alt_geom_webmercator'
-        config['map.geom_field_4326'] = 'alt_geom'
+        tm_config['tiledmap.geom_field'] = 'alt_geom_webmercator'
+        tm_config['tiledmap.geom_field_4326'] = 'alt_geom'
         # Test global settings override defaults
         create_geom_columns = toolkit.get_action('create_geom_columns')
         create_geom_columns(TestMapActions.context, {
@@ -170,19 +172,6 @@ class TestMapActions(tests.WsgiAppCase):
         table = Table(self.resource['resource_id'], metadata, autoload=True, autoload_with=TestMapActions.engine)
         assert 'alt_geom' in table.c, "Column alt_geom was not created"
         assert 'alt_geom_webmercator' in table.c, "Column alt_geom_webmercator was not created"
-        # Test passed in settings override global settings and defaults
-        create_geom_columns(TestMapActions.context, {
-            'resource_id': self.resource['resource_id'],
-            'geom_field_4326': 'alt_geom_2',
-            'geom_field': 'alt_geom_webmercator_2',
-            'populate': False
-        })
-        # Test we have the expected columns
-        metadata = MetaData()
-        table = Table(self.resource['resource_id'], metadata, autoload=True, autoload_with=TestMapActions.engine)
-        assert 'alt_geom_2' in table.c, "Column alt_geom_2 was not created"
-        assert 'alt_geom_webmercator_2' in table.c, "Column alt_geom_webmercator_2 was not created"
-
         # Test we have the expected indices
         insp = reflection.Inspector.from_engine(TestMapActions.engine)
         index_exists = False
@@ -218,8 +207,8 @@ class TestMapActions(tests.WsgiAppCase):
         update_geom_columns = toolkit.get_action('update_geom_columns')
         update_geom_columns(TestMapActions.context, {
             'resource_id': self.resource['resource_id'],
-            'lat_field': 'latitude',
-            'long_field': 'longitude'
+            'latitude_field': 'latitude',
+            'longitude_field': 'longitude'
         })
         metadata = MetaData()
         table = Table(self.resource['resource_id'], metadata, autoload=True, autoload_with=TestMapActions.engine)
