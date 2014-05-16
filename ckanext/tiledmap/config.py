@@ -29,7 +29,7 @@ config = {
     # TODO: Configure this per dataset.
     'tiledmap.style.gridded.base_color': '#F02323',
     'tiledmap.style.gridded.marker_size': '8',
-    'tiledmap.style.grid_resolution': '8',
+    'tiledmap.style.gridded.grid_resolution': '8',
 
     # The style parameters for the heatmap.
     # TODO: Configure this per dataset

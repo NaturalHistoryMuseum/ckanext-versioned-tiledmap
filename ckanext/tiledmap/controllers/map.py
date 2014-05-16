@@ -74,31 +74,31 @@ class MapController(base.BaseController):
         self.geom_field_4326 = config['tiledmap.geom_field_4326']
         self.tile_layer = {
             'url': config['tiledmap.tile_layer.url'],
-            'opacity': config['tiledmap.tile_layer.opacity']
+            'opacity': float(config['tiledmap.tile_layer.opacity'])
         }
         self.initial_zoom = {
-            'min': config['tiledmap.initial_zoom.min'],
-            'max': config['tiledmap.initial_zoom.max']
+            'min': int(config['tiledmap.initial_zoom.min']),
+            'max': int(config['tiledmap.initial_zoom.max'])
         }
         self.mss_options = {
             'plot': {
                 'fill_color': config['tiledmap.style.plot.fill_color'],
                 'line_color': config['tiledmap.style.plot.line_color'],
-                'marker_size': config['tiledmap.style.plot.marker_size'],
+                'marker_size': int(config['tiledmap.style.plot.marker_size']),
                 # Ideally half the marker size
-                'grid_resolution': config['tiledmap.style.plot.grid_resolution']
+                'grid_resolution': int(config['tiledmap.style.plot.grid_resolution'])
             },
             'gridded': {
                 'base_color': config['tiledmap.style.gridded.base_color'],
-                'marker_size': config['tiledmap.style.gridded.marker_size'],
+                'marker_size': int(config['tiledmap.style.gridded.marker_size']),
                 # Should really be the same as marker size!
-                'grid_resolution': config['tiledmap.style.gridded.grid_resolution']
+                'grid_resolution': int(config['tiledmap.style.gridded.grid_resolution'])
             },
             'heatmap': {
-                'intensity': config['tiledmap.style.heatmap.intensity'],
+                'intensity': float(config['tiledmap.style.heatmap.intensity']),
                 'gradient': config['tiledmap.style.heatmap.gradient'],
                 'marker_url': config['tiledmap.style.heatmap.marker_url'],
-                'marker_size': config['tiledmap.style.heatmap.marker_size']
+                'marker_size': int(config['tiledmap.style.heatmap.marker_size'])
             }
         }
         # Empty values for request dependent parameters
