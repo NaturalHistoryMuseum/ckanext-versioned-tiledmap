@@ -69,8 +69,7 @@ class TiledMapPlugin(p.SingletonPlugin):
 
     ## IConfigurable
     def configure(self, config):
-        global plugin_config
-        plugin_config = dict(plugin_config.items() + config.items())
+        plugin_config.update(config)
 
     ## IResourceView
     def info(self):
