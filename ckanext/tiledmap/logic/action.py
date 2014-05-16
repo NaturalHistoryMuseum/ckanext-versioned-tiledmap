@@ -1,4 +1,3 @@
-from pylons import config
 import sqlalchemy
 from sqlalchemy import func
 from sqlalchemy.sql import select, table
@@ -10,6 +9,7 @@ from ckan.logic.action.delete import resource_view_delete as ckan_resource_view_
 from ckan.logic.action.update import resource_view_update as ckan_resource_view_update
 
 from ckanext.tiledmap.db import _get_engine
+from ckanext.tiledmap.config import config
 
 
 def has_geom_column(context, data_dict):
@@ -19,8 +19,8 @@ def has_geom_column(context, data_dict):
     @param data_dict: Parameters:
       - resource_id: The resource to check. REQUIRED.
     """
-    geom_field = config.get('map.geom_field', '_the_geom_webmercator')
-    geom_field_4326 = config.get('map.geom_field_4326', '_geom')
+    geom_field = config['tiledmap.geom_field']
+    geom_field_4326 = config['tiledmap.geom_field_4326']
 
     engine = _get_engine()
     found = False
@@ -45,8 +45,8 @@ def create_geom_columns(context, data_dict):
     """
     # Read parameters
     resource_id = data_dict['resource_id']
-    geom_field = config.get('map.geom_field', '_the_geom_webmercator')
-    geom_field_4326 = config.get('map.geom_field_4326', '_geom')
+    geom_field = config['tiledmap.geom_field']
+    geom_field_4326 = config['tiledmap.geom_field_4326']
     if 'populate' in data_dict:
         populate = data_dict['populate']
     else:
@@ -90,8 +90,8 @@ def update_geom_columns(context, data_dict):
     resource_id = data_dict['resource_id']
     lat_field = data_dict['latitude_field']
     long_field = data_dict['longitude_field']
-    geom_field = config.get('map.geom_field', '_the_geom_webmercator')
-    geom_field_4326 = config.get('map.geom_field_4326', '_geom')
+    geom_field = config['tiledmap.geom_field']
+    geom_field_4326 = config['tiledmap.geom_field_4326']
 
     # Create geometries from the latitude and longitude columns.
     engine = _get_engine(write=True)

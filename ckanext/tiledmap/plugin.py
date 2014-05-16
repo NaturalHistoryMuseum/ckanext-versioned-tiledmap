@@ -1,9 +1,9 @@
-from pylons import config
 import ckan.plugins as p
 from ckan.common import json
 import ckan.plugins.toolkit as toolkit
 import ckanext.tiledmap.logic.action as map_action
 import ckanext.tiledmap.logic.auth as map_auth
+from ckanext.tiledmap.config import config as plugin_config
 from ckanext.tiledmap.lib.helpers import mustache_wrapper
 
 import ckan.logic as logic
@@ -23,6 +23,7 @@ class TiledMapPlugin(p.SingletonPlugin):
     p.implements(p.IAuthFunctions)
     p.implements(p.ITemplateHelpers)
     p.implements(p.IResourceView, inherit=True)
+    p.implements(p.IConfigurable)
 
     ## IConfigurer
     def update_config(self, config):
@@ -66,6 +67,11 @@ class TiledMapPlugin(p.SingletonPlugin):
             'mustache': mustache_wrapper
         }
 
+    ## IConfigurable
+    def configure(self, config):
+        global plugin_config
+        plugin_config = dict(plugin_config.items() + config.items())
+
     ## IResourceView
     def info(self):
         """Return generic info about the plugin"""
@@ -91,8 +97,8 @@ class TiledMapPlugin(p.SingletonPlugin):
     def can_view(self, data_dict):
         """Specificy which resources can be viewed by this plugin"""
         # Check that the Windshaft server is configured
-        if ((config.get('map.windshaft.host', None) is None) or
-           (config.get('map.windshaft.port', None) is None)):
+        if ((plugin_config.get('map.windshaft.host', None) is None) or
+           (plugin_config.get('map.windshaft.port', None) is None)):
             return False
         # Check that we have a datastore for this resource
         if data_dict['resource'].get('datastore_active'):

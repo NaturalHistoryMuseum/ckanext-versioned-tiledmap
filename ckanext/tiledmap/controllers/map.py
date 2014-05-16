@@ -1,8 +1,6 @@
 import urllib
 import cStringIO
 
-from pylons import config
-
 from sqlalchemy.sql import select
 from sqlalchemy import Table, Column, MetaData, String
 from sqlalchemy import func, not_
@@ -15,7 +13,7 @@ import ckanext.tiledmap.lib.helpers as helpers
 import ckanext.tiledmap.lib.tileconv as tileconv
 from ckanext.tiledmap.lib.sqlgenerator import Select
 from ckanext.tiledmap.db import _get_engine
-
+from ckanext.tiledmap.config import config
 
 class MapController(base.BaseController):
     """Controller for displaying map tiles and grids
@@ -69,39 +67,38 @@ class MapController(base.BaseController):
         """Setup the controller's parameters that are not request-dependent
         """
         # Read configuration
-        self.windshaft_host = config.get('map.windshaft.host', '127.0.0.1')
-        self.windshaft_port = config.get('map.windshaft.port', '4000')
-        self.windshaft_database = config.get('map.windshaft.database', None) or _get_engine().url.database
-        self.geom_field = config.get('map.geom_field', '_the_geom_webmercator')
-        self.geom_field_4326 = config.get('map.geom_field_4326', '_geom')
+        self.windshaft_host = config['tiledmap.windshaft.host']
+        self.windshaft_port = config['tiledmap.windshaft.port']
+        self.windshaft_database = _get_engine().url.database
+        self.geom_field = config['tiledmap.geom_field']
+        self.geom_field_4326 = config['tiledmap.geom_field_4326']
         self.tile_layer = {
-            'url': config.get('map.tile_layer.url', 'http://otile1.mqcdn.com/tiles/1.0.0/map/{z}/{x}/{y}.jpg'),
-            'opacity': config.get('map.tile_layer.opacity', '0.8')
+            'url': config['tiledmap.tile_layer.url'],
+            'opacity': config['tiledmap.tile_layer.opacity']
         }
         self.initial_zoom = {
-            'min': config.get('map.initial_zoom.min', 2),
-            'max': config.get('map.initial_zoom.max', 6)
+            'min': config['tiledmap.initial_zoom.min'],
+            'max': config['tiledmap.initial_zoom.max']
         }
         self.mss_options = {
             'plot': {
-                'fill_color': config.get('map.style.plot.fill_color', '#EE0000'),
-                'line_color': config.get('map.style.plot.line_color', '#FFFFFF'),
-                'marker_size': config.get('map.style.plot.marker_size', 8),
+                'fill_color': config['tiledmap.style.plot.fill_color'],
+                'line_color': config['tiledmap.style.plot.line_color'],
+                'marker_size': config['tiledmap.style.plot.marker_size'],
                 # Ideally half the marker size
-                'grid_resolution': config.get('map.style.plot.grid_resolution', 4)
+                'grid_resolution': config['tiledmap.style.plot.grid_resolution']
             },
             'gridded': {
-                'base_color': config.get('map.style.gridded.base_color', '#F02323'),
-                'marker_size': config.get('map.style.gridded.marker_size', 8),
+                'base_color': config['tiledmap.style.gridded.base_color'],
+                'marker_size': config['tiledmap.style.gridded.marker_size'],
                 # Should really be the same as marker size!
-                'grid_resolution': config.get('map.style.gridded.grid_resolution', 8)
+                'grid_resolution': config['tiledmap.style.gridded.grid_resolution']
             },
             'heatmap': {
-                'intensity': config.get('map.style.heatmap.intensity', 0.1),
-                'gradient': config.get('map.style.heatmap.gradient',
-                                       '#0000FF, #00FFFF, #00FF00, #FFFF00, #FFA500, #FF0000'),
-                'marker_url': config.get('map.style.heatmap.marker_url', '!markers!/alpharadiantdeg20px.png'),
-                'marker_size': config.get('map.style.heatmap.marker_size', 20)
+                'intensity': config['tiledmap.style.heatmap.intensity'],
+                'gradient': config['tiledmap.style.heatmap.gradient'],
+                'marker_url': config['tiledmap.style.heatmap.marker_url'],
+                'marker_size': config['tiledmap.style.heatmap.marker_size']
             }
         }
         # Empty values for request dependent parameters
@@ -133,11 +130,11 @@ class MapController(base.BaseController):
             base.abort(401, _('Unauthorized to read resources'))
 
         # Read resource-dependent parameters
-        info_field_list = config.get('map.info_fields', 'Record:_id,Scientific Name:scientificName,Kingdom:kingdom,Phylum:phylum,Class:class,Order:order,Family:family,Genus:genus,Subgenus:subgenus,Institution Code:institutionCode,Catalogue Number:catalogNumber,Collection Code:collectionCode,Identified By:identifiedBy,Date:dateIdentified,Continent:continent,Country:country,State/Province:stateProvince,County:county,Locality:locality,Habitat:habitat').split(',')
+        info_field_list = config['tiledmap.info_fields'].split(',')
         self.info_fields = [(l, v) for l, v in (a.split(':') for a in info_field_list)]
-        self.info_template = config.get('map.info_template', 'point_detail.dwc.mustache')
-        self.title_template = config.get('map.title_template', 'point_detail_title.dwc.mustache')
-        self.quick_info_template = config.get('map.quick_info_template', 'point_detail_hover.dwc.mustache')
+        self.info_template = config['tiledmap.info_template']
+        self.title_template = config['tiledmap.title_template']
+        self.quick_info_template = config['tiledmap.quick_info_template']
 
         # Fields that need to be added to the query. Note that postgres query fails with duplicate names
         self.query_fields = set([v for (l, v) in self.info_fields])
