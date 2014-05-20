@@ -1,3 +1,4 @@
+import re
 import ckan.plugins as p
 from ckan.common import json
 import ckan.plugins.toolkit as toolkit
@@ -5,9 +6,14 @@ import ckanext.tiledmap.logic.action as map_action
 import ckanext.tiledmap.logic.auth as map_auth
 from ckanext.tiledmap.config import config as plugin_config
 from ckanext.tiledmap.lib.helpers import mustache_wrapper
+from ckan.common import _
 
 import ckan.logic as logic
 get_action = logic.get_action
+
+import ckan.lib.navl.dictization_functions as df
+Invalid = df.Invalid
+Missing = df.Missing
 
 
 class TiledMapPlugin(p.SingletonPlugin):
@@ -80,6 +86,16 @@ class TiledMapPlugin(p.SingletonPlugin):
             'schema': {
                 'latitude_field': [self._is_datastore_field],
                 'longitude_field': [self._is_datastore_field],
+                'enable_plot_map': [self._boolean_validator],
+                'enable_grid_map': [self._boolean_validator],
+                'enable_heat_map': [self._boolean_validator],
+                'plot_marker_color': [self._color_validator],
+                'plot_marker_line_color': [self._color_validator],
+                'grid_base_color': [self._color_validator],
+                'heat_intensity': [self._float_01_validator],
+                'enable_utf_grid': [self._boolean_validator],
+                'utf_grid_hover_field': [self._is_datastore_field],
+                'utf_grid_click_fields': [self._is_datastore_field]
             },
             'icon': 'compass',
             'iframed': True,
@@ -96,8 +112,8 @@ class TiledMapPlugin(p.SingletonPlugin):
     def can_view(self, data_dict):
         """Specificy which resources can be viewed by this plugin"""
         # Check that the Windshaft server is configured
-        if ((plugin_config.get('map.windshaft.host', None) is None) or
-           (plugin_config.get('map.windshaft.port', None) is None)):
+        if ((plugin_config.get('tiledmap.windshaft.host', None) is None) or
+           (plugin_config.get('tiledmap.windshaft.port', None) is None)):
             return False
         # Check that we have a datastore for this resource
         if data_dict['resource'].get('datastore_active'):
@@ -106,16 +122,21 @@ class TiledMapPlugin(p.SingletonPlugin):
 
     def setup_template_variables(self, context, data_dict):
         """Setup variables available to templates"""
+        #TODO: Apply variables to appropriate view.
         datastore_fields = self._get_datastore_fields(data_dict['resource']['id'])
         return {
             'resource_json': json.dumps(data_dict['resource']),
             'resource_view_json': json.dumps(data_dict['resource_view']),
-            'map_fields': [{'name': f, 'value': f} for f in datastore_fields]
+            'map_fields': [{'name': f, 'value': f} for f in datastore_fields],
+            'defaults': plugin_config
         }
 
     def _is_datastore_field(self, key, data, errors, context):
         """Check that a field is indeed a datastore field"""
-        if not data[key] in self._get_datastore_fields(context['resource'].id):
+        if isinstance(data[key], list):
+            if not set(data[key]).issubset(self._get_datastore_fields(context['resource'].id)):
+                raise p.toolkit.Invalid('"{0}" is not a valid parameter'.format(data[key]))
+        elif not data[key] in self._get_datastore_fields(context['resource'].id):
             raise p.toolkit.Invalid('"{0}" is not a valid parameter'.format(data[key]))
 
     def _get_datastore_fields(self, rid):
@@ -127,3 +148,37 @@ class TiledMapPlugin(p.SingletonPlugin):
             self._datastore_fields[rid] = [f['id'] for f in fields]
 
         return self._datastore_fields[rid]
+
+    def _boolean_validator(self, value, context):
+        """Validate a field as a boolean. Assuming missing value means false"""
+        if isinstance(value, bool):
+            return value
+        elif (isinstance(value, str) or isinstance(value, unicode)) and value.lower() in ['true', 'yes', 't', 'y', '1']:
+            return True
+        elif (isinstance(value, str) or isinstance(value, unicode)) and value.lower() in ['false', 'no', 'f', 'n', '0']:
+            return False
+        elif isinstance(value, Missing):
+            return False
+        else:
+            raise p.toolkit.Invalid(_('Value must a true/false value (ie. true/yes/t/y/1 or false/no/f/n/0)'))
+
+    def _color_validator(self, value, context):
+        """Validate a value is a CSS hex color"""
+        if re.match('^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$', value):
+            if value[0] != '#':
+                return '#' + value
+            else:
+                return value
+        else:
+            raise p.toolkit.Invalid(_('Colors must be formed of three or six RGB hex value, optionally preceded by a # sign (eg. #E55 or #F4A088)'))
+
+    def _float_01_validator(self, value, context):
+        """Validate value is a float number between 0 and 1"""
+        try:
+            value = float(value)
+        except:
+            raise p.toolkit.Invalid(_('Must be a decimal number, between 0 and 1'))
+        if value < 0 or value > 1:
+            raise p.toolkit.Invalid(_('Must be a decimal number, between 0 and 1'))
+
+        return value

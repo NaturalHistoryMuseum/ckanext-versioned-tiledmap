@@ -21,7 +21,7 @@ from ckanext.tiledmap.config import config as tm_config
 
 from nose.tools import assert_equal, assert_true, assert_false, assert_in
 
-class TestTileFetching(tests.WsgiAppCase):
+class TileFetching(tests.WsgiAppCase):
     """Test cases for the Map plugin"""
     dataset = None
     resource = None

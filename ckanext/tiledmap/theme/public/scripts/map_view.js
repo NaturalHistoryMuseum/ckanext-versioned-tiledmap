@@ -6,6 +6,7 @@ this.ckan.module('tiledmap', function ($) {
     initialize: function(){
       this.el = $(this.el);
       this.options.resource = JSON.parse(this.options.resource);
+      this.options.resource_view = JSON.parse(this.options.resource_view);
 
       this.el.ready($.proxy(this, '_onReady'));
     },
@@ -13,6 +14,7 @@ this.ckan.module('tiledmap', function ($) {
     _onReady: function(){
       this.view = new (_get_tiledmap_view(this, $))({
         resource_id: this.options.resource.id,
+        view_id: this.options.resource_view.id,
         filters: {
           fields: {},
           geom: '',
@@ -48,6 +50,7 @@ my.NHMMap = Backbone.View.extend({
     this.visible = true;
     this.fetch_count = 0;
     this.resource_id = this.options.resource_id;
+    this.view_id = this.options.view_id;
     this.filters = this.options.filters;
     // Setup the sidebar
     this.sidebar_view = new my.PointDetailView();
@@ -203,6 +206,7 @@ my.NHMMap = Backbone.View.extend({
 
     var params = {
         resource_id: this.resource_id,
+        view_id: this.view_id,
         fetch_id: this.fetch_count
     };
     params['filters'] = this.filters.fields;
@@ -264,6 +268,7 @@ my.NHMMap = Backbone.View.extend({
       params['geom'] = Terraformer.WKT.convert(this.filters.geom);
     }
     params['resource_id'] = this.resource_id;
+    params['view_id'] = this.view_id;
     params['style'] = this.map_info.map_style;
 
     // Prepare layers
@@ -458,6 +463,7 @@ my.PointDetailView = Backbone.View.extend({
     this.render();
   },
   render: function(data, template) {
+    var self = this;
     var out = '';
     if (!data){
       out = Mustache.render(this.template);
@@ -468,7 +474,15 @@ my.PointDetailView = Backbone.View.extend({
     } else {
       out = Mustache.render(template, data);
     }
-    this.el.html(out);
+    this.el.stop().animate({
+      opacity: 0
+    }, {
+      duration: 200,
+      complete: function(){
+        self.el.html(out);
+        self.el.animate({opacity: 1}, {duration: 200})
+      }
+    });
   }
 });
 

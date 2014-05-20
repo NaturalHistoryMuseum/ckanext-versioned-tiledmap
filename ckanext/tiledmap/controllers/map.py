@@ -103,6 +103,8 @@ class MapController(base.BaseController):
         }
         # Empty values for request dependent parameters
         self.resource_id = ''
+        self.view_id = ''
+        self.view = None
         self.info_fields = []
         self.info_template = ''
         self.title_template = ''
@@ -128,6 +130,8 @@ class MapController(base.BaseController):
             base.abort(404, _('Resource not found'))
         except logic.NotAuthorized:
             base.abort(401, _('Unauthorized to read resources'))
+        self.view_id = request.params.get('view_id')
+        self.view = logic.get_action('resource_view_show')(None, {'id': self.view_id})
 
         # Read resource-dependent parameters
         info_field_list = config['tiledmap.info_fields'].split(',')
@@ -269,6 +273,18 @@ class MapController(base.BaseController):
 
         return query
 
+    def _get_style_options(self, style):
+        """For a given map style, return the options for the template looking at global and view settings"""
+        options = self.mss_options[style].copy()
+        if style == 'plot':
+            options['fill_color'] = self.view['plot_marker_color']
+            options['line_color'] = self.view['plot_marker_line_color']
+        elif style == 'gridded':
+            options['base_color'] = self.view['grid_base_color']
+        elif style == 'heatmap':
+            options['intensity'] = self.view['heat_intensity']
+        return options
+
     def tile(self, z, x, y):
         """Controller action that returns a map tile
 
@@ -333,7 +349,7 @@ class MapController(base.BaseController):
             outer_q.order_by('random()')
             sql = outer_q.to_sql()
 
-        mss_options = self.mss_options[style].copy()
+        mss_options = self._get_style_options(style)
         mss_options['resource_id'] = self.resource_id
         mss = base.render('mss/{}.mss'.format(style), mss_options)
 
@@ -420,10 +436,18 @@ class MapController(base.BaseController):
 
         @return: A JSON encoded string representing the metadata
         """
-        # Setup query
+        # Specific parameters
         filters = request.params.get('filters')
         fetch_id = request.params.get('fetch_id')
 
+        ## Ensure we have at least one map style
+        if not self.view['enable_plot_map'] and not self.view['enable_grid_map'] and not self.view['enable_heat_map']:
+            return json.dumps({
+                'geospatial': False,
+                'fetch_id': fetch_id
+            })
+
+        # Setup query
         engine = _get_engine()
         metadata = MetaData()
         geo_table = Table(self.resource_id, metadata, Column(self.geom_field, helpers.Geometry),
@@ -453,28 +477,6 @@ class MapController(base.BaseController):
             'initial_zoom': self.initial_zoom,
             'tile_layer': self.tile_layer,
             'map_styles': {
-                'plot': {
-                    'name': _('Plot Map'),
-                    'icon': 'P',
-                    'controls': ['drawShape', 'mapType'],
-                    'plugins': ['tooltipInfo', 'pointInfo'],
-                    'has_grid': True,
-                    'grid_resolution': self.mss_options['plot']['grid_resolution']
-                },
-                'heatmap': {
-                    'name': _('Distribution Map'),
-                    'icon': 'D',
-                    'controls': ['drawShape', 'mapType'],
-                    'has_grid': False,
-                },
-                'gridded': {
-                    'name': _('Grid Map'),
-                    'icon': 'G',
-                    'controls': ['drawShape', 'mapType'],
-                    'plugins': ['tooltipCount'],
-                    'has_grid': True,
-                    'grid_resolution': self.mss_options['plot']['grid_resolution']
-                }
             },
             'control_options': {
                 'drawShape': {
@@ -502,9 +504,39 @@ class MapController(base.BaseController):
                     'count_field': 'count'
                 }
             },
-            'map_style': 'plot',
             'fetch_id': fetch_id
         }
+
+        if self.view['enable_heat_map']:
+            result['map_styles']['heatmap'] = {
+                'name': _('Distribution Map'),
+                'icon': 'D',
+                'controls': ['drawShape', 'mapType'],
+                'has_grid': False,
+            }
+            result['map_style'] = 'heatmap'
+
+        if self.view['enable_grid_map']:
+            result['map_styles']['gridded'] = {
+                'name': _('Grid Map'),
+                'icon': 'G',
+                'controls': ['drawShape', 'mapType'],
+                'plugins': ['tooltipCount'],
+                'has_grid': self.view['enable_utf_grid'],
+                'grid_resolution': self.mss_options['plot']['grid_resolution']
+            }
+            result['map_style'] = 'gridded'
+
+        if self.view['enable_plot_map']:
+            result['map_styles']['plot'] = {
+                'name': _('Plot Map'),
+                'icon': 'P',
+                'controls': ['drawShape', 'mapType'],
+                'plugins': ['tooltipInfo', 'pointInfo'],
+                'has_grid': self.view['enable_utf_grid'],
+                'grid_resolution': self.mss_options['plot']['grid_resolution']
+            }
+            result['map_style'] = 'plot'
 
         inner_query = query.column(geo_table.c[self.geom_field_4326].label('r')).alias('_mapplugin_sub')
         inner_col = Column('r', helpers.Geometry)

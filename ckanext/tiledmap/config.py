@@ -18,21 +18,24 @@ config = {
     'tiledmap.initial_zoom.min': '2',
     'tiledmap.initial_zoom.max': '6',
 
-    # The style parameters for the plot map.
-    # TODO: Configure this per dataset
+    # The style parameters for the plot map. The colors can be defined per dataset (with the defaults provided in the
+    # main config if present, or here otherwise), but the marker size and resolution can only be set in the main
+    # config (if present, or here otherwise) as they have a notable performance impact on larger datasets.
     'tiledmap.style.plot.fill_color': '#EE0000',
     'tiledmap.style.plot.line_color': '#FFFFFF',
     'tiledmap.style.plot.marker_size': '8',
     'tiledmap.style.plot.grid_resolution': '4',
 
-    # The style parameters for the grid map.
-    # TODO: Configure this per dataset.
+    # The style parameters for the grid map. The base color can be defined per dataset (with the defaults provided in
+    # the main config if present, or here otherwise), but the marker size and grid resolution can only be set in the
+    # main config (if present, or here otherwise) as they have a notable performance impact on larger datasets.
     'tiledmap.style.gridded.base_color': '#F02323',
     'tiledmap.style.gridded.marker_size': '8',
     'tiledmap.style.gridded.grid_resolution': '8',
 
-    # The style parameters for the heatmap.
-    # TODO: Configure this per dataset
+    # The style parameters for the heatmap. The intensity can be defined per dataset (with the default provided in
+    # the main config if present, or here otherwise), but the marker url and marker size can only be set in the main
+    # config (if present, or here otherwise) as they have a notable performance impact on larger datasets.
     'tiledmap.style.heatmap.intensity': '0.1',
     'tiledmap.style.heatmap.gradient': '#0000FF, #00FFFF, #00FF00, #FFFF00, #FFA500, #FF0000',
     'tiledmap.style.heatmap.marker_url': '!markers!/alpharadiantdeg20px.png',
