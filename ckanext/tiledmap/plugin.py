@@ -94,8 +94,8 @@ class TiledMapPlugin(p.SingletonPlugin):
                 'grid_base_color': [self._color_validator],
                 'heat_intensity': [self._float_01_validator],
                 'enable_utf_grid': [self._boolean_validator],
-                'utf_grid_hover_field': [self._is_datastore_field],
-                'utf_grid_click_fields': [self._is_datastore_field]
+                'utf_grid_title': [self._is_datastore_field],
+                'utf_grid_fields': [self._is_datastore_field]
             },
             'icon': 'compass',
             'iframed': True,

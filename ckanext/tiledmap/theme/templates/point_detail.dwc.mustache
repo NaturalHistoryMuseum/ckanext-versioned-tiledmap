@@ -9,7 +9,14 @@
          </div>
     {{h.mustache('/multiple')}}
 
-    <div class="point-detail-title">{{title_template}}</div>
+    <div class="point-detail-title">
+      {{h.mustache('#scientificName')}}
+        {{h.mustache('scientificName')}}
+      {{h.mustache('/scientificName')}}
+      {{h.mustache('^scientificName')}}
+        Record {{h.mustache('_id')}}
+      {{h.mustache('/scientificName')}}
+    </div>
     <div class="point-detail-tree">
         {% for (label,field) in [
             ('Kingdom','kingdom'),

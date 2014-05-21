@@ -36,7 +36,7 @@ this.ckan.module('tiledmap', function ($) {
 function _get_tiledmap_view(my, $, _){
 my.NHMMap = Backbone.View.extend({
   className: 'tiled-map',
-  template: '<div class="tiled-map-info"></div><div class="panel map"></div><div class="panel sidebar"></div>',
+  template: '<div class="tiled-map-info"></div><div class="panel sidebar"></div><div class="panel map"></div>',
 
   /**
    * Initialize

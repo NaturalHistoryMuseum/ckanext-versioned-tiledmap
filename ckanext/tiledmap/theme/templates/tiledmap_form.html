@@ -69,6 +69,6 @@
           group=_('Marker information'),
           checked=data.enable_utf_grid,
           error=errors.enable_utf_grid) %}
-    {{ form.select('utf_grid_hover_field', label=_('Field shown on hover'), options=map_fields, selected=data.utf_grid_hover_field, error=errors.utf_grid_hover_field) }}
-    {{ multiselect('utf_grid_click_fields', label=_('Field(s) shown on click'), options=map_fields, selected=data.utf_grid_click_fields, error=errors.utf_grid_click_fields) }}
+    {{ form.select('utf_grid_title', label=_('Title'), options=map_fields, selected=data.utf_grid_title, error=errors.utf_grid_title) }}
+    {{ multiselect('utf_grid_fields', label=_('Fields'), options=map_fields, selected=data.utf_grid_fields, error=errors.utf_grid_fields) }}
 {% endcall %}

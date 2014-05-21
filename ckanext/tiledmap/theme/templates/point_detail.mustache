@@ -1,0 +1,23 @@
+<div class="point-detail">
+    {{h.mustache('#multiple')}}
+        <div class="point-detail-info">There are multiple records at this location. The information displayed here is for one of the records only.<br/>
+        <a href="#">View all records at this location</a></div>
+    {{h.mustache('/multiple')}}
+    {{h.mustache('^multiple')}}
+        <div class="point-detail-info">
+            <a href="record/{{h.mustache('_id')}}">View full record</a>
+         </div>
+    {{h.mustache('/multiple')}}
+
+    {{h.mustache('#' + title)}}
+      <div class="point-detail-title">{{h.mustache(title)}}</div>
+    {{h.mustache('/' + title)}}
+    {% for field in fields %}
+        {{h.mustache('#' + field)}}
+            <div class="point-detail-row">
+                <span class="point-detail-label">{{field.title()}}:</span>
+                <span class="point-detail-value">{{h.mustache(field)}}</span>
+            </div>
+        {{h.mustache('/' + field)}}
+    {% endfor %}
+</div>

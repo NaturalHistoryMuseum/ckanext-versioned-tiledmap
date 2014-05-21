@@ -8,7 +8,7 @@ config = {
     'tiledmap.geom_field_4326': '_geom',
 
     # Information about the base layer used for the maps.
-    # TODO: Configure this per dataset?
+    # We don't want to let users define this per dataset, as we need to ensure we have the right to use the tiles.
     'tiledmap.tile_layer.url': 'http://otile1.mqcdn.com/tiles/1.0.0/map/{z}/{x}/{y}.jpg',
     'tiledmap.tile_layer.opacity': '0.8',
 
@@ -42,9 +42,6 @@ config = {
     'tiledmap.style.heatmap.marker_size': '20',
 
     # Templates used for hover and click information on the map.
-    # TODO: Whether the map can be hovered/clicked, the type of template, and the fields to use should be configured per dataset.
-    'tiledmap.info_template': 'point_detail.dwc.mustache',
-    'tiledmap.title_template': 'point_detail_title.dwc.mustache',
-    'tiledmap.quick_info_template': 'point_detail_hover.dwc.mustache',
-    'tiledmap.info_fields': 'Record:_id,Scientific Name:scientificName,Kingdom:kingdom,Phylum:phylum,Class:class,Order:order,Family:family,Genus:genus,Subgenus:subgenus,Institution Code:institutionCode,Catalogue Number:catalogNumber,Collection Code:collectionCode,Identified By:identifiedBy,Date:dateIdentified,Continent:continent,Country:country,State/Province:stateProvince,County:county,Locality:locality,Habitat:habitat'
+    'tiledmap.info_template': 'point_detail',
+    'tiledmap.quick_info_template': 'point_detail_hover'
 }

@@ -9,6 +9,7 @@ from sqlalchemy.exc import ProgrammingError
 import ckan.logic as logic
 import ckan.lib.base as base
 from ckan.common import json, request, _, response
+from ckan.lib.render import find_template
 import ckanext.tiledmap.lib.helpers as helpers
 import ckanext.tiledmap.lib.tileconv as tileconv
 from ckanext.tiledmap.lib.sqlgenerator import Select
@@ -50,17 +51,18 @@ class MapController(base.BaseController):
     - map.tile_layer.opacity: Opacity of the tile layer. Defaults to 0.8
     - map.initial_zoom.min: Minimum zoom level for initial display of dataset, defaults to 2
     - map.initial_zoom.max: Maximum zoom level for initial display of dataset, defaults to 6
-    - map.info_fields: Comma separated list of "label:field" SQL fields that should be made available to the templates;
-    - map.title_template: Name of the template used to generate the info sidebar title. The template is rendered with
-        info_fields available as a list of (label,field) tuples, and should return a Mustache template which can then
-        be rendered client side. All the values of the fields in info_fields are available during client side rendering.
-        In addition the fiels 'count', 'lat', 'lng' and 'multiple' are also available.
-         Defaults to point_detail_title.mustache ;
-    - map.info_template: Name of the template to use for generating point info detail in the sidebar.
-        The template is rendered with 'info_fields' and 'title_template'. See map.title_template.
-        Defaults to point_detail.dwc.mustache;
-    - map.quick_info_template: Name of the template to use for generating hover information. The template is rendered
-        with 'info_fields' available. See map.title_template. Defaults to point_detail_hover.mustache;
+    - map.info_template: Base name of the template to use to generate the popup info when clicking points.
+        The template that will be used is <info template>.<resource type>.mustache if exists, and
+        <info template>.mustache if not. For instance, given a base name of 'point_detail' and a resource of type 'csv',
+        the template used will be point_detail.csv.mustache if it exists, and point_detail.mustache if not.
+
+        Note that this template must return what itself is a mustache template, that will then get instantiated client
+        side. The server side template has two variables: 'fields' (the fields selected by the view creator), and
+        'title' (the title field selected by the view creator).
+
+        Defaults to point_detail
+    - map.quick_info_template: Base name of the template used for quick info on a record, typically shown on hover.
+        See `map.info_template` for more information. Defaults to point_detail_hover.
     """
 
     def __init__(self):
@@ -103,8 +105,10 @@ class MapController(base.BaseController):
         }
         # Empty values for request dependent parameters
         self.resource_id = ''
+        self.resource = None
         self.view_id = ''
         self.view = None
+        self.info_title = ''
         self.info_fields = []
         self.info_template = ''
         self.title_template = ''
@@ -125,7 +129,7 @@ class MapController(base.BaseController):
 
         self.resource_id = request.params.get('resource_id')
         try:
-            logic.get_action('resource_show')(None, {'id': self.resource_id})
+            self.resource = logic.get_action('resource_show')(None, {'id': self.resource_id})
         except logic.NotFound:
             base.abort(404, _('Resource not found'))
         except logic.NotAuthorized:
@@ -134,14 +138,13 @@ class MapController(base.BaseController):
         self.view = logic.get_action('resource_view_show')(None, {'id': self.view_id})
 
         # Read resource-dependent parameters
-        info_field_list = config['tiledmap.info_fields'].split(',')
-        self.info_fields = [(l, v) for l, v in (a.split(':') for a in info_field_list)]
+        self.info_title = self.view['utf_grid_title']
+        self.info_fields = self.view['utf_grid_fields']
         self.info_template = config['tiledmap.info_template']
-        self.title_template = config['tiledmap.title_template']
         self.quick_info_template = config['tiledmap.quick_info_template']
 
         # Fields that need to be added to the query. Note that postgres query fails with duplicate names
-        self.query_fields = set([v for (l, v) in self.info_fields])
+        self.query_fields = set(self.info_fields).union(set([self.info_title]))
 
     def _base_url(self, z, x, y, ext, query=None):
         """Return the base Windshaft URL that will serve the tiles and grids.
@@ -464,11 +467,27 @@ class MapController(base.BaseController):
                     query = query.where(geo_table.c[input_filters['field']] == input_filters['term'])
 
         # Prepare result
-        title_template = base.render(self.title_template, {'info_fields': self.info_fields})
-        quick_info_template = base.render(self.quick_info_template, {'info_fields': self.info_fields})
-        info_template = base.render(self.info_template, {
-            'info_fields': self.info_fields,
-            'title_template': title_template
+        quick_info_template_name = "{base}.{format}.mustache".format(
+            base=self.quick_info_template,
+            format=self.resource['format']
+        )
+        if not find_template(quick_info_template_name):
+            quick_info_template_name = self.quick_info_template + '.mustache'
+        info_template_name = "{base}.{format}.mustache".format(
+            base=self.info_template,
+            format=self.resource['format']
+        )
+        if not find_template(info_template_name):
+            info_template_name = self.info_template + '.mustache'
+
+
+        quick_info_template = base.render(quick_info_template_name, {
+            'title': self.info_title,
+            'fields': self.info_fields
+        })
+        info_template = base.render(info_template_name, {
+            'title': self.info_title,
+            'fields': self.info_fields
         })
         result = {
             'geospatial': True,
