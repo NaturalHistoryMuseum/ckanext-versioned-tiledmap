@@ -52,6 +52,8 @@ my.NHMMap = Backbone.View.extend({
     this.resource_id = this.options.resource_id;
     this.view_id = this.options.view_id;
     this.filters = this.options.filters;
+    this.countries = null;
+    this.layers = {};
     // Setup the sidebar
     this.sidebar_view = new my.PointDetailView();
   },
@@ -173,12 +175,6 @@ my.NHMMap = Backbone.View.extend({
             formatter: function(options, data) { return 'yo' /*data._id + "/" + data.species + "/" + data.scientific_name*/ }
     };
 
-    this.map.on('draw:created', function (e) {
-      // Set the the geometry in the queryState to persist it between filter/search updates
-      this.filters.geom = e.layer.toGeoJSON().geometry;
-      self.redraw();
-    });
-
     this.tiles_url = '/map-tile/{z}/{x}/{y}.png';
     this.grids_url = '/map-grid/{z}/{x}/{y}.grid.json?callback={cb}';
 
@@ -193,6 +189,21 @@ my.NHMMap = Backbone.View.extend({
       'tooltipCount': new my.TooltipPlugin(this, this.map_info.plugin_options['tooltipCount']),
       'pointInfo': new my.PointInfoPlugin(this, this.map_info.plugin_options['pointInfo'])
     }
+
+    // Setup handling of draw events to ensure plugins work nicely together
+    this.map.on('draw:created', function (e) {
+      // Set the the geometry in the queryState to persist it between filter/search updates
+      self.filters.geom = e.layer.toGeoJSON().geometry;
+      self.redraw();
+    });
+    this.map.on('draw:drawstart', function(e){
+      self.invoke('active', false);
+      self.layers['plot'].setOpacity(0.5);
+    });
+    this.map.on('draw:drawstop', function(e){
+      self.invoke('active', true);
+      self.layers['plot'].setOpacity(1);
+    });
   },
 
   /**
@@ -274,22 +285,16 @@ my.NHMMap = Backbone.View.extend({
     // Prepare layers
     this.tilejson.tiles = [this.tiles_url + "?" + $.param(params)];
     this.tilejson.grids = [this.grids_url + "&" + $.param(params)];
-    if (typeof this.layers === 'undefined'){
-      this.layers = {};
-    }
     for (var i in this.layers){
       this.map.removeLayer(this.layers[i]);
     }
-    this.layers = {
-      'selection': L.geoJson(this.filters.geom),
-      'plot': L.tileLayer(this.tilejson.tiles[0])
-    };
+    this._removeAllLayers();
+    this._addLayer('selection',  L.geoJson(this.filters.geom));
+    this._addLayer('plot', L.tileLayer(this.tilejson.tiles[0]));
+
     var style = this.map_info.map_styles[this.map_info.map_style];
     if (style.has_grid){
-      this.layers['grid'] = new L.UtfGrid(this.tilejson.grids[0], {resolution: style.grid_resolution});
-    }
-    for (var i in this.layers){
-      this.map.addLayer(this.layers[i]);
+      this._addLayer('grid', new L.UtfGrid(this.tilejson.grids[0], {resolution: style.grid_resolution}));
     }
     // Ensure that click events on the selection get passed to the map.
     if (typeof this.layers['slection'] !== 'undefined'){
@@ -301,7 +306,50 @@ my.NHMMap = Backbone.View.extend({
     // Update controls & plugins
     this.updateControls();
     this.updatePlugins();
-    this.callPlugins('redraw', this.layers);
+
+    // Add plugin defined layers & call redraw on plugins.
+    var extra_layers = this.invoke('layers');
+    for (var i in extra_layers){
+      this._addLayer(extra_layers[i].name, extra_layers[i].layer);
+    }
+    this.invoke('redraw', this.layers);
+  },
+
+  /**
+   * _addLayer
+   *
+   * This function adds a new layer to the map
+   */
+  _addLayer: function(name, layer){
+    if (typeof this.layers[name] !== 'undefined'){
+      this.map.removeLayer(this.layers[name])
+    }
+    this.layers[name] = layer;
+    this.map.addLayer(layer);
+  },
+
+  /**
+   * _removeLayer
+   *
+   * This function removes a layer from the map
+   */
+  _removeLayer: function(name){
+    if (typeof this.layers[name] !== 'undefined'){
+      this.map.removeLayer(this.layers[name]);
+      delete this.layers[name];
+    }
+  },
+
+  /**
+   * _removeAllLayers
+   *
+   * Removes all layers from the map
+   */
+  _removeAllLayers: function(){
+    for (var i in this.layers){
+      this.map.removeLayer(this.layers[i]);
+    }
+    this.layers = {};
   },
 
   /**
@@ -350,16 +398,27 @@ my.NHMMap = Backbone.View.extend({
   },
 
   /**
-   * callPlugins
+   * invoke
    *
-   * Invoke a particular hook on enabled plugins
+   * Invoke a particular hook on enabled plugins and controls
    */
-  callPlugins: function(hook, args){
-    for (var i in this._current_addons['plugins']){
-      var plugin = this.plugins[this._current_addons['plugins'][i]];
-      if (typeof plugin[hook] == 'function'){
-        plugin[hook](args)
+  invoke: function(hook, args){
+    var ret = [];
+    for (var p in this._current_addons){
+      for (var i in this._current_addons[p]){
+        var addon = this[p][this._current_addons[p][i]];
+        if (typeof addon[hook] == 'function'){
+          var lr = addon[hook](args)
+          if ($.isArray(lr)){
+            ret = ret.concat(lr);
+          } else if (typeof lr !== 'undefined') {
+            ret.push(lr);
+          }
+        }
       }
+    }
+    if (ret.length > 0) {
+      return ret;
     }
   },
 
@@ -442,14 +501,141 @@ my.MapTypeControl = L.Control.extend({
 /**
  * DrawShapeControl
  *
- * Control used to draw shapes on the map.
- * We only extend the base Draw control to have a uniform API.
+ * Extend draw shape control to add country selection support.
  */
 my.DrawShapeControl = L.Control.Draw.extend({
-    initialize: function(view, options) {
-        L.Control.Draw.prototype.initialize.call(this, options);
-        L.Util.setOptions(this, options);
+  initialize: function(view, options) {
+      this.view = view;
+      this.active = false;
+      L.Control.Draw.prototype.initialize.call(this, options);
+      L.Util.setOptions(this, options);
+      // Pre-emptively load country data
+      this._loadCountries();
+  },
+
+  onAdd: function(map){
+    var self = this;
+    var elem = L.Control.Draw.prototype.onAdd.call(this, map);
+    $('<a></a>').attr('href', '#').attr('title', 'Select by country').html('C').css({
+      'background-image': 'none'
+    }).appendTo($('div.leaflet-bar', elem))
+      .click($.proxy(this, 'onCountrySelectionClick'));
+    return elem;
+  },
+
+  /**
+   * _loadCountries
+   *
+   * Internal method to load the countries data
+   */
+  _loadCountries: function(){
+    $.ajax('/data/countries.geojson', {
+      dataType: 'json',
+      error: function(xhr, status, error){
+        console.log('failed to load countries');
+      },
+      success: $.proxy(function(data, status, xhr){
+        this.countries = data;
+      }, this)
+    });
+  },
+
+  /**
+   * layers
+   *
+   * Plugin hook called when adding layers to a map.
+   */
+  layers: function(){
+    if (!this.active || !this.countries){
+      return [];
     }
+    // The main layer is used only for hovers
+    var l = new L.geoJson(this.countries, {
+      style: function(){
+        return {
+          stroke: true,
+          color: '#000',
+          opacity: 1,
+          weight: 1,
+          fill: true,
+          fillColor: '#FFF',
+          fillOpacity: 0.25
+        };
+      },
+      onEachFeature: function(feature, layer){
+        layer.on({
+          mouseover: function(e){
+            layer.setStyle({
+              stroke: true,
+              color: '#000',
+              opacity: 1,
+              weight: 1,
+              fill: true,
+              fillColor: '#54F',
+              fillOpacity: 0.75
+            });
+          },
+          mouseout: function(e){
+            layer.setStyle({
+              stroke: true,
+              color: '#000',
+              opacity: 1,
+              weight: 1,
+              fill: true,
+              fillColor: '#FFF',
+              fillOpacity: 0.25
+            });
+          }
+        })
+      }
+    });
+    return [{'name': 'countries', 'layer': l}];
+  },
+
+  onCountrySelectionClick: function(e){
+    this.active = !this.active;
+    if (this.active){
+      // Add the layer
+      var l = this.layers();
+      this.view._addLayer('countries', l[0].layer, true);
+      // Add action
+      var action_inner = $('<a>').attr('href', '#').html('Cancel').click($.proxy(this, 'onCountrySelectionClick'));
+      this.action = $('<li>').append(action_inner);
+      $('ul.leaflet-draw-actions').empty().append(this.action).css({
+        display: 'block',
+        top: '52px'
+      });
+      // Ensure plugins can react to this
+      this.view.map.fireEvent('draw:drawstart');
+    }else{
+      // Remove layer
+      this.view._removeLayer('countries', true);
+      // Hide actions
+      this.action.remove();
+      $('ul.leaflet-draw-actions').css('display', 'none');
+      // Ensure plugins can react to this
+      this.view.map.fireEvent('draw:drawstop');
+    }
+    e.stopPropagation();
+    return false;
+  },
+
+  isActive: function(){
+    for (var i in this._toolbars){
+      if (this._toolbars[i]._activeMode !== null){
+        return true;
+      }
+    }
+    return false;
+  },
+
+  cancel: function(){
+    for (var i in this._toolbars){
+      if (this._toolbars[i]._activeMode !== null){
+        return true;
+      }
+    }
+  }
 });
 
 /**
@@ -497,16 +683,23 @@ my.PointInfoPlugin = function(view, options){
    */
   this.enable = function(){
     this.grid = null;
-    // todo: enable detail tab
+    this.isactive = true;
   }
 
   /**
    * Disable this plugin
    */
   this.disable = function(){
-    // todo: remove detail tab
     // remove handlers
     this._disable_event_handlers();
+  }
+
+  /**
+   * Activate/disactive this plugin
+   * (Used for temporary pause)
+   */
+  this.active = function(state){
+    this.isactive = state;
   }
 
   /**
@@ -536,6 +729,7 @@ my.PointInfoPlugin = function(view, options){
    * click handler
    */
   this._on_click = function(props){
+    if (!this.isactive){return;}
     if (typeof this.animation !== 'undefined'){
       if (this.animation_restart){
         clearTimeout(this.animation_restart);
@@ -600,7 +794,6 @@ my.PointInfoPlugin = function(view, options){
       delete this.layers['_point_info_plugin_1'];
       view.sidebar_view.render(null);
     }
-    // Todo: update details tab
   }
 
   /**
@@ -648,6 +841,7 @@ my.TooltipPlugin = function(view, options){
    */
   this.enable = function(){
     this.grid = null;
+    this.isactive = true;
     this.$el = $('<div>').addClass('map-hover-tooltip').css({
       display: 'none',
       position: 'absolute',
@@ -680,9 +874,18 @@ my.TooltipPlugin = function(view, options){
   }
 
   /**
+   * Activate/disactive this plugin
+   * (Used for temporary pause)
+   */
+  this.active = function(state){
+    this.isactive = state;
+  }
+
+  /**
    * Mouseover handler
    */
   this._mouseover = function(props) {
+    if (!this.isactive){return;}
     var count = options.count_field && props.data[options.count_field] ? props.data[options.count_field] : 1
     var str = false;
     if (options.template && count == 1){

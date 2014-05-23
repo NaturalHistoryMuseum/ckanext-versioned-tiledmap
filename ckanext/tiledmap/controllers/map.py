@@ -502,9 +502,29 @@ class MapController(base.BaseController):
                     'draw': {
                         'polyline': False,
                         'marker': False,
-                        'circle': False
+                        'circle': False,
+                        'polygon': {
+                            'allowIntersection': False,
+                            'shapeOptions': {
+                                'stroke': True,
+                                'color': '#F44',
+                                'weight': 5,
+                                'opacity': 0.5,
+                                'fill': True,
+                                'fillColor': '#F44',
+                                'fillOpacity': 0.1
+                            }
+                        }
                     },
                     'position': 'topleft'
+                },
+                'selectCountry': {
+                    'draw': {
+                        'fill': '#F44',
+                        'fill-opacity': '0.1',
+                        'stroke': '#F44',
+                        'stroke-opacity': '0.5'
+                    }
                 },
                 'mapType': {
                     'position': 'bottomleft'
