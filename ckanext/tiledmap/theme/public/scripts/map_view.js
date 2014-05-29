@@ -192,16 +192,7 @@ my.NHMMap = Backbone.View.extend({
 
     // Setup handling of draw events to ensure plugins work nicely together
     this.map.on('draw:created', function (e) {
-      // Get the geometry drawn
-      self.filters.geom = e.layer.toGeoJSON().geometry;
-      // Inject the geom search term in links to all other views.
-      var param = Terraformer.WKT.convert(self.filters.geom);
-      $('section.module ul.view-list li.resource-view-item a', window.parent.document).each(function(){
-        var href = _inject_filter($(this).attr('href'), '_tmgeom', param);
-        $(this).attr('href', href);
-      });
-      // And redraw the map
-      self.redraw();
+      self.setGeom(e.layer.toGeoJSON().geometry);
     });
     this.map.on('draw:drawstart', function(e){
       self.invoke('active', false);
@@ -262,6 +253,27 @@ my.NHMMap = Backbone.View.extend({
         }
       }
     });
+  },
+
+  /**
+   * setGeom
+   *
+   * Set the geom filter. This will cause the map to be redrawn and links to views to be updated.
+   */
+  setGeom: function(geom){
+    // Get the geometry drawn
+    this.filters.geom = geom;
+    // Inject the geom search term in links to all other views.
+    var param = null;
+    if (this.filters.geom){
+      param = Terraformer.WKT.convert(this.filters.geom);
+    }
+    $('section.module ul.view-list li.resource-view-item a', window.parent.document).each(function(){
+      var href = _inject_filter($(this).attr('href'), '_tmgeom', param);
+      $(this).attr('href', href);
+    });
+    // And redraw the map
+    this.redraw();
   },
 
   /**
@@ -508,7 +520,7 @@ my.MapTypeControl = L.Control.extend({
 /**
  * DrawShapeControl
  *
- * Extend draw shape control to add country selection support.
+ * Extend draw shape control to add country selection support and a way to clear the current selection.
  */
 my.DrawShapeControl = L.Control.Draw.extend({
   initialize: function(view, options) {
@@ -524,18 +536,25 @@ my.DrawShapeControl = L.Control.Draw.extend({
     var self = this;
     // Call base Draw onAdd
     var elem = L.Control.Draw.prototype.onAdd.call(this, map);
-    // Add our custom action
+    // Add the select country action
     $('<a></a>').attr('href', '#').attr('title', 'Select by country').html('C').css({
       'background-image': 'none'
     }).appendTo($('div.leaflet-bar', elem))
       .click($.proxy(this, 'onCountrySelectionClick'));
-    // Ensure we stop when another draw is started while we were active
+    // Ensure the country select action stops when another draw is started
     map.on('draw:drawstart', function(e){
       if (self.active && e.layerType != 'country'){
         self.active = false;
         self._disactivate();
       }
     });
+    // Add the clear selection action
+    $('<a></a>').attr('href', '#').attr('title', 'Clear selection').addClass('leaflet-draw-edit-remove')
+      .appendTo($('div.leaflet-bar', elem))
+      .click(function(){
+        self.view.setGeom(null);
+      });
+
     return elem;
   },
 
@@ -1014,14 +1033,22 @@ function _inject_filter(url, name, value){
     }
   }
   // Inject our value
-  qs['filters'][name] = value;
+  if (value){
+    qs['filters'][name] = value;
+  } else {
+    delete qs['filters'][name];
+  }
   // And rebuild it...
   var b_qs = [];
   var b_filter = [];
   for (var i in qs['filters']){
     b_filter.push(i + ':' + qs['filters'][i]);
   }
-  qs['filters'] = b_filter.join('|');
+  if (b_filter.length > 0){
+    qs['filters'] = b_filter.join('|');
+  } else {
+    delete qs['filters'];
+  }
   for (var i in qs){
     b_qs.push(encodeURIComponent(i) + '=' + encodeURIComponent(qs[i]))
   }
