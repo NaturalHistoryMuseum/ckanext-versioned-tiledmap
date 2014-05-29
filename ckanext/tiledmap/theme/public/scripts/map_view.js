@@ -12,12 +12,23 @@ this.ckan.module('tiledmap', function ($) {
     },
 
     _onReady: function(){
+      var geom = '';
+      if (window.parent.ckan && window.parent.ckan.views.viewhelpers){
+        try{
+          var param = window.parent.ckan.views.viewhelpers.filters.get('_tmgeom');
+          if (param.length > 0) {
+            geom = Terraformer.WKT.parse(param[0]);
+          }
+        } catch (e){
+          geom = '';
+        }
+      }
       this.view = new (_get_tiledmap_view(this, $))({
         resource_id: this.options.resource.id,
         view_id: this.options.resource_view.id,
         filters: {
           fields: {},
-          geom: '',
+          geom: geom,
           q: ''
         }
       });
