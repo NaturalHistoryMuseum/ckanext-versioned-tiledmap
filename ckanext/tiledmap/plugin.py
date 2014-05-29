@@ -6,6 +6,7 @@ import ckanext.tiledmap.logic.action as map_action
 import ckanext.tiledmap.logic.auth as map_auth
 from ckanext.tiledmap.config import config as plugin_config
 from ckanext.tiledmap.lib.helpers import mustache_wrapper
+from ckanext.datastore.interfaces import IDataStore
 from ckan.common import _
 
 import ckan.logic as logic
@@ -30,6 +31,7 @@ class TiledMapPlugin(p.SingletonPlugin):
     p.implements(p.ITemplateHelpers)
     p.implements(p.IResourceView, inherit=True)
     p.implements(p.IConfigurable)
+    p.implements(IDataStore)
 
     ## IConfigurer
     def update_config(self, config):
@@ -76,6 +78,43 @@ class TiledMapPlugin(p.SingletonPlugin):
     ## IConfigurable
     def configure(self, config):
         plugin_config.update(config)
+
+    ## IDataStore
+    def validate_query(self, context, data_dict, all_field_ids):
+        try:
+            # We could use ST_IsValid for this, though that be an extra database query. We'll just check that this
+            # *looks* like a WKT, in which case we will trust it's valid. Worst case the query will fail, which is
+            # handled gracefully anyway.
+            for i, v in enumerate(data_dict['filters']['_tmgeom']):
+                if re.search('^\s*(POLYGON|MULTIPOLYGON)\s*\([-+0-9,(). ]+\)\s*$', v):
+                    del data_dict['filters']['_tmgeom'][i]
+            if len(data_dict['filters']['_tmgeom']) == 0:
+                del data_dict['filters']['_tmgeom']
+        except KeyError:
+            pass
+        except TypeError:
+            pass
+
+        return data_dict
+
+    def search_data(self, context, data_dict, query_dict, all_field_ids):
+        return query_dict
+
+    def where(self, filters, data_dict, all_field_ids):
+        try:
+            tmgeom = filters['_tmgeom']
+        except KeyError:
+            return []
+
+        clauses = []
+        field_name = plugin_config['tiledmap.geom_field']
+        for geom in tmgeom:
+            clauses.append((
+                "ST_Intersects(\"{field}\", ST_Transform(ST_GeomFromText(%s, 4326), 3857))".format(field=field_name),
+                geom
+            ))
+
+        return clauses
 
     ## IResourceView
     def info(self):

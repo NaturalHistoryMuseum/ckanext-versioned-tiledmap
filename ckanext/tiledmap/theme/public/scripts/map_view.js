@@ -192,8 +192,15 @@ my.NHMMap = Backbone.View.extend({
 
     // Setup handling of draw events to ensure plugins work nicely together
     this.map.on('draw:created', function (e) {
-      // Set the the geometry in the queryState to persist it between filter/search updates
+      // Get the geometry drawn
       self.filters.geom = e.layer.toGeoJSON().geometry;
+      // Inject the geom search term in links to all other views.
+      var param = Terraformer.WKT.convert(self.filters.geom);
+      $('section.module ul.view-list li.resource-view-item a', window.parent.document).each(function(){
+        var href = _inject_filter($(this).attr('href'), '_tmgeom', param);
+        $(this).attr('href', href);
+      });
+      // And redraw the map
       self.redraw();
     });
     this.map.on('draw:drawstart', function(e){
@@ -227,7 +234,7 @@ my.NHMMap = Backbone.View.extend({
     }
 
     if (this.filters.geom) {
-      params['geom'] = Terraformer.WKT.convert(this.filters.geom);
+      params['tmgeom'] = Terraformer.WKT.convert(this.filters.geom);
     }
 
     if (typeof this.jqxhr !== 'undefined' && this.jqxhr !== null){
@@ -276,7 +283,7 @@ my.NHMMap = Backbone.View.extend({
       params['q'] = this.filters.q;
     }
     if (this.filters.geom) {
-      params['geom'] = Terraformer.WKT.convert(this.filters.geom);
+      params['tmgeom'] = Terraformer.WKT.convert(this.filters.geom);
     }
     params['resource_id'] = this.resource_id;
     params['view_id'] = this.view_id;
@@ -515,11 +522,20 @@ my.DrawShapeControl = L.Control.Draw.extend({
 
   onAdd: function(map){
     var self = this;
+    // Call base Draw onAdd
     var elem = L.Control.Draw.prototype.onAdd.call(this, map);
+    // Add our custom action
     $('<a></a>').attr('href', '#').attr('title', 'Select by country').html('C').css({
       'background-image': 'none'
     }).appendTo($('div.leaflet-bar', elem))
       .click($.proxy(this, 'onCountrySelectionClick'));
+    // Ensure we stop when another draw is started while we were active
+    map.on('draw:drawstart', function(e){
+      if (self.active && e.layerType != 'country'){
+        self.active = false;
+        self._disactivate();
+      }
+    });
     return elem;
   },
 
@@ -546,6 +562,7 @@ my.DrawShapeControl = L.Control.Draw.extend({
    * Plugin hook called when adding layers to a map.
    */
   layers: function(){
+    var self = this;
     if (!this.active || !this.countries){
       return [];
     }
@@ -585,6 +602,13 @@ my.DrawShapeControl = L.Control.Draw.extend({
               fillColor: '#FFF',
               fillOpacity: 0.25
             });
+          },
+          click: function(e){
+            self.view.map.fire('draw:created', {
+              layer: layer,
+              layerType: 'country'
+            });
+            self._disactivate();
           }
         })
       }
@@ -592,49 +616,40 @@ my.DrawShapeControl = L.Control.Draw.extend({
     return [{'name': 'countries', 'layer': l}];
   },
 
+  _activate: function(){
+    // Add the layer
+    var l = this.layers();
+    this.view._addLayer('countries', l[0].layer, true);
+    // Add action
+    var action_inner = $('<a>').attr('href', '#').html('Cancel').click($.proxy(this, 'onCountrySelectionClick'));
+    this.action = $('<li>').append(action_inner);
+    $('ul.leaflet-draw-actions').empty().append(this.action).css({
+      display: 'block',
+      top: '52px'
+    });
+    // Ensure plugins can react to this
+    this.view.map.fireEvent('draw:drawstart', {layerType: 'country'});
+  },
+
+  _disactivate: function(){
+    // Remove layer
+    this.view._removeLayer('countries', true);
+    // Hide actions
+    this.action.remove();
+    $('ul.leaflet-draw-actions').css('display', 'none');
+    // Ensure plugins can react to this
+    this.view.map.fireEvent('draw:drawstop', {'layerType': 'country'});
+  },
+
   onCountrySelectionClick: function(e){
     this.active = !this.active;
     if (this.active){
-      // Add the layer
-      var l = this.layers();
-      this.view._addLayer('countries', l[0].layer, true);
-      // Add action
-      var action_inner = $('<a>').attr('href', '#').html('Cancel').click($.proxy(this, 'onCountrySelectionClick'));
-      this.action = $('<li>').append(action_inner);
-      $('ul.leaflet-draw-actions').empty().append(this.action).css({
-        display: 'block',
-        top: '52px'
-      });
-      // Ensure plugins can react to this
-      this.view.map.fireEvent('draw:drawstart');
+      this._activate();
     }else{
-      // Remove layer
-      this.view._removeLayer('countries', true);
-      // Hide actions
-      this.action.remove();
-      $('ul.leaflet-draw-actions').css('display', 'none');
-      // Ensure plugins can react to this
-      this.view.map.fireEvent('draw:drawstop');
+      this._disactivate();
     }
     e.stopPropagation();
     return false;
-  },
-
-  isActive: function(){
-    for (var i in this._toolbars){
-      if (this._toolbars[i]._activeMode !== null){
-        return true;
-      }
-    }
-    return false;
-  },
-
-  cancel: function(){
-    for (var i in this._toolbars){
-      if (this._toolbars[i]._activeMode !== null){
-        return true;
-      }
-    }
   }
 });
 
@@ -965,6 +980,53 @@ my.TooltipPlugin = function(view, options){
     this.grid.on('mouseout', $.proxy(this, "_mouseout"));
     view.map.on('mouseout', $.proxy(this, "_mouseout")); // UtfGrid doesn't trigger mouseout when you leave the map
   }
+}
+
+/**
+ * _inject_filter
+ *
+ * Helper function to inject a filter wihtin a ckan formatted URL.
+ */
+function _inject_filter(url, name, value){
+  var parts = url.split('?');
+  var base = parts[0];
+  var qs = {};
+  // Take the URL appart
+  if (parts.length == 1){
+    qs = {filters: {}};
+  } else {
+    var qs_idx = parts[1].split('&');
+    for (var i in qs_idx){
+      var p = qs_idx[i].split('=');
+      p[0] = decodeURIComponent(p[0]);
+      p[1] = decodeURIComponent(p[1]);
+      qs[p[0]] = p[1]
+    }
+    if (typeof qs['filters'] !== 'undefined'){
+      var filters_idx = qs['filters'].split('|');
+      qs['filters'] = {};
+      for (var i in filters_idx){
+        var p = filters_idx[i].split(':');
+        qs['filters'][p[0]] = p[1];
+      }
+    } else {
+      qs['filters'] = {}
+    }
+  }
+  // Inject our value
+  qs['filters'][name] = value;
+  // And rebuild it...
+  var b_qs = [];
+  var b_filter = [];
+  for (var i in qs['filters']){
+    b_filter.push(i + ':' + qs['filters'][i]);
+  }
+  qs['filters'] = b_filter.join('|');
+  for (var i in qs){
+    b_qs.push(encodeURIComponent(i) + '=' + encodeURIComponent(qs[i]))
+  }
+
+  return base + '?' + b_qs.join('&');
 }
 
 return my.NHMMap;

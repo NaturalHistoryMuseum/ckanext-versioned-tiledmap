@@ -302,7 +302,7 @@ class MapController(base.BaseController):
 
         filters = request.params.get('filters')
         fulltext = request.params.get('q')
-        geom = request.params.get('geom')
+        geom = request.params.get('tmgeom')
         style = request.params.get('style')
 
         if not style:
@@ -375,7 +375,7 @@ class MapController(base.BaseController):
 
         filters = request.params.get('filters')
         fulltext = request.params.get('q')
-        geom = request.params.get('geom')
+        geom = request.params.get('tmgeom')
         callback = request.params.get('callback')
         style = request.params.get('style')
 
