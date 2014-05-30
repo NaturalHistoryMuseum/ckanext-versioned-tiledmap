@@ -283,7 +283,7 @@ my.NHMMap = Backbone.View.extend({
       param = Terraformer.WKT.convert(this.filters.geom);
     }
     $('section.module ul.view-list li.resource-view-item a', window.parent.document).each(function(){
-      var href = _inject_filter($(this).attr('href'), '_tmgeom', param);
+      var href = new my.CkanFilterUrl($(this).attr('href')).set_filter('_tmgeom', param).get_url();
       $(this).attr('href', href);
     });
     // And redraw the map
@@ -836,8 +836,16 @@ my.PointInfoPlugin = function(view, options){
       view.map.addLayer(this.layers['_point_info_plugin_1']);
       view.map.addLayer(this.layers['_point_info_plugin']);
       // Add the info in the sidebar
-      template_data = $.extend({}, props.data);
-      template_data.multiple = options.count_field && props.data[options.count_field] > 1;
+      template_data = $.extend({
+        _resource_url: window.parent.location.pathname,
+        _multiple: options.count_field && props.data[options.count_field] > 1
+      }, props.data);
+      if (window.parent.ckan && window.parent.ckan.views.viewhelpers && props.data.grid_bbox){
+        var filters = window.parent.ckan.views.viewhelpers.filters.get();
+        var furl = new my.CkanFilterUrl().set_filters(filters);
+        furl.add_filter('_tmgeom', props.data.grid_bbox);
+        template_data._overlapping_records_filters = encodeURIComponent(furl.get_filters());
+      }
       view.sidebar_view.render(template_data, options['template']);
     } else {
       delete this.layers['_point_info_plugin'];
@@ -939,8 +947,10 @@ my.TooltipPlugin = function(view, options){
     var count = options.count_field && props.data[options.count_field] ? props.data[options.count_field] : 1
     var str = false;
     if (options.template && count == 1){
-      var template_data = props;
-      template_data.multipe = count > 1;
+      var template_data = $.extend({
+        _multiple: count > 1,
+        _resource_url: window.parent.location.pathname
+      }, props);
       str = Mustache.render(options.template, props.data);
     } else {
       str = count + ' record' + (count == 1 ? '' : 's');
@@ -1018,58 +1028,160 @@ my.TooltipPlugin = function(view, options){
 }
 
 /**
- * _inject_filter
+ * CKanFilterUrl
  *
- * Helper function to inject a filter wihtin a ckan formatted URL.
+ * Class used to parse and create URLs with a query string parameter 'filter' build as 'name:value|....'
  */
-function _inject_filter(url, name, value){
-  var parts = url.split('?');
-  var base = parts[0];
-  var qs = {};
-  // Take the URL appart
-  if (parts.length == 1){
-    qs = {filters: {}};
-  } else {
-    var qs_idx = parts[1].split('&');
-    for (var i in qs_idx){
-      var p = qs_idx[i].split('=');
-      p[0] = decodeURIComponent(p[0]);
-      p[1] = decodeURIComponent(p[1]);
-      qs[p[0]] = p[1]
-    }
-    if (typeof qs['filters'] !== 'undefined'){
-      var filters_idx = qs['filters'].split('|');
-      qs['filters'] = {};
-      for (var i in filters_idx){
-        var p = filters_idx[i].split(':');
-        qs['filters'][p[0]] = p[1];
-      }
+my.CkanFilterUrl = function(input_url){
+  /**
+   * initialize
+   *
+   * Set up the object
+   */
+  this.initialize = function(){
+    if (typeof input_url !== 'undefined'){
+      this.set_url(input_url);
     } else {
-      qs['filters'] = {}
+      this.base = '';
+      this.qs = {};
     }
-  }
-  // Inject our value
-  if (value){
-    qs['filters'][name] = value;
-  } else {
-    delete qs['filters'][name];
-  }
-  // And rebuild it...
-  var b_qs = [];
-  var b_filter = [];
-  for (var i in qs['filters']){
-    b_filter.push(i + ':' + qs['filters'][i]);
-  }
-  if (b_filter.length > 0){
-    qs['filters'] = b_filter.join('|');
-  } else {
-    delete qs['filters'];
-  }
-  for (var i in qs){
-    b_qs.push(encodeURIComponent(i) + '=' + encodeURIComponent(qs[i]))
   }
 
-  return base + '?' + b_qs.join('&');
+  /**
+   * set_url
+   *
+   * Set this object's URL
+   */
+  this.set_url = function(url){
+    var parts = url.split('?');
+    this.base = parts[0];
+    this.qs = {};
+    if (parts.length > 1){
+      var qs_idx = parts[1].split('&');
+      for (var i in qs_idx){
+        var p = qs_idx[i].split('=');
+        p[0] = decodeURIComponent(p[0]);
+        p[1] = decodeURIComponent(p[1]);
+        this.qs[p[0]] = p[1]
+      }
+      if (typeof this.qs['filters'] !== 'undefined'){
+        this.set_filters(this.qs['filters']);
+      }
+    }
+
+    return this;
+  }
+
+  /**
+   * add_filter
+   *
+   * Add a filter to the current URL.
+   */
+  this.add_filter = function(name, value){
+    if (typeof this.qs['filters'] === 'undefined'){
+      this.qs['filters'] = {};
+    }
+    if ($.isArray(value)){
+      // TODO: check how ckan handles multivalued.
+      this.qs['filters'][name] = value.join('');
+    } else {
+      this.qs['filters'][name] = value;
+    }
+
+    return this;
+  }
+
+  /**
+   * remove_filter
+   *
+   * Remove filter from the current url
+   */
+  this.remove_filter = function(name){
+    if (typeof this.qs['filters'] !== 'undefined'){
+      delete this.qs['filters'][name];
+      if ($.isEmptyObject(this.qs['filters'])){
+        delete this.qs['filters'];
+      }
+    }
+    return this;
+  }
+
+  /**
+   * set_filter
+   *
+   * Set a filter value on the URL. If the value evaluates to false, the filter is removed
+   */
+  this.set_filter = function(name, value){
+    if (!value){
+      this.remove_filter(name);
+    } else {
+      this.add_filter(name, value);
+    }
+
+    return this;
+  }
+
+  /**
+   * set_filters
+   *
+   * Set the filters of the URL. The value may be a decoded query string formated filter (a:b|...), or a dictionary
+   * of name to value.
+   */
+  this.set_filters = function(filters){
+    delete this.qs['filters'];
+    if (typeof filters == 'string' && filters){
+      var split = filters.split('|');
+      for (var i in split){
+        var parts = split[i].split(':');
+        if (parts.length == 2){
+          this.set_filter(parts[0], parts[1])
+        }
+      }
+    } else if (typeof filters == 'object'){
+      for (var i in filters){
+        this.set_filter(i, filters[i])
+      }
+    }
+    return this;
+  }
+
+  /**
+   * get_filters
+   *
+   * Returns the filter query string alone (not encoded)
+   */
+  this.get_filters = function(){
+    if (typeof this.qs['filters'] === 'undefined'){
+      return '';
+    }
+    var b_filter = [];
+    for (var f in this.qs['filters']){
+      b_filter.push(f + ':' + this.qs['filters'][f])
+    }
+    return b_filter.join('|')
+  }
+
+  /**
+   * get_url
+   *
+   * Return the URL as a string
+   */
+  this.get_url = function(){
+    var b_qs = [];
+    for (var i in this.qs){
+      var val;
+      if (i == 'filters'){
+        val = this.get_filters();
+      } else {
+        val = this.qs[i];
+      }
+      b_qs.push(encodeURIComponent(i) + '=' + encodeURIComponent(val));
+    }
+
+    return this.base + '?' + b_qs.join('&');
+  }
+
+  this.initialize();
 }
 
 return my.NHMMap;

@@ -72,3 +72,7 @@
     {{ form.select('utf_grid_title', label=_('Title'), options=map_fields, selected=data.utf_grid_title, error=errors.utf_grid_title) }}
     {{ multiselect('utf_grid_fields', label=_('Fields'), options=map_fields, selected=data.utf_grid_fields, error=errors.utf_grid_fields) }}
 {% endcall %}
+
+{% call form.select('overlapping_records_view', label=_('Overlapping records'), options=available_views, selected=data.overlapping_records_view, error=errors.overlapping_records_view) %}
+  {{ form.info(_('Select the view that is used to display overlapping records at one location'), inline=True) }}
+{% endcall %}

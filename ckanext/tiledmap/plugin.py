@@ -134,7 +134,8 @@ class TiledMapPlugin(p.SingletonPlugin):
                 'heat_intensity': [self._float_01_validator],
                 'enable_utf_grid': [self._boolean_validator],
                 'utf_grid_title': [self._is_datastore_field],
-                'utf_grid_fields': [self._is_datastore_field]
+                'utf_grid_fields': [self._is_datastore_field],
+                'overlapping_records_view': [self._is_view_id],
             },
             'icon': 'compass',
             'iframed': True,
@@ -163,10 +164,14 @@ class TiledMapPlugin(p.SingletonPlugin):
         """Setup variables available to templates"""
         #TODO: Apply variables to appropriate view.
         datastore_fields = self._get_datastore_fields(data_dict['resource']['id'])
+        views = p.toolkit.get_action('resource_view_list')(context, {'id': data_dict['resource']['id']})
+        views = [v for v in views if v['id'] != data_dict['resource_view']['id']]
+        views = [{'text': _('(None)'), 'value': ''}] + [{'text': v['title'], 'value': v['id']} for v in views]
         return {
             'resource_json': json.dumps(data_dict['resource']),
             'resource_view_json': json.dumps(data_dict['resource_view']),
-            'map_fields': [{'name': f, 'value': f} for f in datastore_fields],
+            'map_fields': [{'text': f, 'value': f} for f in datastore_fields],
+            'available_views': views,
             'defaults': plugin_config
         }
 
@@ -219,5 +224,13 @@ class TiledMapPlugin(p.SingletonPlugin):
             raise p.toolkit.Invalid(_('Must be a decimal number, between 0 and 1'))
         if value < 0 or value > 1:
             raise p.toolkit.Invalid(_('Must be a decimal number, between 0 and 1'))
+
+        return value
+
+    def _is_view_id(self, value, context):
+        """Ensure this is a view id on the current resource"""
+        views = p.toolkit.get_action('resource_view_list')(context, {'id': context['resource'].id})
+        if value not in [v['id'] for v in views]:
+            raise p.toolkit.Invalid(_('Must be a view on the current resource'))
 
         return value

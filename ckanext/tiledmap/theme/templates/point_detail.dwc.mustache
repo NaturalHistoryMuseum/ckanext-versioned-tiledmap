@@ -1,13 +1,17 @@
 <div class="point-detail">
-    {{h.mustache('#multiple')}}
-        <div class="point-detail-info">There are multiple records at this location. The information displayed here is for one of the records only.<br/>
-        <a href="#">View all records at this location</a></div>
-    {{h.mustache('/multiple')}}
-    {{h.mustache('^multiple')}}
+    {{h.mustache('#_multiple')}}
+        <div class="point-detail-info">There are multiple records at this location. The information displayed here is for one of the records only.
+          {% if overlapping_records_view %}
+            <br/>
+            <a href="{{h.mustache('_resource_url')}}?view_id={{overlapping_records_view}}&filters={{h.mustache('_overlapping_records_filters')}}">View all records at this location</a>
+          {% endif %}
+        </div>
+    {{h.mustache('/_multiple')}}
+    {{h.mustache('^_multiple')}}
         <div class="point-detail-info">
-            <a href="record/{{h.mustache('_id')}}">View full record</a>
+            <a href="{{h.mustache('_resource_url')}}/record/{{h.mustache('_id')}}">View full record</a>
          </div>
-    {{h.mustache('/multiple')}}
+    {{h.mustache('/_multiple')}}
 
     <div class="point-detail-title">
       {{h.mustache('#scientificName')}}

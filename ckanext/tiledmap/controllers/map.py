@@ -409,9 +409,10 @@ class MapController(base.BaseController):
         outer_query = Select(options={'compact': True}, identifiers={
             'resource': self.resource_id,
             'geom_field_label': self.geom_field,
-            'geom_field_4326_label': self.geom_field_4326,
+            'geom_field_4326_label': self.geom_field_4326
         }, values={
-            'query': query
+            'query': query,
+            'grid_size': self.mss_options[style]['grid_resolution']
         })
 
         outer_query.select_from('({query}) AS _mapplugin_sub')
@@ -423,9 +424,19 @@ class MapController(base.BaseController):
         outer_query.select('st_y({geom_field_4326_label}[1]) AS lat')
         outer_query.select('st_x({geom_field_4326_label}[1]) AS lng')
         outer_query.select('_mapplugin_center AS {geom_field_label}')
+        outer_query.select("""
+            ST_AsText(ST_Transform(ST_SetSRID(ST_MakeBox2D(
+                ST_Translate(_mapplugin_center,
+                             !pixel_width! * {grid_size} / -2,
+                             !pixel_height! * {grid_size} / -2),
+                ST_Translate(_mapplugin_center,
+                             !pixel_width! * {grid_size} / 2,
+                             !pixel_height! * {grid_size} / 2)
+            ), 3857), 4326)) as grid_bbox
+        """)
         sql = outer_query.to_sql()
 
-        interactivity_fields = ",".join(set(list(self.query_fields) + ['count', 'lat', 'lng']))
+        interactivity_fields = ",".join(set(list(self.query_fields) + ['count', 'lat', 'lng', 'grid_bbox']))
         url = self._grid_url(z, x, y, callback=callback, sql=sql, interactivity=interactivity_fields)
         response.headers['Content-type'] = 'text/javascript'
         # TODO: Detect if the incoming connection has been dropped, and if so stop the query.
@@ -487,7 +498,8 @@ class MapController(base.BaseController):
         })
         info_template = base.render(info_template_name, {
             'title': self.info_title,
-            'fields': self.info_fields
+            'fields': self.info_fields,
+            'overlapping_records_view': self.view['overlapping_records_view']
         })
         result = {
             'geospatial': True,
