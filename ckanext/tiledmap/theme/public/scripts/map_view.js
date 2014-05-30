@@ -273,6 +273,9 @@ my.NHMMap = Backbone.View.extend({
    */
   setGeom: function(geom){
     // Get the geometry drawn
+    if (!geom && !this.filters.geom){
+      return;
+    }
     this.filters.geom = geom;
     // Inject the geom search term in links to all other views.
     var param = null;
@@ -562,8 +565,10 @@ my.DrawShapeControl = L.Control.Draw.extend({
     // Add the clear selection action
     $('<a></a>').attr('href', '#').attr('title', 'Clear selection').addClass('leaflet-draw-edit-remove')
       .appendTo($('div.leaflet-bar', elem))
-      .click(function(){
+      .click(function(e){
         self.view.setGeom(null);
+        e.stopPropagation();
+        return false;
       });
 
     return elem;
