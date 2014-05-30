@@ -1,5 +1,9 @@
-ckanext-map
+ckanext-tiledmap
 ===========
+
+Note: this version of the extention requires a custom ckan branch. That can be found at
+https://github.com/NaturalHistoryMuseum/ckan/tree/1251-1725-custom and combines patches from CKAN's 1251 and 1725
+branches (both of which should be merged into CKAN in the near future).
 
 A CKAN plugin to replace the default map preview with one that uses a
 <a href="https://github.com/CartoDB/Windshaft">Windshaft</a> server to generate the map tiles and interactivity layer.
@@ -8,13 +12,17 @@ The point of this extention is to provide maps that can handle millions of data 
 available at
 <a href="https://github.com/NaturalHistoryMuseum/nhm-windshaft-app">https://github.com/NaturalHistoryMuseum/nhm-windshaft-app</a>
 
+Features:
+- Tiled maps with plot, grid and heatmap views;
+- On-map geospatial search reflected in other views (eg. grid view).
+
 setup
 =====
 
 Postgis
 -------
 
-You postgresql database must have <a href="http://postgis.net/">postgis</a> support. On Ubuntu 12.04 LTS, assuming a
+Your postgresql database must have <a href="http://postgis.net/">postgis</a> support. On Ubuntu 12.04 LTS, assuming a
 default postgres 9.1 install you can setup your database by doing:
 
 ```bash
@@ -40,36 +48,57 @@ Configuration
 
 The plugin supports the following configuration options:
 
-- map.windshaft.host: The hostname of the windshaft server. Defaults to 127.0.0.1 ;
-- map.windshaft.port: The port for the windshaft server. Defaults to 4000 ;
-- map.winsdhaft_database: The database name to pass to the windshaft server. Defaults
-  to the database name from the datastore URL ;
-- map.geom_field: Geom field. Defaults to ```_the_geom_webmercator```. Do not change this unless you know what you are
-  doing. Must be 3857 type field;
-- map.geom_field_4326: The 4326 geom field. Defaults to ```_geom```. Do not change this unless you know what you are
-  doing. Must be 4326 type field ;
-- map.tile_layer.url: URL of the tile layer. Defaults to http://otile1.mqcdn.com/tiles/1.0.0/map/{z}/{x}/{y}.jpg ;
-- map.tile_layer.opacity: Opacity of the tile layer. Defaults to 0.8 ;
-- map.initial_zoom.min: Minimum zoom level for initial display of dataset, defaults to 2 ;
-- map.initial_zoom.max: Maximum zoom level for initial display of dataset, defaults to 6 ;
-- map.info_fields: Comma separated list of "label:field" SQL fields that should be made available to the templates;
-- map.title_template: Name of the template used to generate the info sidebar title. The template is rendered with
-  info_fields available as a list of (label,field) tuples, and should return a Mustache template which can then
-  be rendered client side. All the values of the fields in info_fields are available during client side rendering.
-  In addition the fiels 'count', 'lat', 'lng' and 'multiple' are also available.
-  Defaults to point_detail_title.dwc.mustache ;
-- map.info_template: Name of the template to use for generating point info detail in the sidebar.
-  The template is rendered with 'info_fields' and 'title_template'. See map.title_template.
-        Defaults to point_detail.dwc.mustache;
-    - map.quick_info_template: Name of the template to use for generating hover information. The template is rendered
-        with 'info_fields' available. See map.title_template. Defaults to point_detail_hover.mustache;
+- tiledmap.windshaft.host: The hostname of the windshaft server. There is no default, and the extension will not allow
+  you to add map views if this is not defined;
+- tiledmap.windshaft.port: The port for the windshaft server. There is no default, and the extension will not allow
+  you to add map views if this is not defined;
+- tiledmap.geom_field: This is the name of the webmercator projection geom field that gets created and added to the
+  resource table. Defaults to ```_the_geom_webmercator``` (Note that using a leading _ ensures the field won't be
+  visible to datastore searches);
+- tiledmap.geom_field_4326: This is the name of the lat/long geom field that gets created and added to the resource
+  table. Defaults to ```_geom```. (Note that using a leading _ ensures the field won't be
+  visible to datastore searches);
+- tiledmap.tile_layer.url: URL of the tile layer. Defaults to http://otile1.mqcdn.com/tiles/1.0.0/map/{z}/{x}/{y}.jpg ;
+- tiledmap.tile_layer.opacity: Opacity of the tile layer. Defaults to 0.8 ;
+- tiledmap.initial_zoom.min: Minimum zoom level for initial display of dataset, defaults to 2;
+- tiledmap.initial_zoom.max: Maximum zoom level for initial display of dataset, defaults to 6;
+- tiledmap.style.plot.fill_color: Default fill color for plot markers. Users can override this per-view. Defaults to
+  '#EE0000';
+- tiledmap.style.plot.line_color: Default line color for plot markers. Users can override this per-view. Defaults to
+  '#FFFFFF';
+- tiledmap.style.plot.marker_size': Size of the plot marker. Cannot be overriden per-view as it has a notable
+  performance impact. Defaults to 8;
+- tiledmap.style.plot.grid_resolution: Resolution of the grid used to generator hover/popup information on the map.
+  Cannot be overriden per-view as it has a notable performance impact. Should typically be half the marker size.
+  Defaults to 4;
+- tiledmap.style.gridded.base_color: Default base color for grid views. Users can override this per-view. Defaults to
+  '#F02323';
+- tiledmap.style.gridded.marker_size: Marker size for the grid view. Cannot be overidden per-view as it has a notable
+  performance impact. Defaults to 8;
+- tiledmap.style.gridded.grid_resolution: Grid resolution for the grid view. Cannot be overridden per-view as it has a
+  notable performance impact. Should be the same as the marker size. Defaults to 8;
+- tiledmap.style.heatmap.intensity: Default heat map intensitiy. Users can override this per-view. Defaults to 0.1;
+- tiledmap.style.heatmap.gradient: Heat map gradient colors. Defaults to
+  '#0000FF, #00FFFF, #00FF00, #FFFF00, #FFA500, #FF0000',
+- tiledmap.style.heatmap.marker_url: Heatmap marker. Defaults to '!markers!/alpharadiantdeg20px.png' (where !markers!
+  is the marker directory on the windshaft server);
+- tiledmap.style.heatmap.marker_size: Heatmap marker size. Defaults to 20.
 
 
 Usage
 =====
 
-The plugin also provides some API actions to add the required geometry fields to a given datastore resource. This is
-called as:
+Users
+-----
+
+Once the plugin has been enabled (added to the list of plugins in the .ini file), users can add tiled map views from
+the resource management page. Users will select (amongst other options) the latitude and longitude fields in their
+dataset. The extension will then automatically create (and populate) geometry columns as required.
+
+Developers
+----------
+
+Developers who want to manually create the columns can use the following actions:
 
 ```python
     import ckan.plugins.toolkit as toolkit
@@ -81,7 +110,7 @@ called as:
     })
 ```
 
-The code will add the two geometry columns (by default ```geom``` and ```the_geom_webmercator```) to the given resource
+The code will add the two geometry columns (by default ```_geom``` and ```_the_geom_webmercator```) to the given resource
 database table, and will populate those fields using the (existing) ```latitude``` and ```longitude``` fields.
 
 You can also create the columns without populating the table by passing in ```'populate': False```. You can then
@@ -96,10 +125,6 @@ populate the columns later (or update already populated columns) by doing:
         'long_field': 'longitude'
     })
 ```
-
-
-For both actions you can override the default geometry column names by passing ```geom_field``` and
-```geom_field_4326``` (only if you know what you are doing!)
 
 And finally, the plugin also provides paster scripts to add geometry columns to a given datastore resource; though we
 recommend calling the actions from your own code you can use this initially when testing/setting up:
