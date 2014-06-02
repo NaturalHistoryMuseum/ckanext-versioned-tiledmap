@@ -6,7 +6,7 @@ import ckanext.tiledmap.logic.action as map_action
 import ckanext.tiledmap.logic.auth as map_auth
 from ckanext.tiledmap.config import config as plugin_config
 from ckanext.tiledmap.lib.helpers import mustache_wrapper
-from ckanext.datastore.interfaces import IDataStore
+from ckanext.datastore.interfaces import IDatastore
 from ckan.common import _
 
 import ckan.logic as logic
@@ -31,7 +31,7 @@ class TiledMapPlugin(p.SingletonPlugin):
     p.implements(p.ITemplateHelpers)
     p.implements(p.IResourceView, inherit=True)
     p.implements(p.IConfigurable)
-    p.implements(IDataStore)
+    p.implements(IDatastore)
 
     ## IConfigurer
     def update_config(self, config):
@@ -80,7 +80,7 @@ class TiledMapPlugin(p.SingletonPlugin):
         plugin_config.update(config)
 
     ## IDataStore
-    def validate_query(self, context, data_dict, all_field_ids):
+    def datastore_validate_query(self, context, data_dict, all_field_ids):
         try:
             # We could use ST_IsValid for this, though that be an extra database query. We'll just check that this
             # *looks* like a WKT, in which case we will trust it's valid. Worst case the query will fail, which is
@@ -97,14 +97,11 @@ class TiledMapPlugin(p.SingletonPlugin):
 
         return data_dict
 
-    def search_data(self, context, data_dict, query_dict, all_field_ids):
-        return query_dict
-
-    def where(self, filters, data_dict, all_field_ids):
+    def datastore_search(self, context, data_dict, all_field_ids, query_dict):
         try:
-            tmgeom = filters['_tmgeom']
+            tmgeom = data_dict['filters']['_tmgeom']
         except KeyError:
-            return []
+            return query_dict
 
         clauses = []
         field_name = plugin_config['tiledmap.geom_field']
@@ -114,7 +111,11 @@ class TiledMapPlugin(p.SingletonPlugin):
                 geom
             ))
 
-        return clauses
+        query_dict['where'] += clauses
+        return query_dict
+
+    def datastore_delete(self, context, data_dict, all_field_ids, query_dict):
+        return query_dict
 
     ## IResourceView
     def info(self):
