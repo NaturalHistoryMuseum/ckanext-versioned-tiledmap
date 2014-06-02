@@ -3,13 +3,13 @@
         <div class="point-detail-info">There are multiple records at this location. The information displayed here is for one of the records only.
           {% if overlapping_records_view %}
             <br/>
-            <a href="{{h.mustache('_resource_url')}}?view_id={{overlapping_records_view}}&filters={{h.mustache('_overlapping_records_filters')}}">View all records at this location</a>
+            <a target="_parent" href="{{h.mustache('_resource_url')}}?view_id={{overlapping_records_view}}&filters={{h.mustache('_overlapping_records_filters')}}">View all records at this location</a>
           {% endif %}
         </div>
     {{h.mustache('/_multiple')}}
     {{h.mustache('^_multiple')}}
         <div class="point-detail-info">
-            <a href="{{h.mustache('_resource_url')}}/record/{{h.mustache('_id')}}">View full record</a>
+            <a target="_parent" href="{{h.mustache('_resource_url')}}/record/{{h.mustache('_id')}}">View full record</a>
          </div>
     {{h.mustache('/_multiple')}}
 
