@@ -47,7 +47,7 @@ div.tiled-map-info{
 }
 
 .leaflet-container {
-  background: #fff;
+  background: #CBE6FE;
 }
 
 /* Override the paths to be root-relative, rather than relative to the CSS file */

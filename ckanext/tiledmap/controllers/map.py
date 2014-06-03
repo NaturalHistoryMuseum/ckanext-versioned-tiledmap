@@ -142,6 +142,7 @@ class MapController(base.BaseController):
         self.info_fields = self.view['utf_grid_fields']
         self.info_template = config['tiledmap.info_template']
         self.quick_info_template = config['tiledmap.quick_info_template']
+        self.repeat_map = self.view['repeat_map']
 
         # Fields that need to be added to the query. Note that postgres query fails with duplicate names
         self.query_fields = set(self.info_fields).union(set([self.info_title]))
@@ -507,6 +508,7 @@ class MapController(base.BaseController):
             'bounds': ((51.496830, -0.178812), (51.496122, -0.173877)),
             'initial_zoom': self.initial_zoom,
             'tile_layer': self.tile_layer,
+            'repeat_map': self.repeat_map,
             'map_styles': {
             },
             'control_options': {

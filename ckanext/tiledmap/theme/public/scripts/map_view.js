@@ -160,22 +160,29 @@ my.NHMMap = Backbone.View.extend({
    */
   _setupMap: function(){
     var self = this;
-
+    var bounds = false;
     if (typeof this.map !== 'undefined'){
-        this.disablePlugins();
-        this.map.remove();
+      bounds = this.map.getBounds();
+      this.disablePlugins();
+      this.map.remove();
     }
-    this.map = new L.Map(this.$map.get(0));
+    this.map = new L.Map(this.$map.get(0), {
+      worldCopyJump: true
+    });
+    if (this.map_info.geom_count > 0 || !bounds) {
+      bounds = this.map_info.bounds;
+    }
     this.map.fitBounds(this.map_info.bounds, {
-        animate: false,
-        maxZoom: this.map_info.initial_zoom.max
+      animate: false,
+      maxZoom: this.map_info.initial_zoom.max
     });
     if (this.map.getZoom() < this.map_info.initial_zoom.min) {
         var center = this.map.getCenter();
         this.map.setView(center, this.map_info.initial_zoom.min)
     }
     L.tileLayer(this.map_info.tile_layer.url, {
-        opacity: this.map_info.tile_layer.opacity
+        opacity: this.map_info.tile_layer.opacity,
+        noWrap: !this.map_info.repeat_map
     }).addTo(this.map);
 
     this.tilejson = {
@@ -323,11 +330,16 @@ my.NHMMap = Backbone.View.extend({
     }
     this._removeAllLayers();
     this._addLayer('selection',  L.geoJson(this.filters.geom));
-    this._addLayer('plot', L.tileLayer(this.tilejson.tiles[0]));
+    this._addLayer('plot', L.tileLayer(this.tilejson.tiles[0], {
+      noWrap: !this.map_info.repeat_map
+    }));
 
     var style = this.map_info.map_styles[this.map_info.map_style];
     if (style.has_grid){
-      this._addLayer('grid', new L.UtfGrid(this.tilejson.grids[0], {resolution: style.grid_resolution}));
+      this._addLayer('grid', new L.UtfGrid(this.tilejson.grids[0], {
+        resolution: style.grid_resolution,
+        pointerCursor: false
+      }));
     }
     // Ensure that click events on the selection get passed to the map.
     if (typeof this.layers['slection'] !== 'undefined'){
@@ -790,7 +802,7 @@ my.PointInfoPlugin = function(view, options){
       view.map.removeLayer(this.layers['_point_info_plugin']);
       view.map.removeLayer(this.layers['_point_info_plugin_1']);
     }
-    if (props && props.data){
+    if (props && props.data && (view.map_info.repeat_map || (props.latlng.lng >= -180 && props.latlng.lng <= 180))){
       // Find coordinates. The values in props.latlng is the mouse position, not the point position -
       // however it helps us know if we have clicked on a point that is wrapped around the world.
       var lat = props.data.lat;
@@ -944,6 +956,9 @@ my.TooltipPlugin = function(view, options){
    */
   this._mouseover = function(props) {
     if (!this.isactive){return;}
+    if (props && props.data && !view.map_info.repeat_map && (props.latlng.lng < -180 || props.latlng.lng > 180)){
+      return;
+    }
     var count = options.count_field && props.data[options.count_field] ? props.data[options.count_field] : 1
     var str = false;
     if (options.template && count == 1){
@@ -995,6 +1010,8 @@ my.TooltipPlugin = function(view, options){
         duration: 100
       });
     }
+    // Set the mouse cursor.
+    $('div.panel.map').css('cursor', 'pointer');
   }
 
   /**
@@ -1012,6 +1029,8 @@ my.TooltipPlugin = function(view, options){
           $(this).css('display', 'none');
         }
       });
+      // Remove the mouse cursor
+      $('div.panel.map').css('cursor', '');
     }
   }
 

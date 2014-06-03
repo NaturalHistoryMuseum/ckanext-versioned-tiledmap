@@ -39,6 +39,8 @@
 {% endcall %}
 {{ form.select('longitude_field', label=_('Longitude field'), options=map_fields, selected=data.longitude_field, error=errors.longitude_field) }}
 
+{{ form.checkbox('repeat_map', label=_('Allow map to repeat'), value=True, checked=data.repeat_map, error=errors.repeat_map) }}
+
 {% call checkbox_group('enable_plot_map',
           group=_('Plot map'),
           info=_('Plot maps provide a single marker for each entry in the dataset.'),

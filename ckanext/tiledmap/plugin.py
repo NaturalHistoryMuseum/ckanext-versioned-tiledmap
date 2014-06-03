@@ -126,6 +126,7 @@ class TiledMapPlugin(p.SingletonPlugin):
             'schema': {
                 'latitude_field': [self._is_datastore_field],
                 'longitude_field': [self._is_datastore_field],
+                'repeat_map': [self._boolean_validator],
                 'enable_plot_map': [self._boolean_validator],
                 'enable_grid_map': [self._boolean_validator],
                 'enable_heat_map': [self._boolean_validator],
