@@ -167,7 +167,8 @@ class TiledMapPlugin(p.SingletonPlugin):
         #TODO: Apply variables to appropriate view.
         datastore_fields = self._get_datastore_fields(data_dict['resource']['id'])
         views = p.toolkit.get_action('resource_view_list')(context, {'id': data_dict['resource']['id']})
-        views = [v for v in views if v['id'] != data_dict['resource_view']['id']]
+        if 'id' in data_dict['resource_view']:
+            views = [v for v in views if v['id'] != data_dict['resource_view']['id']]
         views = [{'text': _('(None)'), 'value': ''}] + [{'text': v['title'], 'value': v['id']} for v in views]
         return {
             'resource_json': json.dumps(data_dict['resource']),
