@@ -1,3 +1,4 @@
+import re
 import urllib
 import cStringIO
 
@@ -215,14 +216,13 @@ class MapController(base.BaseController):
             query['interactivity'] = interactivity
         return self._base_url(z, x, y, 'grid.json', query)
 
-    def _base_query(self, z, x, y, filters, fulltext, geom, marker_size, grid_size=4):
+    def _base_query(self, z, x, y, marker_size, grid_size=4):
         """Return a base SqlGenerator Select query with components that are common to all styles of grid and tile
         queries
-        @param filters: List of filters for the request
-        @param geom: Geometry filter for the request
         @param grid_size: Grid size for the request (grid tiles only)
         @return: sqlgenerator.Select object
         """
+        # Base query
         query = Select(options={'compact': True}, identifiers={
             'resource': self.resource_id,
             'geom_field': (self.resource_id, self.geom_field),
@@ -235,25 +235,31 @@ class MapController(base.BaseController):
         })
         query.select_from('{resource}')
 
-        if filters:
-            for input_filters in json.loads(filters):
-                # TODO - other types of filters
-                if input_filters['type'] == 'term':
-                    query.where("{field} = {value}", identifiers={
-                        'field': (self.resource_id, input_filters['field'])
-                    }, values={
-                        'value': input_filters['term']
-                    })
+        # Generic filters (include geom filter)
+        filter_str = request.params.get('filters')
+        if filter_str:
+            for f in filter_str.split('|'):
+                try:
+                    (name, value) = f.split(':')
+                    if name == '_tmgeom':
+                        query.where("ST_Intersects({geom_field}, ST_Transform(ST_GeomFromText({geom}, 4326), 3857))", values={
+                            'geom': value
+                        })
+                    else:
+                        query.where("{field} = {value}", identifiers={
+                            'field': (self.resource_id, name)
+                        }, values={
+                            'value': value
+                        })
+                except ValueError:
+                    pass
 
+        # Full text filter
+        fulltext = request.params.get('q')
         if fulltext:
             query.where('_full_text @@ plainto_tsquery({search})', values={
                 'language': 'english',
                 'search': fulltext
-            })
-
-        if geom:
-            query.where("ST_Intersects({geom_field}, ST_Transform(ST_GeomFromText({geom}, 4326), 3857))", values={
-                'geom': geom
             })
 
         # Find bounding box based on tile X,Y,Z
@@ -301,9 +307,6 @@ class MapController(base.BaseController):
         @return: A PNG image representing the required style
         """
 
-        filters = request.params.get('filters')
-        fulltext = request.params.get('q')
-        geom = request.params.get('tmgeom')
         style = request.params.get('style')
 
         if not style:
@@ -311,7 +314,7 @@ class MapController(base.BaseController):
         if style not in ['plot', 'gridded', 'heatmap']:
             base.abort(400, _("Incorrect style parameter"))
 
-        query = self._base_query(z, x, y, filters, fulltext, geom, self.mss_options[style]['marker_size'])
+        query = self._base_query(z, x, y, self.mss_options[style]['marker_size'])
 
         # If we're drawing dots, then we can ignore the ones with identical positions by
         # selecting DISTINCT ON (_the_geom_webmercator), but we need keep them for heatmaps
@@ -374,9 +377,6 @@ class MapController(base.BaseController):
         @return: A JSON encoded string representing the tile's grid
         """
 
-        filters = request.params.get('filters')
-        fulltext = request.params.get('q')
-        geom = request.params.get('tmgeom')
         callback = request.params.get('callback')
         style = request.params.get('style')
 
@@ -388,7 +388,7 @@ class MapController(base.BaseController):
         # To calculate the number of overlapping points, we first snap them to a grid roughly four pixels wide, and then
         # group them by that grid. This allows us to count the records, but we need to aggregate the rest of the
         # information in order to later return the "top" record from the stack of overlapping records
-        query = self._base_query(z, x, y, filters, fulltext, geom,
+        query = self._base_query(z, x, y,
                                  self.mss_options[style]['marker_size'],
                                  self.mss_options[style]['grid_resolution'])
         for col in self.query_fields:
@@ -452,7 +452,7 @@ class MapController(base.BaseController):
         @return: A JSON encoded string representing the metadata
         """
         # Specific parameters
-        filters = request.params.get('filters')
+        filter_str = request.params.get('filters')
         fetch_id = request.params.get('fetch_id')
 
         ## Ensure we have at least one map style
@@ -471,12 +471,33 @@ class MapController(base.BaseController):
         query = select(bind=engine)
         query = query.where(not_(geo_table.c[self.geom_field] == None))
 
-        if filters:
-            for input_filters in json.loads(filters):
-                # TODO - other types of filters
-                if input_filters['type'] == 'term':
-                    geo_table.append_column(Column(input_filters['field'], String(255)))
-                    query = query.where(geo_table.c[input_filters['field']] == input_filters['term'])
+        # Add filters
+        if filter_str:
+            for f in filter_str.split('|'):
+                try:
+                    (name, value) = f.split(':')
+                    if name == '_tmgeom':
+                        query = query.where(
+                            func.st_intersects(
+                                geo_table.c[self.geom_field],
+                                func.st_transform(
+                                    func.st_geomfromtext(value, 4326),
+                                    3857
+                                )
+                            )
+                        )
+                    else:
+                        geo_table.append_column(Column(name, String(255)))
+                        query = query.where(geo_table.c[name] == value)
+                except ValueError:
+                    pass
+
+        fulltext = request.params.get('q')
+        if fulltext:
+            # Simulate plainto_tsquery as SQLAlchemy only generates ts_query.
+            fulltext = re.sub('([^\s]|^)\s+([^\s]|$)', '\\1&\\2', fulltext.strip())
+            geo_table.append_column(Column('_full_text', String(255)))
+            query = query.where(geo_table.c['_full_text'].match(fulltext))
 
         # Prepare result
         quick_info_template_name = "{base}.{format}.mustache".format(

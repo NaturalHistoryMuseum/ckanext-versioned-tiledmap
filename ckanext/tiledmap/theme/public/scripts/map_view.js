@@ -13,23 +13,34 @@ this.ckan.module('tiledmap', function ($) {
 
     _onReady: function(){
       var geom = '';
+      var fields = {};
+      var q = '';
       if (window.parent.ckan && window.parent.ckan.views.viewhelpers){
-        try{
-          var param = window.parent.ckan.views.viewhelpers.filters.get('_tmgeom');
-          if (param.length > 0) {
-            geom = Terraformer.WKT.parse(param[0]);
+        var filters = window.parent.ckan.views.viewhelpers.filters.get();
+        for (var pname in filters){
+          if (pname == '_tmgeom'){
+            geom = Terraformer.WKT.parse(filters[pname][0]);
+          } else {
+            fields[pname] = filters[pname][0];
           }
-        } catch (e){
-          geom = '';
+        }
+      }
+      // The ckan viewhelpers does not give us access to the 'q' parameter, so extract it manually.
+      var qs = window.parent.location.search.substr(1).split('&');
+      for (var i in qs){
+        var p = qs[i].split('=');
+        if (p.length == 2 && p[0] == 'q'){
+          q = decodeURIComponent(p[1]);
+          break;
         }
       }
       this.view = new (_get_tiledmap_view(this, $))({
         resource_id: this.options.resource.id,
         view_id: this.options.resource_view.id,
         filters: {
-          fields: {},
+          fields: fields,
           geom: geom,
-          q: ''
+          q: q
         }
       });
       this.view.render();
@@ -236,14 +247,15 @@ my.NHMMap = Backbone.View.extend({
         view_id: this.view_id,
         fetch_id: this.fetch_count
     };
-    params['filters'] = this.filters.fields;
+
+    var filters = new my.CkanFilterUrl().set_filters(this.filters.fields);
+    if (this.filters.geom){
+      filters.set_filter('_tmgeom', Terraformer.WKT.convert(this.filters.geom))
+    }
+    params['filters'] = filters.get_filters();
 
     if (this.filters.q){
       params['q'] = this.filters.q;
-    }
-
-    if (this.filters.geom) {
-      params['tmgeom'] = Terraformer.WKT.convert(this.filters.geom);
     }
 
     if (typeof this.jqxhr !== 'undefined' && this.jqxhr !== null){
@@ -311,13 +323,16 @@ my.NHMMap = Backbone.View.extend({
     }
     // Setup tile request parameters
     var params = {};
-    params['filters'] = this.filters.fields;
+    var filters = new my.CkanFilterUrl().set_filters(this.filters.fields);
+    if (this.filters.geom){
+      filters.set_filter('_tmgeom', Terraformer.WKT.convert(this.filters.geom))
+    }
+    params['filters'] = filters.get_filters();
+
     if (this.filters.q){
       params['q'] = this.filters.q;
     }
-    if (this.filters.geom) {
-      params['tmgeom'] = Terraformer.WKT.convert(this.filters.geom);
-    }
+
     params['resource_id'] = this.resource_id;
     params['view_id'] = this.view_id;
     params['style'] = this.map_info.map_style;
