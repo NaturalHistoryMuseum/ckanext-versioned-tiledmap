@@ -357,7 +357,7 @@ my.NHMMap = Backbone.View.extend({
       }));
     }
     // Ensure that click events on the selection get passed to the map.
-    if (typeof this.layers['slection'] !== 'undefined'){
+    if (typeof this.layers['selection'] !== 'undefined'){
       this.layers['selection'].on('click', function(e) {
         self.map.fire('click', e);
       });
