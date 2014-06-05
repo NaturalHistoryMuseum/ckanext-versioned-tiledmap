@@ -1,8 +1,8 @@
 import re
 from sqlalchemy.sql import select
 from sqlalchemy import Table, Column, MetaData, Numeric
-from sqlalchemy.exc import ProgrammingError
-from sqlalchemy import func, or_, not_
+from sqlalchemy.exc import DataError
+from sqlalchemy import func, or_, not_, cast
 import ckan.plugins as p
 from ckan.common import json
 import ckan.plugins.toolkit as toolkit
@@ -255,11 +255,11 @@ class TiledMapPlugin(p.SingletonPlugin):
 
         query = select([func.count(1).label('count')], from_obj=table)
         query = query.where(not_(table.c[value] == None))
-        query = query.where(or_(table.c[value] < -90, table.c[value] > 90))
+        query = query.where(or_(cast(table.c[value], Numeric) < -90, cast(table.c[value], Numeric) > 90))
         with db.begin() as connection:
             try:
                 query_result = connection.execute(query)
-            except ProgrammingError:
+            except DataError as e:
                 raise p.toolkit.Invalid(_('Latitude field must contain numeric data'))
 
             row = query_result.fetchone()
@@ -277,11 +277,11 @@ class TiledMapPlugin(p.SingletonPlugin):
 
         query = select([func.count(1).label('count')], from_obj=table)
         query = query.where(not_(table.c[value] == None))
-        query = query.where(or_(table.c[value] < -180, table.c[value] > 180))
+        query = query.where(or_(cast(table.c[value], Numeric) < -180, cast(table.c[value], Numeric) > 180))
         with db.begin() as connection:
             try:
                 query_result = connection.execute(query)
-            except ProgrammingError:
+            except DataError as e:
                 raise p.toolkit.Invalid(_('Longitude field must contain numeric data'))
 
             row = query_result.fetchone()
