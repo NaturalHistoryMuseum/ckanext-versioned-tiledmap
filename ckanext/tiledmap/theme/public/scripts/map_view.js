@@ -131,7 +131,7 @@ my.NHMMap = Backbone.View.extend({
             'records'
           ].join(' ');
           $rri.html(Mustache.render(template, {
-            recordCount: '?', //this.model.recordCount ? this.model.recordCount.toString() : '0',
+            recordCount: this.map_info.total_count ? this.map_info.total_count.toString() : '0',
             geoRecordCount: this.map_info.geom_count ? this.map_info.geom_count.toString() : '0'
           }));
       } else {

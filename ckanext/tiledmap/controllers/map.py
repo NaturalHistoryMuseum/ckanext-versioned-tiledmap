@@ -473,6 +473,7 @@ class MapController(base.BaseController):
 
         query = select(bind=engine)
         query = query.where(not_(geo_table.c[self.geom_field] == None))
+        total_count_query = select([func.count(1).label('count')], bind=engine, from_obj=geo_table)
 
         # Add filters
         if filter_str:
@@ -492,6 +493,7 @@ class MapController(base.BaseController):
                     else:
                         geo_table.append_column(Column(name, String(255)))
                         query = query.where(geo_table.c[name] == value)
+                        total_count_query = total_count_query.where(geo_table.c[name] == value)
                 except ValueError:
                     pass
 
@@ -501,6 +503,7 @@ class MapController(base.BaseController):
             fulltext = re.sub('([^\s]|^)\s+([^\s]|$)', '\\1&\\2', fulltext.strip())
             geo_table.append_column(Column('_full_text', String(255)))
             query = query.where(geo_table.c['_full_text'].match(fulltext))
+            total_count_query = total_count_query.where(geo_table.c['_full_text'].match(fulltext))
 
         # Prepare result
         quick_info_template_name = "{base}.{format}.mustache".format(
@@ -529,6 +532,7 @@ class MapController(base.BaseController):
         result = {
             'geospatial': True,
             'geom_count': 0,
+            'total_count': 0,
             'bounds': ((51.496830, -0.178812), (51.496122, -0.173877)),
             'initial_zoom': self.initial_zoom,
             'tile_layer': self.tile_layer,
@@ -638,6 +642,14 @@ class MapController(base.BaseController):
         if row['xmin'] is not None:
             result['bounds'] = ((row['ymin'], row['xmin']), (row['ymax'], row['xmax']))
         query_result.close()
+
+        # Now fetch the number of rows that would be displayed in the grid (current + those withou geometries)
+        try:
+            query_result = engine.execute(total_count_query)
+            row = query_result.fetchone()
+            result['total_count'] = row['count']
+        except ProgrammingError:
+            result['total_count'] = 0
 
         response.headers['Content-type'] = 'application/json'
         return json.dumps(result)
