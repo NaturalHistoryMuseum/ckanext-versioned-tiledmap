@@ -1,4 +1,8 @@
 import re
+from sqlalchemy.sql import select
+from sqlalchemy import Table, Column, MetaData, Numeric
+from sqlalchemy.exc import ProgrammingError
+from sqlalchemy import func, or_, not_
 import ckan.plugins as p
 from ckan.common import json
 import ckan.plugins.toolkit as toolkit
@@ -6,6 +10,7 @@ import ckanext.tiledmap.logic.action as map_action
 import ckanext.tiledmap.logic.auth as map_auth
 from ckanext.tiledmap.config import config as plugin_config
 from ckanext.tiledmap.lib.helpers import mustache_wrapper
+from ckanext.tiledmap.db import _get_engine
 from ckanext.datastore.interfaces import IDatastore
 from ckan.common import _
 
@@ -125,8 +130,8 @@ class TiledMapPlugin(p.SingletonPlugin):
             'name': 'tiledmap',
             'title': 'Tiled map',
             'schema': {
-                'latitude_field': [self._is_datastore_field],
-                'longitude_field': [self._is_datastore_field],
+                'latitude_field': [self._is_datastore_field, self._is_latitude_field],
+                'longitude_field': [self._is_datastore_field, self._is_longitude_field],
                 'repeat_map': [self._boolean_validator],
                 'enable_plot_map': [self._boolean_validator],
                 'enable_grid_map': [self._boolean_validator],
@@ -239,4 +244,48 @@ class TiledMapPlugin(p.SingletonPlugin):
             if value not in [v['id'] for v in views]:
                 raise p.toolkit.Invalid(_('Must be a view on the current resource'))
 
+        return value
+
+    def _is_latitude_field(self, value, context):
+        """Ensure this field can be used for latitudes"""
+        # We can't use datastore_search for this, as we need operators
+        db = _get_engine()
+        metadata = MetaData()
+        table = Table(context['resource'].id, metadata, Column(value, Numeric))
+
+        query = select([func.count(1).label('count')], from_obj=table)
+        query = query.where(not_(table.c[value] == None))
+        query = query.where(or_(table.c[value] < -90, table.c[value] > 90))
+        with db.begin() as connection:
+            try:
+                query_result = connection.execute(query)
+            except ProgrammingError:
+                raise p.toolkit.Invalid(_('Latitude field must contain numeric data'))
+
+            row = query_result.fetchone()
+            query_result.close()
+            if row['count'] > 0:
+                raise p.toolkit.Invalid(_('Latitude field must be between -90 and 90'))
+        return value
+
+    def _is_longitude_field(self, value, context):
+        """Ensure this field can be used for longitudes"""
+        # We can't use datastore_search for this, as we need operators
+        db = _get_engine()
+        metadata = MetaData()
+        table = Table(context['resource'].id, metadata, Column(value, Numeric))
+
+        query = select([func.count(1).label('count')], from_obj=table)
+        query = query.where(not_(table.c[value] == None))
+        query = query.where(or_(table.c[value] < -180, table.c[value] > 180))
+        with db.begin() as connection:
+            try:
+                query_result = connection.execute(query)
+            except ProgrammingError:
+                raise p.toolkit.Invalid(_('Longitude field must contain numeric data'))
+
+            row = query_result.fetchone()
+            query_result.close()
+            if row['count'] > 0:
+                raise p.toolkit.Invalid(_('Longitude field must be between -180 and 180'))
         return value
