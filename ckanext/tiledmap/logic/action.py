@@ -1,8 +1,10 @@
 import sqlalchemy
 from sqlalchemy import func
 from sqlalchemy.sql import select, table
-from sqlalchemy.exc import ProgrammingError
+from sqlalchemy.exc import ProgrammingError, DataError, InternalError
 
+from ckan.common import _
+from ckan.lib.helpers import flash_error, flash_success
 import ckan.plugins.toolkit as toolkit
 from ckan.logic.action.create import resource_view_create as ckan_resource_view_create
 from ckan.logic.action.delete import resource_view_delete as ckan_resource_view_delete
@@ -131,32 +133,17 @@ def resource_view_create(context, data_dict):
     """Override ckan's resource_view_create so we can create geom fields when new tiled map views are added"""
     # Invoke ckan resource_view_create
     r = ckan_resource_view_create(context, data_dict)
-    # If this was a tiled map view, create our geom fields
-    if data_dict['view_type'] == 'tiledmap':
-        if not has_geom_column(context, data_dict):
-            create_geom_columns(context, data_dict)
-        else:
-            try:
-                update_geom_columns(context, data_dict)
-            except ProgrammingError:
-                # TODO: we cannot run this on materialized views.
-                pass
+    if r['view_type'] == 'tiledmap':
+        _create_update_resource(r, context, data_dict)
     return r
 
 
 def resource_view_update(context, data_dict):
+    """Override ckan's resource_view_update so we can update geom fields when the tiled map view is edited"""
     # Invoke ckan resource_view_update
     r = ckan_resource_view_update(context, data_dict)
-    # If this was a tiled map view, update values in our geom fields
     if r['view_type'] == 'tiledmap':
-        if not has_geom_column(context, data_dict):
-            create_geom_columns(context, data_dict)
-        else:
-            try:
-                update_geom_columns(context, data_dict)
-            except ProgrammingError:
-                # TODO We cannot run this on materialized views.
-                pass
+        _create_update_resource(r, context, data_dict)
     return r
 
 
@@ -164,3 +151,22 @@ def resource_view_delete(context, data_dict):
     # TODO: We need to check if there any other tiled map view on the given resource. If not, we can drop the fields.
     r = ckan_resource_view_delete(context, data_dict)
     return r
+
+def _create_update_resource(r, context, data_dict):
+    """Create/update geom field on the given resource"""
+    options = dict(data_dict.items() + {'populate': False}.items())
+    if not has_geom_column(context, options):
+        try:
+             create_geom_columns(context, options)
+        except ProgrammingError:
+            flash_error(_('The extension failed to initialze the database table to support geometries. You will' +
+            ' not be able to use this view. Please inform an administrator.'))
+            return
+    try:
+        update_geom_columns(context, options)
+    except (DataError, InternalError) as e:
+        flash_error(_('It was not possible to create the geometry data from the given latitude/longitude columns.' +
+        'Those columns must contain only decimal numbers, with latitude between -90 and +90 and longitude ' +
+        'between -180 and +180. Please correct the data or select different fields.'))
+    else:
+        flash_success(_('Successfully created the geometric data.'))

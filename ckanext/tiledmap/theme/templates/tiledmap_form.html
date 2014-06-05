@@ -44,7 +44,7 @@
 {% call checkbox_group('enable_plot_map',
           group=_('Plot map'),
           info=_('Plot maps provide a single marker for each entry in the dataset.'),
-          checked=data.enable_plot_map,
+          checked=True if is_new else data.enable_plot_map,
           error=errors.enable_plot_map) %}
     {{ form.input('plot_marker_color', label=_('Marker color'), value=(data.plot_marker_color or defaults['tiledmap.style.plot.fill_color']), error=errors.plot_marker_color) }}
     {{ form.input('plot_marker_line_color', label=_('Marker line color'), value=(data.plot_marker_line_color or defaults['tiledmap.style.plot.line_color']), error=errors.plot_marker_line_color) }}
@@ -53,7 +53,7 @@
 {% call checkbox_group('enable_grid_map',
           group=_('Grid map'),
           info=_('At any zoom level a grid maps plot a 8x8 grid, providing hover and color coded information about the number of records in that grid tile.'),
-          checked=data.enable_grid_map,
+          checked=False if is_new else data.enable_grid_map,
           error=errors.enable_grid_map) %}
     {{ form.input('grid_base_color', label=_('Base color'), value=(data.grid_base_color or defaults['tiledmap.style.gridded.base_color']), error=errors.grid_base_color) }}
 {% endcall %}
@@ -61,7 +61,7 @@
 {% call checkbox_group('enable_heat_map',
           group=_('Distribution map'),
           info=_('Distribution maps use color gradients to show the distribution of the records.'),
-          checked=data.enable_heat_map,
+          checked=False if is_new else data.enable_heat_map,
           error=errors.enable_heat_map) %}
     {{ form.input('heat_intensity', label=_('Intensity'), value=(data.heat_intensity or defaults['tiledmap.style.heatmap.intensity']), error=errors.heat_intensity) }}
 {% endcall %}
@@ -69,7 +69,7 @@
 {% call checkbox_group('enable_utf_grid',
           info=_('If enabled, information will be shown when you hover (plot or grid maps) or click (plot map only) on markers on the map'),
           group=_('Marker information'),
-          checked=data.enable_utf_grid,
+          checked=True if is_new else data.enable_utf_grid,
           error=errors.enable_utf_grid) %}
     {{ form.select('utf_grid_title', label=_('Title'), options=map_fields, selected=data.utf_grid_title, error=errors.utf_grid_title) }}
     {{ multiselect('utf_grid_fields', label=_('Fields'), options=map_fields, selected=data.utf_grid_fields, error=errors.utf_grid_fields) }}

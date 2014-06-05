@@ -13,6 +13,7 @@ import ckan.logic as logic
 get_action = logic.get_action
 
 import ckan.lib.navl.dictization_functions as df
+ignore_empty = p.toolkit.get_validator('ignore_empty')
 Invalid = df.Invalid
 Missing = df.Missing
 
@@ -136,7 +137,7 @@ class TiledMapPlugin(p.SingletonPlugin):
                 'heat_intensity': [self._float_01_validator],
                 'enable_utf_grid': [self._boolean_validator],
                 'utf_grid_title': [self._is_datastore_field],
-                'utf_grid_fields': [self._is_datastore_field],
+                'utf_grid_fields': [ignore_empty, self._is_datastore_field],
                 'overlapping_records_view': [self._is_view_id],
             },
             'icon': 'compass',
@@ -175,7 +176,8 @@ class TiledMapPlugin(p.SingletonPlugin):
             'resource_view_json': json.dumps(data_dict['resource_view']),
             'map_fields': [{'text': f, 'value': f} for f in datastore_fields],
             'available_views': views,
-            'defaults': plugin_config
+            'defaults': plugin_config,
+            'is_new': not('id' in data_dict['resource_view'])
         }
 
     def _is_datastore_field(self, key, data, errors, context):
@@ -232,8 +234,9 @@ class TiledMapPlugin(p.SingletonPlugin):
 
     def _is_view_id(self, value, context):
         """Ensure this is a view id on the current resource"""
-        views = p.toolkit.get_action('resource_view_list')(context, {'id': context['resource'].id})
-        if value not in [v['id'] for v in views]:
-            raise p.toolkit.Invalid(_('Must be a view on the current resource'))
+        if value:
+            views = p.toolkit.get_action('resource_view_list')(context, {'id': context['resource'].id})
+            if value not in [v['id'] for v in views]:
+                raise p.toolkit.Invalid(_('Must be a view on the current resource'))
 
         return value

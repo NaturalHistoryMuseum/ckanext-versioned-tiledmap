@@ -140,7 +140,10 @@ class MapController(base.BaseController):
 
         # Read resource-dependent parameters
         self.info_title = self.view['utf_grid_title']
-        self.info_fields = self.view['utf_grid_fields']
+        try:
+            self.info_fields = self.view['utf_grid_fields']
+        except KeyError:
+            self.info_fields = []
         self.info_template = config['tiledmap.info_template']
         self.quick_info_template = config['tiledmap.quick_info_template']
         self.repeat_map = self.view['repeat_map']
