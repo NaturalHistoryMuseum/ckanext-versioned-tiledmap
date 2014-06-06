@@ -9,6 +9,7 @@ from ckanext.tiledmap.lib.sqlgenerator import Select
 from ckanext.tiledmap.lib.sqlgenerator import MissingSection
 
 class TestSelect:
+    """These test cases test the ckanext.lib.sqlgenerator SQL generator class"""
     def test_raise(self):
         """Ensures the class raises an exception if no select or from clauses are defined"""
         q = Select()

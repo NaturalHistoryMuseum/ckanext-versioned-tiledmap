@@ -171,7 +171,7 @@ class TiledMapPlugin(p.SingletonPlugin):
     def setup_template_variables(self, context, data_dict):
         """Setup variables available to templates"""
         #TODO: Apply variables to appropriate view.
-        datastore_fields = self._get_datastore_fields(data_dict['resource']['id'])
+        datastore_fields = self._get_datastore_fields(data_dict['resource']['id'], context)
         views = p.toolkit.get_action('resource_view_list')(context, {'id': data_dict['resource']['id']})
         if 'id' in data_dict['resource_view']:
             views = [v for v in views if v['id'] != data_dict['resource_view']['id']]
@@ -188,17 +188,17 @@ class TiledMapPlugin(p.SingletonPlugin):
     def _is_datastore_field(self, key, data, errors, context):
         """Check that a field is indeed a datastore field"""
         if isinstance(data[key], list):
-            if not set(data[key]).issubset(self._get_datastore_fields(context['resource'].id)):
+            if not set(data[key]).issubset(self._get_datastore_fields(context['resource'].id, context)):
                 raise p.toolkit.Invalid('"{0}" is not a valid parameter'.format(data[key]))
-        elif not data[key] in self._get_datastore_fields(context['resource'].id):
+        elif not data[key] in self._get_datastore_fields(context['resource'].id, context):
             raise p.toolkit.Invalid('"{0}" is not a valid parameter'.format(data[key]))
 
-    def _get_datastore_fields(self, rid):
+    def _get_datastore_fields(self, rid, context):
         if not hasattr(self, '_datastore_fields'):
             self._datastore_fields = {}
         if not (rid in self._datastore_fields):
             data = {'resource_id': rid, 'limit': 0}
-            fields = toolkit.get_action('datastore_search')({}, data)['fields']
+            fields = toolkit.get_action('datastore_search')(context, data)['fields']
             self._datastore_fields[rid] = [f['id'] for f in fields]
 
         return self._datastore_fields[rid]

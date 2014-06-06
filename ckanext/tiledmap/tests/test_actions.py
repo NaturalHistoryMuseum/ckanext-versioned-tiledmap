@@ -20,7 +20,9 @@ from ckanext.tiledmap.config import config as tm_config
 
 
 class TestMapActions(tests.WsgiAppCase):
-    """Test cases for the Map plugin actions"""
+    """These test cases test the custom actions that are offered for creating the
+    geometry columns ('create_geom_columns' and 'update_geom_columns')
+    """
     context = None
     engine = None
 
