@@ -64,7 +64,7 @@ def create_geom_columns(context, data_dict):
         s = select([func.AddGeometryColumn('public', resource_id, geom_field, 3857, 'POINT', 2)])
         connection.execute(s)
         s = sqlalchemy.text("""
-          CREATE INDEX "{geom_field}_index"
+          CREATE INDEX "{resource_id}_{geom_field}_index"
               ON "{resource_id}"
            USING GIST("{geom_field}")
            WHERE "{geom_field}" IS NOT NULL;
@@ -158,7 +158,7 @@ def _create_update_resource(r, context, data_dict):
     if not has_geom_column(context, options):
         try:
              create_geom_columns(context, options)
-        except ProgrammingError:
+        except ProgrammingError as e:
             flash_error(_('The extension failed to initialze the database table to support geometries. You will' +
             ' not be able to use this view. Please inform an administrator.'))
             return

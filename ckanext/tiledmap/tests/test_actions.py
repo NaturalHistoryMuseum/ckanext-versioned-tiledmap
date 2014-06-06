@@ -150,8 +150,9 @@ class TestMapActions(tests.WsgiAppCase):
         # Test we have the expected indices
         insp = reflection.Inspector.from_engine(TestMapActions.engine)
         index_exists = False
+
         for index in insp.get_indexes(self.resource['resource_id']):
-            if (index['name'] == u'_the_geom_webmercator_index'
+            if ((self.resource['resource_id'] + u'__the_geom_webmercator_index').startswith(index['name'])
                 and index['unique'] == False
                 and len(index['column_names']) == 1
                 and index['column_names'][0] == u'_the_geom_webmercator'):
@@ -178,7 +179,7 @@ class TestMapActions(tests.WsgiAppCase):
         insp = reflection.Inspector.from_engine(TestMapActions.engine)
         index_exists = False
         for index in insp.get_indexes(self.resource['resource_id']):
-            if (index['name']== u'alt_geom_webmercator_index'
+            if ((self.resource['resource_id'] + u'_alt_geom_webmercator_index').startswith(index['name'])
                 and index['unique'] == False
                 and len(index['column_names']) == 1
                 and index['column_names'][0] == u'alt_geom_webmercator'):
