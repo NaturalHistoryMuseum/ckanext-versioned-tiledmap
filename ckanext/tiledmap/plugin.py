@@ -86,7 +86,7 @@ class TiledMapPlugin(p.SingletonPlugin):
         plugin_config.update(config)
 
     ## IDataStore
-    def datastore_validate_query(self, context, data_dict, all_field_ids):
+    def datastore_validate(self, context, data_dict, all_field_ids):
         try:
             # We could use ST_IsValid for this, though that be an extra database query. We'll just check that this
             # *looks* like a WKT, in which case we will trust it's valid. Worst case the query will fail, which is
@@ -147,6 +147,7 @@ class TiledMapPlugin(p.SingletonPlugin):
             },
             'icon': 'compass',
             'iframed': True,
+            'filterable': True,
             'preview_enabled': False,
             'full_page_edit': False
         }

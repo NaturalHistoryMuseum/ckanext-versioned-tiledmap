@@ -15,8 +15,8 @@ this.ckan.module('tiledmap', function ($) {
       var geom = '';
       var fields = {};
       var q = '';
-      if (window.parent.ckan && window.parent.ckan.views.viewhelpers){
-        var filters = window.parent.ckan.views.viewhelpers.filters.get();
+      if (window.parent.ckan && window.parent.ckan.views.filters){
+        var filters = window.parent.ckan.views.filters.get();
         for (var pname in filters){
           if (pname == '_tmgeom'){
             geom = Terraformer.WKT.parse(filters[pname][0]);
@@ -25,7 +25,7 @@ this.ckan.module('tiledmap', function ($) {
           }
         }
       }
-      // The ckan viewhelpers does not give us access to the 'q' parameter, so extract it manually.
+      // The ckan filters api does not give us access to the 'q' parameter, so extract it manually.
       var qs = window.parent.location.search.substr(1).split('&');
       for (var i in qs){
         var p = qs[i].split('=');
@@ -867,8 +867,8 @@ my.PointInfoPlugin = function(view, options){
         _resource_url: window.parent.location.pathname,
         _multiple: options.count_field && props.data[options.count_field] > 1
       }, props.data);
-      if (window.parent.ckan && window.parent.ckan.views.viewhelpers && props.data.grid_bbox){
-        var filters = window.parent.ckan.views.viewhelpers.filters.get();
+      if (window.parent.ckan && window.parent.ckan.views.filters && props.data.grid_bbox){
+        var filters = window.parent.ckan.views.filters.get();
         var furl = new my.CkanFilterUrl().set_filters(filters);
         furl.add_filter('_tmgeom', props.data.grid_bbox);
         template_data._overlapping_records_filters = encodeURIComponent(furl.get_filters());
@@ -889,7 +889,8 @@ my.PointInfoPlugin = function(view, options){
     this.animation = {
       radius: 1,
       fillOpacity: 1,
-      drawOpacity: 1
+      drawOpacity: 1,
+      style: {} // Some jQuery versions require this.
     };
     $(this.animation).animate({
       radius: 20,
