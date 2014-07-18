@@ -556,7 +556,7 @@ my.NHMMap = Backbone.View.extend({
  *
  * Control to make the map fullscreen
  */
-my.FullScreenControl = L.Control.Fullscreen.extend({
+my.FullScreenControl = L.Control.extend({
   initialize: function(view, options) {
     this.view = view;
     L.Util.setOptions(this, options);
