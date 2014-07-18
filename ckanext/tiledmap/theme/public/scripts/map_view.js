@@ -24,15 +24,7 @@ this.ckan.module('tiledmap', function ($) {
             fields[pname] = filters[pname][0];
           }
         }
-      }
-      // The ckan filters api does not give us access to the 'q' parameter, so extract it manually.
-      var qs = window.parent.location.search.substr(1).split('&');
-      for (var i in qs){
-        var p = qs[i].split('=');
-        if (p.length == 2 && p[0] == 'q'){
-          q = decodeURIComponent(p[1]);
-          break;
-        }
+        q = window.parent.ckan.views.filters.getFullText();
       }
       this.view = new (_get_tiledmap_view(this, $))({
         resource_id: this.options.resource.id,
@@ -78,6 +70,8 @@ my.NHMMap = Backbone.View.extend({
     this.layers = {};
     // Setup the sidebar
     this.sidebar_view = new my.PointDetailView();
+    // Handle window resize
+    $(window.parent).resize($.proxy(this, '_resize'));
   },
 
   /**
@@ -89,7 +83,6 @@ my.NHMMap = Backbone.View.extend({
   render: function() {
     var out = Mustache.render(this.template);
     this.el.html(out);
-    this.el.css('width', '100%');
     this.$map = this.el.find('.panel.map');
     $('.panel.sidebar', this.el).append(this.sidebar_view.el);
     this.map_ready = false;
@@ -143,6 +136,7 @@ my.NHMMap = Backbone.View.extend({
 
     /* If the div was hidden, Leaflet needs to recalculate some sizes to display properly */
     if (this.map_ready && this.map){
+      this._resize();
       this.map.invalidateSize();
       if (this._zoomPending && this.state.get('autoZoom')) {
         this._zoomToFeatures();
@@ -161,6 +155,13 @@ my.NHMMap = Backbone.View.extend({
   hide: function() {
      this.el.css('display', 'none');
      this.visible = false
+  },
+
+  /**
+   * Called when the window is resized to set the map size
+   */
+  _resize: function(){
+    $('div.panel.map, div.panel.sidebar', this.el).height($(window.parent).height()*0.90);
   },
 
   /**
@@ -210,8 +211,10 @@ my.NHMMap = Backbone.View.extend({
     // Set up the controls available to the map. These are assigned during redraw.
     this.controls = {
       'drawShape': new my.DrawShapeControl(this, this.map_info.control_options['drawShape']),
-      'mapType': new my.MapTypeControl(this, this.map_info.control_options['mapType'])
-    }
+      'mapType': new my.MapTypeControl(this, this.map_info.control_options['mapType']),
+      'fullScreen': new my.FullScreenControl(this, this.map_info.control_options['fullScreen'])
+    };
+
     // Set up the plugins available to the map. These are assigned during redraw.
     this.plugins = {
       'tooltipInfo': new my.TooltipPlugin(this, this.map_info.plugin_options['tooltipInfo']),
@@ -376,6 +379,39 @@ my.NHMMap = Backbone.View.extend({
   },
 
   /**
+   * openSidebar
+   *
+   * Open the sidebar.
+   */
+  openSidebar: function(){
+    var $sb = $('.panel.sidebar', this.el);
+    var width = $sb.css('max-width');
+      $sb.stop().animate({
+        width: width
+      }, {
+        complete: function(){
+          $sb.css('overlow-y', 'auto');
+        }
+      });
+  },
+
+  /**
+   * closeSidebar
+   *
+   * Close the sidebar
+   */
+  closeSidebar: function(){
+    var $sb = $('.panel.sidebar', this.el);
+      $sb.stop().animate({
+        width: 0
+      }, {
+        complete: function(){
+          $sb.css('overflow-y', 'hidden');
+        }
+      });
+  },
+
+  /**
    * _addLayer
    *
    * This function adds a new layer to the map
@@ -514,6 +550,73 @@ my.NHMMap = Backbone.View.extend({
     this._current_addons[type] = new_addons;
   }
 });
+
+/**
+ * FullScreenControl
+ *
+ * Control to make the map fullscreen
+ */
+my.FullScreenControl = L.Control.Fullscreen.extend({
+  initialize: function(view, options) {
+    this.view = view;
+    L.Util.setOptions(this, options);
+    this.is_full_screen = false;
+  },
+
+  _onClick: function(e){
+    var body = jQuery('body').get(0);
+    if (this.is_full_screen) {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.mozCancelFullScreen) {
+        document.mozCancelFullScreen();
+      } else if (document.webkitCancelFullScreen) {
+        document.webkitCancelFullScreen();
+      } else if (document.msExitFullscreen) {
+        document.msExitFullscreen();
+      }
+      $(body).removeClass('fullscreen');
+    } else {
+      //FIXME: Handle older browsers
+      if (body.requestFullscreen) {
+          body.requestFullscreen();
+      } else if (body.mozRequestFullScreen) {
+          body.mozRequestFullScreen();
+      } else if (body.webkitRequestFullscreen) {
+          body.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
+      } else if (body.msRequestFullscreen) {
+        body.msRequestFullscreen();
+      }
+      $(body).addClass('fullscreen');
+    }
+    this.is_full_screen = !this.is_full_screen;
+    e.stopPropagation();
+    return false;
+  },
+
+  getItemClickHandler: function(style) {
+    return $.proxy(function(e){
+        var $active = $('a.active-selection', this.$bar);
+        if ($active.length > 0 && $active.attr('stylecontrol') == style){
+            return;
+        }
+        this.view.map_info.map_style = style;
+        $active.removeClass('active-selection');
+        $('a[stylecontrol=' + style + ']').addClass('active-selection');
+        this.view.redraw();
+        e.stopPropagation();
+        return false;
+    }, this);
+},
+
+  onAdd: function(map){
+     this.$bar = $('<div>').addClass('leaflet-bar');
+     var $elem = $('<a></a>').attr('href', '#').attr('title', 'full screen').html('F').appendTo(this.$bar)
+     .click($.proxy(this, '_onClick'));
+     return L.DomUtil.get(this.$bar.get(0));
+  }
+});
+
 
 /**
  * MapTypeControl
@@ -720,10 +823,11 @@ my.DrawShapeControl = L.Control.Draw.extend({
  */
 my.PointDetailView = Backbone.View.extend({
   className: 'tiled-map-point-detail',
-  template: '<div class="tiled-map-point-detail">Click on a map point for more detail</div>',
+  template: '<div class="tiled-map-point-detail"></div>',
   initialize: function() {
     this.el = $(this.el);
     this.render();
+    this.has_content = false;
   },
   render: function(data, template) {
     var self = this;
@@ -737,15 +841,21 @@ my.PointDetailView = Backbone.View.extend({
     } else {
       out = Mustache.render(template, data);
     }
-    this.el.stop().animate({
-      opacity: 0
-    }, {
-      duration: 200,
-      complete: function(){
-        self.el.html(out);
-        self.el.animate({opacity: 1}, {duration: 200})
-      }
-    });
+    if (this.has_content) {
+      this.el.stop().animate({
+        opacity: 0
+      }, {
+        duration: 200,
+        complete: function () {
+          self.el.html(out);
+          self.el.animate({opacity: 1}, {duration: 200});
+        }
+      });
+    } else {
+      self.el.html(out);
+      this.el.stop().animate({opacity: 1}, {duration: 200});
+    }
+    this.has_content = data ? true : false;
   }
 });
 
@@ -874,10 +984,12 @@ my.PointInfoPlugin = function(view, options){
         template_data._overlapping_records_filters = encodeURIComponent(furl.get_filters());
       }
       view.sidebar_view.render(template_data, options['template']);
+      view.openSidebar();
     } else {
       delete this.layers['_point_info_plugin'];
       delete this.layers['_point_info_plugin_1'];
       view.sidebar_view.render(null);
+      view.closeSidebar();
     }
   }
 

@@ -540,6 +540,9 @@ class MapController(base.BaseController):
             'map_styles': {
             },
             'control_options': {
+                'fullScreen': {
+                    'position': 'topright'
+                },
                 'drawShape': {
                     'draw': {
                         'polyline': False,
@@ -592,7 +595,7 @@ class MapController(base.BaseController):
             result['map_styles']['heatmap'] = {
                 'name': _('Distribution Map'),
                 'icon': 'D',
-                'controls': ['drawShape', 'mapType'],
+                'controls': ['drawShape', 'mapType', 'fullScreen'],
                 'has_grid': False,
             }
             result['map_style'] = 'heatmap'
@@ -601,7 +604,7 @@ class MapController(base.BaseController):
             result['map_styles']['gridded'] = {
                 'name': _('Grid Map'),
                 'icon': 'G',
-                'controls': ['drawShape', 'mapType'],
+                'controls': ['drawShape', 'mapType', 'fullScreen'],
                 'plugins': ['tooltipCount'],
                 'has_grid': self.view['enable_utf_grid'],
                 'grid_resolution': self.mss_options['plot']['grid_resolution']
@@ -612,7 +615,7 @@ class MapController(base.BaseController):
             result['map_styles']['plot'] = {
                 'name': _('Plot Map'),
                 'icon': 'P',
-                'controls': ['drawShape', 'mapType'],
+                'controls': ['drawShape', 'mapType', 'fullScreen'],
                 'plugins': ['tooltipInfo', 'pointInfo'],
                 'has_grid': self.view['enable_utf_grid'],
                 'grid_resolution': self.mss_options['plot']['grid_resolution']

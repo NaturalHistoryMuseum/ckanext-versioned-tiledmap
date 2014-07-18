@@ -69,19 +69,19 @@ div.tiled-map-info{
 }
 
 .panel.map {
-    margin-right: 266px;
-    height: 500px;
+    height: 500px; /* Set to 90% of screen height when displayed */
 }
 
 .panel.sidebar {
     float: right;
-    width: 230px;
-    height: 500px;
+    margin-left:20px;
+    width: 0px; /* Set to max-width when displayed */
+    max-width: 230px;
+    height: 500px; /* Set to 90% of screen height when displayed */
 
     background: #EEE;
-    overflow-y: auto;
+    overflow-y: hidden; /* Set to 'auto' when displayed */
     overflow-x: hidden;
-    padding-right: 20px;
 }
 
 /* Map tooltips */
@@ -97,6 +97,7 @@ div.map-hover-tooltip {
 /* Point info */
 div.tiled-map-point-detail {
   padding: 8px;
+  width: 214px; /* 230 - 2*8 */
 }
 
 div.point-detail div.point-detail-title {
@@ -142,3 +143,16 @@ div.point-detail .point-detail-tree-detail:last-child:after {
     content: '>';
     font-weight: bold;
 }
+
+/* Fullscreen mode */
+body.fullscreen {
+    width: 100%;
+    height: 100%;
+    margin: 0px;
+}
+
+body.fullscreen div.tiled-map {
+    width: 98%;
+    margin-left: 1%;
+}
+
