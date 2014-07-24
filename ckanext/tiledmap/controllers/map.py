@@ -129,6 +129,7 @@ class MapController(base.BaseController):
             base.abort(400, _("Missing resource id"))
 
         self.resource_id = request.params.get('resource_id')
+
         try:
             self.resource = logic.get_action('resource_show')(None, {'id': self.resource_id})
         except logic.NotFound:
@@ -548,6 +549,7 @@ class MapController(base.BaseController):
                         'polyline': False,
                         'marker': False,
                         'circle': False,
+                        'country': True,
                         'polygon': {
                             'allowIntersection': False,
                             'shapeOptions': {
