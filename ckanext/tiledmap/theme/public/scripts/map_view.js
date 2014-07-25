@@ -935,8 +935,8 @@ my.PointInfoPlugin = function(view, options){
     if (props && props.data && (view.map_info.repeat_map || (props.latlng.lng >= -180 && props.latlng.lng <= 180))){
       // Find coordinates. The values in props.latlng is the mouse position, not the point position -
       // however it helps us know if we have clicked on a point that is wrapped around the world.
-      var lat = props.data.lat;
-      var lng = props.data.lng;
+      var lat = props.data._tiledmap_lat;
+      var lng = props.data._tiledmap_lng;
       if (props.latlng.lng > 180){
         // Tricky because the clicking might not be within the same 360 block at the center of the marker. We must
         // test for this eventuality.
@@ -982,10 +982,10 @@ my.PointInfoPlugin = function(view, options){
         _resource_url: window.parent.location.pathname,
         _multiple: options.count_field && props.data[options.count_field] > 1
       }, props.data);
-      if (window.parent.ckan && window.parent.ckan.views.filters && props.data.grid_bbox){
+      if (window.parent.ckan && window.parent.ckan.views.filters && props.data._tiledmap_grid_bbox){
         var filters = window.parent.ckan.views.filters.get();
         var furl = new my.CkanFilterUrl().set_filters(filters);
-        furl.add_filter('_tmgeom', props.data.grid_bbox);
+        furl.add_filter('_tmgeom', props.data._tiledmap_grid_bbox);
         template_data._overlapping_records_filters = encodeURIComponent(furl.get_filters());
       }
       view.sidebar_view.render(template_data, options['template']);

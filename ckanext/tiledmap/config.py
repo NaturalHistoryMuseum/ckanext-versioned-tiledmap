@@ -5,10 +5,10 @@ config = {
     # important that there is a unique index on that column.
     'tiledmap.unique_id_field': '_id',
 
-    # The named of the fields that are inserted into the datastore table to hold the geom data. Note
-    # that fields that start with an underscore are considered hidden by the datastore. Also note that
-    # if you change those after some map views were created, those map views won't work anymore and will need manual
-    # fix.
+    # The named of the fields that are inserted into the datastore table to hold the geom data. Imported data
+    # *cannot* contain fields with the same name. Note that fields that start with an underscore are considered hidden
+    #  by the datastore. Also note that if you change those after some map views were created, those map views won't
+    # work anymore and will need manual fix.
     'tiledmap.geom_field': '_the_geom_webmercator',
     'tiledmap.geom_field_4326': '_geom',
 

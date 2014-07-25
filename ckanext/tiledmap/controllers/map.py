@@ -38,32 +38,7 @@ class MapController(base.BaseController):
 
     - filter, defining the filters to apply.
 
-    The configuration must include the following items:
-    - ckan.datastore.write_url: The URL for the datastore database
-
-    It may optionally define:
-    - map.windshaft.host: The hostname of the windshaft server. Defaults to 127.0.0.1
-    - map.windshaft.port: The port for the windshaft server. Defaults to 4000
-    - map.winsdhaft_database: The database name to pass to the windshaft server. Defaults
-        to the database name from the datastore URL.
-    - map.geom_field: Geom field. Defaults to _the_geom_webmercator. Must be 3857 type field;
-    - map.geom_field_4326: The 4326 geom field. Defaults to _geom ;
-    - map.tile_layer.url: URL of the tile layer. Defaults to http://otile1.mqcdn.com/tiles/1.0.0/map/{z}/{x}/{y}.jpg
-    - map.tile_layer.opacity: Opacity of the tile layer. Defaults to 0.8
-    - map.initial_zoom.min: Minimum zoom level for initial display of dataset, defaults to 2
-    - map.initial_zoom.max: Maximum zoom level for initial display of dataset, defaults to 6
-    - map.info_template: Base name of the template to use to generate the popup info when clicking points.
-        The template that will be used is <info template>.<resource type>.mustache if exists, and
-        <info template>.mustache if not. For instance, given a base name of 'point_detail' and a resource of type 'csv',
-        the template used will be point_detail.csv.mustache if it exists, and point_detail.mustache if not.
-
-        Note that this template must return what itself is a mustache template, that will then get instantiated client
-        side. The server side template has two variables: 'fields' (the fields selected by the view creator), and
-        'title' (the title field selected by the view creator).
-
-        Defaults to point_detail
-    - map.quick_info_template: Base name of the template used for quick info on a record, typically shown on hover.
-        See `map.info_template` for more information. Defaults to point_detail_hover.
+    See ckanext.tiledmap.config for configuration options.
     """
 
     def __init__(self):
@@ -344,7 +319,7 @@ class MapController(base.BaseController):
             outer_q = Select(options={'compact': True}, identifiers={
                 'geom_field_label': self.geom_field
             })
-            outer_q.select_from('({query}) AS _mapplugin_sub', values={'query': query})
+            outer_q.select_from('({query}) AS _tiledmap_sub', values={'query': query})
             outer_q.select('count')
             outer_q.select('{geom_field_label}')
             outer_q.order_by('random()')
@@ -358,7 +333,7 @@ class MapController(base.BaseController):
             outer_q = Select(options={'compact': True}, identifiers={
                 'geom_field_label': self.geom_field
             })
-            outer_q.select_from('({query}) AS _mapplugin_sub', values={'query': query})
+            outer_q.select_from('({query}) AS _tiledmap_sub', values={'query': query})
             outer_q.select('{geom_field_label}')
             outer_q.order_by('random()')
             sql = outer_q.to_sql()
@@ -399,8 +374,8 @@ class MapController(base.BaseController):
                                  self.mss_options[style]['marker_size'],
                                  self.mss_options[style]['grid_resolution'])
         query.select('array_agg({unique_id_field}) AS {unique_id_field_label}')
-        query.select('COUNT({geom_field}) AS count')
-        query.select('ST_SnapToGrid({geom_field}, !pixel_width! * {grid_size}, !pixel_height! * {grid_size}) AS _mapplugin_center')
+        query.select('COUNT({geom_field}) AS _tiledmap_count')
+        query.select('ST_SnapToGrid({geom_field}, !pixel_width! * {grid_size}, !pixel_height! * {grid_size}) AS _tiledmap_center')
 
         # The group by needs to match the column chosen above, including by the size of the grid
         query.group_by('ST_SnapToGrid({geom_field}, !pixel_width! * {grid_size}, !pixel_height! * {grid_size})')
@@ -413,9 +388,9 @@ class MapController(base.BaseController):
             'geom_field_label': self.geom_field,
             'geom_field_4326': (self.resource_id, self.geom_field_4326),
             'unique_id_field': (self.resource_id, self.unique_id_field),
-            'subquery': '_mapplugin_sub',
-            'unique_id_field_sub': ('_mapplugin_sub', self.unique_id_field),
-            'count_sub': ('_mapplugin_sub', 'count')
+            'subquery': '_tiledmap_sub',
+            'unique_id_field_sub': ('_tiledmap_sub', self.unique_id_field),
+            'count_sub': ('_tiledmap_sub', '_tiledmap_count')
         }, values={
             'query': query,
             'grid_size': self.mss_options[style]['grid_resolution']
@@ -427,23 +402,24 @@ class MapController(base.BaseController):
             outer_query.select('{col}', identifiers={
                 'col': (self.resource_id, col)
             })
-        outer_query.select('{count_sub} AS count')
-        outer_query.select('st_y({geom_field_4326}) AS lat')
-        outer_query.select('st_x({geom_field_4326}) AS lng')
-        outer_query.select('_mapplugin_center AS {geom_field_label}')
+        outer_query.select('{count_sub} AS _tiledmap_count')
+        outer_query.select('st_y({geom_field_4326}) AS _tiledmap_lat')
+        outer_query.select('st_x({geom_field_4326}) AS _tiledmap_lng')
+        outer_query.select('_tiledmap_center AS {geom_field_label}')
         outer_query.select("""
             ST_AsText(ST_Transform(ST_SetSRID(ST_MakeBox2D(
-                ST_Translate(_mapplugin_center,
+                ST_Translate(_tiledmap_center,
                              !pixel_width! * {grid_size} / -2,
                              !pixel_height! * {grid_size} / -2),
-                ST_Translate(_mapplugin_center,
+                ST_Translate(_tiledmap_center,
                              !pixel_width! * {grid_size} / 2,
                              !pixel_height! * {grid_size} / 2)
-            ), 3857), 4326)) as grid_bbox
+            ), 3857), 4326)) as _tiledmap_grid_bbox
         """)
         sql = outer_query.to_sql()
 
-        interactivity_fields = ",".join(set(list(self.query_fields) + ['count', 'lat', 'lng', 'grid_bbox']))
+        interactivity_fields = ",".join(set(list(self.query_fields) + ['_tiledmap_count', '_tiledmap_lat',
+                                                                       '_tiledmap_lng', '_tiledmap_grid_bbox']))
         url = self._grid_url(z, x, y, callback=callback, sql=sql, interactivity=interactivity_fields)
         response.headers['Content-type'] = 'text/javascript'
         # TODO: Detect if the incoming connection has been dropped, and if so stop the query.
@@ -581,15 +557,15 @@ class MapController(base.BaseController):
             },
             'plugin_options': {
                 'tooltipInfo': {
-                    'count_field': 'count',
+                    'count_field': '_tiledmap_count',
                     'template': quick_info_template,
                 },
                 'tooltipCount': {
-                    'count_field': 'count'
+                    'count_field': '_tiledmap_count'
                 },
                 'pointInfo': {
                     'template': info_template,
-                    'count_field': 'count'
+                    'count_field': '_tiledmap_count'
                 }
             },
             'fetch_id': fetch_id
@@ -626,7 +602,7 @@ class MapController(base.BaseController):
             }
             result['map_style'] = 'plot'
 
-        inner_query = query.column(geo_table.c[self.geom_field_4326].label('r')).alias('_mapplugin_sub')
+        inner_query = query.column(geo_table.c[self.geom_field_4326].label('r')).alias('_tiledmap_sub')
         inner_col = Column('r', helpers.Geometry)
         outer_query = select([
             func.count(inner_col).label('count'),
