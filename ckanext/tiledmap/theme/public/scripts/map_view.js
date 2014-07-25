@@ -50,7 +50,7 @@ this.ckan.module('tiledmap', function ($) {
 function _get_tiledmap_view(my, $, _){
 my.NHMMap = Backbone.View.extend({
   className: 'tiled-map',
-  template: '<div class="tiled-map-info"></div><div class="panel sidebar"><button class="close">x</button></div><div class="panel map"></div>',
+  template: '<div class="tiled-map-info"></div><div class="panel sidebar"><a class="close">x</a></div><div class="panel map"></div>',
 
   /**
    * Initialize
@@ -613,7 +613,7 @@ my.FullScreenControl = L.Control.extend({
 
   onAdd: function(map){
      this.$bar = $('<div>').addClass('leaflet-bar');
-     var $elem = $('<a></a>').attr('href', '#').attr('title', 'full screen').html('F').appendTo(this.$bar)
+     var $elem = $('<a></a>').attr('href', '#').attr('title', 'full screen').html('<i class="fa fa-expand"></i>').appendTo(this.$bar)
      .click($.proxy(this, '_onClick'));
      return L.DomUtil.get(this.$bar.get(0));
   }

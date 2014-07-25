@@ -40,7 +40,12 @@ div.tiled-map a.leaflet-draw-edit-remove:after{
     content: "\f0e2";
 }
 
-div.tiled-map a.leaflet-draw-edit-remove{
+div.tiled-map a.leaflet-draw-draw-country:after{
+    content: "\f0ac"  /* Puzzle piece - fa-puzzle-piece */
+}
+
+div.tiled-map a.leaflet-draw-edit-remove,
+div.tiled-map a.leaflet-draw-draw-country{
     background-image: none;
 }
 
@@ -76,11 +81,7 @@ div.tiled-map-info{
 
 .leaflet-bar a.active-selection {
   font-weight: bold;
-}
-
-.panel {
-  /*border-radius: 4px;*/
-  /*box-shadow: 4px 4px 16px 0px #888;*/
+  background: #f4f4f4;
 }
 
 .panel.map {
@@ -94,11 +95,9 @@ div.tiled-map-info{
 
 .panel.sidebar {
     float: right;
-    /*margin-left:20px;*/
     width: 0px; /* Set to max-width when displayed */
     max-width: 230px;
     height: 500px; /* Set to 90% of screen height when displayed */
-
     background: #EEE;
     overflow-y: hidden; /* Set to 'auto' when displayed */
     overflow-x: hidden;
@@ -107,8 +106,10 @@ div.tiled-map-info{
 
 .panel.sidebar .close{
     position: absolute;
-    top: 2px;
-    right: 2px;
+    top: 4px;
+    right: 8px;
+    color: #000000;
+    cursor: pointer;
 }
 
 /* Map tooltips */
@@ -124,6 +125,7 @@ div.map-hover-tooltip {
 div.point-detail div.point-detail-title,
 div.point-detail div.point-detail-info{
     padding: 8px;
+    min-width: 230px; /* Stop them compressing on slide */
 }
 
 div.point-detail div.point-detail-title {
@@ -134,6 +136,11 @@ div.point-detail div.point-detail-title {
 
 div.point-detail table{
     margin: 0 8px;
+    min-width: 230px;
+}
+
+div.point-detail table td, th{
+    text-align: left;
 }
 
 div.point-detail .point-detail-info {
@@ -142,6 +149,10 @@ div.point-detail .point-detail-info {
   position: absolute;
   bottom: 0;
   background: #E4E4E4;
+}
+
+div.point-detail .point-detail-info a:hover{
+    text-decoration: underline;
 }
 
 div.point-detail .point-detail-tree-label {
@@ -176,3 +187,6 @@ body.fullscreen div.tiled-map {
     margin-left: 1%;
 }
 
+body.fullscreen .fa-expand:before {
+content: "\f066";
+}
