@@ -46,6 +46,7 @@ class Select:
         self._options = dict({'nl': False, 'compact': False}.items() + options.items())
         self._query = {
             'from': [],
+            'inner_join': [],
             'select': [],
             'distinct_on': [],
             'where': [],
@@ -72,6 +73,8 @@ class Select:
             query[0] = query[0] + " DISTINCT ON (" + ', '.join(self._sql_section('distinct_on')) + ")"
         query[0] = query[0] + " " + ', '.join(self._sql_section('select'))
         query.append('FROM ' + ', '.join(self._sql_section('from')))
+        if len(self._query['inner_join']):
+            query = query + ['INNER JOIN ' + b for b in self._sql_section('inner_join')]
         if len(self._query['where']):
             query.append("WHERE (" + ') AND ('.join(self._sql_section('where')) + ')')
         if len(self._query['group_by']):
@@ -91,6 +94,15 @@ class Select:
         @return: self
         """
         return self._add_expr('from', expr, identifiers, values)
+
+    def inner_join(self, expr, identifiers=None, values=None):
+        """ Add an inner join clause
+        @param expr: The inner join clause
+        @param identifiers:  Dictionary of identifiers label to value for this clause only
+        @param values: Dictionary of value label to value for this clause only
+        @return: self
+        """
+        return self._add_expr('inner_join', expr, identifiers, values)
 
     def distinct_on(self, expr, identifiers=None, values=None):
         """ Add a distinct on clause to the query

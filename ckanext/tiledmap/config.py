@@ -1,5 +1,10 @@
 # Default configuration
 config = {
+    # Unique id field on the datastore table containing the geometric data. By default this is _id,
+    # and you should only change this if you know what you are doing. For performance reasons it is
+    # important that there is a unique index on that column.
+    'tiledmap.unique_id_field': '_id',
+
     # The named of the fields that are inserted into the datastore table to hold the geom data. Note
     # that fields that start with an underscore are considered hidden by the datastore. Also note that
     # if you change those after some map views were created, those map views won't work anymore and will need manual

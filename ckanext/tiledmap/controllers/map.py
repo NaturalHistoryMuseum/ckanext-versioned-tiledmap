@@ -75,6 +75,7 @@ class MapController(base.BaseController):
         self.windshaft_database = _get_engine().url.database
         self.geom_field = config['tiledmap.geom_field']
         self.geom_field_4326 = config['tiledmap.geom_field_4326']
+        self.unique_id_field = config['tiledmap.unique_id_field']
         self.tile_layer = {
             'url': config['tiledmap.tile_layer.url'],
             'opacity': float(config['tiledmap.tile_layer.opacity'])
@@ -231,7 +232,9 @@ class MapController(base.BaseController):
             'geom_field': (self.resource_id, self.geom_field),
             'geom_field_label': self.geom_field,
             'geom_field_4326': (self.resource_id, self.geom_field_4326),
-            'geom_field_4326_label': self.geom_field_4326
+            'geom_field_4326_label': self.geom_field_4326,
+            'unique_id_field': (self.resource_id, self.unique_id_field),
+            'unique_id_field_label': self.unique_id_field
         }, values={
             'grid_size': grid_size,
             'marker_size': marker_size
@@ -389,44 +392,43 @@ class MapController(base.BaseController):
             base.abort(400, _("Incorrect style parameter"))
 
         # To calculate the number of overlapping points, we first snap them to a grid roughly four pixels wide, and then
-        # group them by that grid. This allows us to count the records, but we need to aggregate the rest of the
-        # information in order to later return the "top" record from the stack of overlapping records
+        # group them by that grid. This allows us to count the records, but we need to aggregate the unique id field
+        # in order to later return the "top" record from the stack of overlapping records
         query = self._base_query(z, x, y,
                                  self.mss_options[style]['marker_size'],
                                  self.mss_options[style]['grid_resolution'])
-        for col in self.query_fields:
-            query.select('array_agg({col}) AS {col}', identifiers={
-                'col': col
-            })
+        query.select('array_agg({unique_id_field}) AS {unique_id_field_label}')
         query.select('COUNT({geom_field}) AS count')
-        query.select('array_agg({geom_field_4326}) AS {geom_field_4326_label}')
         query.select('ST_SnapToGrid({geom_field}, !pixel_width! * {grid_size}, !pixel_height! * {grid_size}) AS _mapplugin_center')
 
         # The group by needs to match the column chosen above, including by the size of the grid
         query.group_by('ST_SnapToGrid({geom_field}, !pixel_width! * {grid_size}, !pixel_height! * {grid_size})')
-        query.order_by('count DESC')
 
         # In the outer query we can use the overlapping records count and the location, but we also need to pop the
         # first record off of the array. If we were to return e.g. all the overlapping names, the json grids would
         # unbounded in size.
-
         outer_query = Select(options={'compact': True}, identifiers={
             'resource': self.resource_id,
             'geom_field_label': self.geom_field,
-            'geom_field_4326_label': self.geom_field_4326
+            'geom_field_4326': (self.resource_id, self.geom_field_4326),
+            'unique_id_field': (self.resource_id, self.unique_id_field),
+            'subquery': '_mapplugin_sub',
+            'unique_id_field_sub': ('_mapplugin_sub', self.unique_id_field),
+            'count_sub': ('_mapplugin_sub', 'count')
         }, values={
             'query': query,
             'grid_size': self.mss_options[style]['grid_resolution']
         })
 
-        outer_query.select_from('({query}) AS _mapplugin_sub')
+        outer_query.select_from("{resource}")
+        outer_query.inner_join('({query}) AS {subquery} ON {unique_id_field_sub}[1] = {unique_id_field}')
         for col in self.query_fields:
-            outer_query.select('{col}[1] AS {col}', identifiers={
-                'col': col
+            outer_query.select('{col}', identifiers={
+                'col': (self.resource_id, col)
             })
-        outer_query.select('count')
-        outer_query.select('st_y({geom_field_4326_label}[1]) AS lat')
-        outer_query.select('st_x({geom_field_4326_label}[1]) AS lng')
+        outer_query.select('{count_sub} AS count')
+        outer_query.select('st_y({geom_field_4326}) AS lat')
+        outer_query.select('st_x({geom_field_4326}) AS lng')
         outer_query.select('_mapplugin_center AS {geom_field_label}')
         outer_query.select("""
             ST_AsText(ST_Transform(ST_SetSRID(ST_MakeBox2D(
