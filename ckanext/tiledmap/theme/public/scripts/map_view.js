@@ -72,6 +72,8 @@ my.NHMMap = Backbone.View.extend({
     this.sidebar_view = new my.PointDetailView();
     // Handle window resize
     $(window.parent).resize($.proxy(this, '_resize'));
+    // Handle on pop state
+    $(window.parent).on('popstate', $.proxy(this, '_popstate'));
   },
 
   /**
@@ -164,6 +166,22 @@ my.NHMMap = Backbone.View.extend({
    */
   _resize: function(){
     $('div.panel.map, div.panel.sidebar', this.el).height($(window.parent).height()*0.90);
+  },
+
+  /**
+   * Called when on popstate. Restore the previous _tmgeom filter.
+   */
+  _popstate: function(e){
+    if (e.originalEvent.state && e.originalEvent.state.geom) {
+      this.setGeom(e.originalEvent.state.geom, true);
+    } else {
+      var geom_t = new my.CkanFilterUrl(window.parent.location.href).get_filter('_tmgeom');
+      var geom = null;
+      if (geom_t) {
+        geom = Terraformer.WKT.parse(geom_t);
+      }
+      this.setGeom(geom, true);
+    }
   },
 
   /**
@@ -293,9 +311,10 @@ my.NHMMap = Backbone.View.extend({
   /**
    * setGeom
    *
-   * Set the geom filter. This will cause the map to be redrawn and links to views to be updated.
+   * Set the geom filter. This will cause the map to be redrawn and links to views to be updated. If leave_window_url
+   * if false or undefined, this will also update the browser url (or reload the page in older browsers).
    */
-  setGeom: function(geom){
+  setGeom: function(geom, leave_window_url){
     // Get the geometry drawn
     if (!geom && !this.filters.geom){
       return;
@@ -310,6 +329,15 @@ my.NHMMap = Backbone.View.extend({
       var href = new my.CkanFilterUrl($(this).attr('href')).set_filter('_tmgeom', param).get_url();
       $(this).attr('href', href);
     });
+    // Inject the geom search in the browser URL.
+    if (!leave_window_url) {
+      var href = new my.CkanFilterUrl(window.parent.location.href).set_filter('_tmgeom', param).get_url();
+      if (window.parent.history.pushState) {
+        window.parent.history.pushState({geom: geom}, '', href);
+      } else {
+        window.parent.location = href;
+      }
+    }
     // And redraw the map
     this.redraw();
   },
@@ -1311,6 +1339,18 @@ my.CkanFilterUrl = function(input_url){
       b_filter.push(f + ':' + this.qs['filters'][f])
     }
     return b_filter.join('|')
+  }
+
+  /**
+   * get_filter
+   *
+   * Return the value of a single filter in the filter query string
+   */
+  this.get_filter = function(name){
+    if (!this.qs['filters'] || !this.qs['filters'][name]){
+      return '';
+    }
+    return this.qs['filters'][name];
   }
 
   /**
