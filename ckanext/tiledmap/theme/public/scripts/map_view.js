@@ -50,7 +50,7 @@ this.ckan.module('tiledmap', function ($) {
 function _get_tiledmap_view(my, $, _){
 my.NHMMap = Backbone.View.extend({
   className: 'tiled-map',
-  template: '<div class="tiled-map-info"></div><div class="panel sidebar"></div><div class="panel map"></div>',
+  template: '<div class="tiled-map-info"></div><div class="panel sidebar"><a class="close">x</a></div><div class="panel map"></div>',
 
   /**
    * Initialize
@@ -84,6 +84,8 @@ my.NHMMap = Backbone.View.extend({
     var out = Mustache.render(this.template);
     this.el.html(out);
     this.$map = this.el.find('.panel.map');
+    // Add close button handler
+    this.el.find('.close').click(this.closeSidebar);
     $('.panel.sidebar', this.el).append(this.sidebar_view.el);
     this.map_ready = false;
     this._fetchMapInfo($.proxy(function(info){
@@ -611,7 +613,7 @@ my.FullScreenControl = L.Control.extend({
 
   onAdd: function(map){
      this.$bar = $('<div>').addClass('leaflet-bar');
-     var $elem = $('<a></a>').attr('href', '#').attr('title', 'full screen').html('F').appendTo(this.$bar)
+     var $elem = $('<a></a>').attr('href', '#').attr('title', 'full screen').html('<i class="fa fa-expand"></i>').appendTo(this.$bar)
      .click($.proxy(this, '_onClick'));
      return L.DomUtil.get(this.$bar.get(0));
   }
@@ -670,10 +672,12 @@ my.DrawShapeControl = L.Control.Draw.extend({
   initialize: function(view, options) {
       this.view = view;
       this.active = false;
+      this.country = options.draw.country
       L.Control.Draw.prototype.initialize.call(this, options);
       L.Util.setOptions(this, options);
-      // Pre-emptively load country data
-      this._loadCountries();
+      if (this.country){
+          this._loadCountries();
+      }
   },
 
   onAdd: function(map){
@@ -681,17 +685,18 @@ my.DrawShapeControl = L.Control.Draw.extend({
     // Call base Draw onAdd
     var elem = L.Control.Draw.prototype.onAdd.call(this, map);
     // Add the select country action
-    $('<a></a>').attr('href', '#').attr('title', 'Select by country').html('C').css({
-      'background-image': 'none'
-    }).appendTo($('div.leaflet-bar', elem))
-      .click($.proxy(this, 'onCountrySelectionClick'));
-    // Ensure the country select action stops when another draw is started
-    map.on('draw:drawstart', function(e){
-      if (self.active && e.layerType != 'country'){
-        self.active = false;
-        self._disactivate();
-      }
-    });
+    if (this.country) {
+        $('<a></a>').attr('href', '#').attr('title', 'Select by country').addClass('leaflet-draw-draw-country')
+            .appendTo($('div.leaflet-bar', elem))
+            .click($.proxy(this, 'onCountrySelectionClick'));
+        // Ensure the country select action stops when another draw is started
+        map.on('draw:drawstart', function (e) {
+            if (self.active && e.layerType != 'country') {
+                self.active = false;
+                self._disactivate();
+            }
+        });
+    }
     // Add the clear selection action
     $('<a></a>').attr('href', '#').attr('title', 'Clear selection').addClass('leaflet-draw-edit-remove')
       .appendTo($('div.leaflet-bar', elem))

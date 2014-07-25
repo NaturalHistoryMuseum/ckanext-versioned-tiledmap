@@ -1,3 +1,7 @@
+body{
+    margin: 0;
+}
+
 div.tiled-map {
   font-size: 13px;
   font-family: "Helvetica Neuee", Helvetica, Arial, sans-serif;
@@ -6,18 +10,43 @@ div.tiled-map {
 }
 
 div.tiled-map a {
-    color: #08c;
+    color: #363636;
     text-decoration: none;
 }
 
 div.tiled-map a:visited {
-    color: #08c;
+    color: #363636;
     text-decoration: none;
 }
 
 div.tiled-map a:hover {
-    color: #005580;
-    text-decoration: underline;
+    text-decoration: none;
+}
+
+/* Extra icons */
+
+div.tiled-map a:after{
+    font-family: FontAwesome;
+    font-weight: lighter;
+    font-style: normal;
+    -webkit-font-smoothing: antialiased;
+    margin: 1px 0 0 1px;
+    display: inline-block;
+    font-size: 14px;
+    line-height: 16px;
+}
+
+div.tiled-map a.leaflet-draw-edit-remove:after{
+    content: "\f0e2";
+}
+
+div.tiled-map a.leaflet-draw-draw-country:after{
+    content: "\f0ac"  /* Puzzle piece - fa-puzzle-piece */
+}
+
+div.tiled-map a.leaflet-draw-edit-remove,
+div.tiled-map a.leaflet-draw-draw-country{
+    background-image: none;
 }
 
 div.tiled-map-info{
@@ -50,78 +79,80 @@ div.tiled-map-info{
   background: #CBE6FE;
 }
 
-/* Override the paths to be root-relative, rather than relative to the CSS file */
-.leaflet-draw-toolbar a {
-    background-image: url('/images/spritesheet.png');
-}
-
-.leaflet-retina .leaflet-draw-toolbar a {
-    background-image: url('/images/spritesheet-2x.png');
-}
-
 .leaflet-bar a.active-selection {
   font-weight: bold;
-}
-
-.panel {
-  border-radius: 4px;
-  box-shadow: 4px 4px 16px 0px #888;
+  background: #f4f4f4;
 }
 
 .panel.map {
     height: 500px; /* Set to 90% of screen height when displayed */
 }
 
+.panel.map,
+.panel.sidebar{
+    min-height: 350px;
+}
+
 .panel.sidebar {
     float: right;
-    margin-left:20px;
     width: 0px; /* Set to max-width when displayed */
     max-width: 230px;
     height: 500px; /* Set to 90% of screen height when displayed */
-
     background: #EEE;
     overflow-y: hidden; /* Set to 'auto' when displayed */
     overflow-x: hidden;
+    position: relative;
+}
+
+.panel.sidebar .close{
+    position: absolute;
+    top: 4px;
+    right: 8px;
+    color: #000000;
+    cursor: pointer;
 }
 
 /* Map tooltips */
 div.map-hover-tooltip {
   color: #FFF;
-  background: #888;
+  background: #000;
   font-size: 1em;
-  padding: 2px;
+  padding: 3px 5px;
   border-radius: 2px;
-  opacity: 0.9;
+  opacity: 0.7;
 }
 
-/* Point info */
-div.tiled-map-point-detail {
-  padding: 8px;
-  width: 214px; /* 230 - 2*8 */
+div.point-detail div.point-detail-title,
+div.point-detail div.point-detail-info{
+    padding: 8px;
+    min-width: 230px; /* Stop them compressing on slide */
 }
 
 div.point-detail div.point-detail-title {
   font-size: 1.5em;
   font-weight: bold;
-  margin-bottom: 1em;
+  margin: 10px 0;
 }
 
-div.point-detail .point-detail-label {
-  font-weight: bold;
-  display: block;
-  float: left;
+div.point-detail table{
+    margin: 0 8px;
+    min-width: 230px;
 }
 
-div.point-detail .point-detail-value {
-  display: block;
-  text-indent: 10px;
-  margin-left: 10px;
+div.point-detail table td, th{
+    text-align: left;
 }
 
 div.point-detail .point-detail-info {
   font-size: 0.9em;
   color: #888;
-  margin-bottom: 1em;
+  position: absolute;
+  bottom: 0;
+  background: #E4E4E4;
+}
+
+div.point-detail .point-detail-info a:hover{
+    text-decoration: underline;
 }
 
 div.point-detail .point-detail-tree-label {
@@ -156,3 +187,6 @@ body.fullscreen div.tiled-map {
     margin-left: 1%;
 }
 
+body.fullscreen .fa-expand:before {
+content: "\f066";
+}

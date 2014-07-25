@@ -130,6 +130,7 @@ class MapController(base.BaseController):
             base.abort(400, _("Missing resource id"))
 
         self.resource_id = request.params.get('resource_id')
+
         try:
             self.resource = logic.get_action('resource_show')(None, {'id': self.resource_id})
         except logic.NotFound:
@@ -550,6 +551,7 @@ class MapController(base.BaseController):
                         'polyline': False,
                         'marker': False,
                         'circle': False,
+                        'country': True,
                         'polygon': {
                             'allowIntersection': False,
                             'shapeOptions': {
@@ -596,7 +598,7 @@ class MapController(base.BaseController):
         if self.view['enable_heat_map']:
             result['map_styles']['heatmap'] = {
                 'name': _('Distribution Map'),
-                'icon': 'D',
+                'icon': '<i class="fa fa-fire"></i>',
                 'controls': ['drawShape', 'mapType', 'fullScreen'],
                 'has_grid': False,
             }
@@ -605,7 +607,7 @@ class MapController(base.BaseController):
         if self.view['enable_grid_map']:
             result['map_styles']['gridded'] = {
                 'name': _('Grid Map'),
-                'icon': 'G',
+                'icon': '<i class="fa fa-th"></i>',
                 'controls': ['drawShape', 'mapType', 'fullScreen'],
                 'plugins': ['tooltipCount'],
                 'has_grid': self.view['enable_utf_grid'],
@@ -616,7 +618,7 @@ class MapController(base.BaseController):
         if self.view['enable_plot_map']:
             result['map_styles']['plot'] = {
                 'name': _('Plot Map'),
-                'icon': 'P',
+                'icon': '<i class="fa fa-dot-circle-o"></i>',
                 'controls': ['drawShape', 'mapType', 'fullScreen'],
                 'plugins': ['tooltipInfo', 'pointInfo'],
                 'has_grid': self.view['enable_utf_grid'],
