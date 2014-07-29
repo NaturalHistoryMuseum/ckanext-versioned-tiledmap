@@ -185,10 +185,8 @@ this.tiledmap = this.tiledmap || {};
         }
       };
 
-//    this.tiles_url = '/map-tile/{z}/{x}/{y}.png';
-//    this.grids_url = '/map-grid/{z}/{x}/{y}.grid.json?callback={cb}';
-      this.tiles_url = 'http://10.11.12.13:3000/map-tile/{z}/{x}/{y}.png';
-      this.grids_url = 'http://10.11.12.13:3000/map-grid/{z}/{x}/{y}.grid.json?callback={cb}';
+      this.tiles_url = '/map-tile/{z}/{x}/{y}.png';
+      this.grids_url = '/map-grid/{z}/{x}/{y}.grid.json?callback={cb}';
 
       // Set up the controls available to the map. These are assigned during redraw.
       this.controls = {
