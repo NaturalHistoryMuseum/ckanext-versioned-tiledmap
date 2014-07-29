@@ -125,7 +125,8 @@ my.PointInfoPlugin = function(view, options){
         template_data._overlapping_records_filters = encodeURIComponent(furl.get_filters());
       }
       view.sidebar_view.render(template_data, options['template']);
-      view.openSidebar();
+      var ensure_point = view.map.latLngToContainerPoint([lat, lng])
+      view.openSidebar(ensure_point.x, ensure_point.y);
     } else {
       delete this.layers['_point_info_plugin'];
       delete this.layers['_point_info_plugin_1'];

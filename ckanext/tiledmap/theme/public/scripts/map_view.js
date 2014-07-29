@@ -373,12 +373,21 @@ this.tiledmap = this.tiledmap || {};
      *
      * Open the sidebar.
      */
-    openSidebar: function () {
+    openSidebar: function (x, y) {
       var $sb = $('.panel.sidebar', this.el);
       var width = $sb.css('max-width');
+      var base_duration = 200;
+      var distance = this.el.width() - x;
+      if (distance < (parseInt(width) + 50)){
+        var diff = parseInt(width) + 50 - distance
+        var pan_duration = (base_duration * diff / parseInt(width))/1000.0;
+        this.map.panBy([diff, 0], {duration: pan_duration, easeLinearity: 1.0});
+      }
       $sb.stop().animate({
         width: width
       }, {
+        duration: base_duration,
+        easing: 'linear',
         complete: function () {
           $sb.css('overlow-y', 'auto');
         }
