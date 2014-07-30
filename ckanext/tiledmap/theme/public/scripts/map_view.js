@@ -155,6 +155,10 @@ this.tiledmap = this.tiledmap || {};
         this.disablePlugins();
         this.map.remove();
       }
+      /* Fix map jump issue, see: https://github.com/Leaflet/Leaflet/issues/1228 */
+      L.Map.addInitHook(function() {
+        return L.DomEvent.off(this._container, "mousedown", this.keyboard._onMouseDown);
+      });
       this.map = new L.Map(this.$map.get(0), {
         worldCopyJump: true
       });
@@ -175,14 +179,8 @@ this.tiledmap = this.tiledmap || {};
       }).addTo(this.map);
 
       this.tilejson = {
-        tilejson: '1.0.0',
-        scheme: 'xyz',
         tiles: [],
-        grids: [],
-        formatter: function (options, data) {
-          return 'yo'
-          /*data._id + "/" + data.species + "/" + data.scientific_name*/
-        }
+        grids: []
       };
 
       this.tiles_url = '/map-tile/{z}/{x}/{y}.png';
@@ -200,7 +198,7 @@ this.tiledmap = this.tiledmap || {};
         'tooltipInfo': new my.TooltipPlugin(this, this.map_info.plugin_options['tooltipInfo']),
         'tooltipCount': new my.TooltipPlugin(this, this.map_info.plugin_options['tooltipCount']),
         'pointInfo': new my.PointInfoPlugin(this, this.map_info.plugin_options['pointInfo'])
-      }
+      };
 
       // Setup handling of draw events to ensure plugins work nicely together
       this.map.on('draw:created', function (e) {
