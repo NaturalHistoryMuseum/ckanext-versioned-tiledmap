@@ -377,11 +377,13 @@ this.tiledmap = this.tiledmap || {};
       var $sb = $('.panel.sidebar', this.el);
       var width = $sb.css('max-width');
       var base_duration = 200;
-      var distance = this.el.width() - x;
-      if (distance < (parseInt(width) + 50)){
-        var diff = parseInt(width) + 50 - distance
-        var pan_duration = (base_duration * diff / parseInt(width))/1000.0;
-        this.map.panBy([diff, 0], {duration: pan_duration, easeLinearity: 1.0});
+      if($sb.width() < parseInt(width)) {
+        var distance = this.el.width() - x;
+        if (distance < (parseInt(width) + 50)) {
+          var diff = parseInt(width) + 50 - distance;
+          var pan_duration = (base_duration * diff / parseInt(width)) / 1000.0;
+          this.map.panBy([diff, 0], {duration: pan_duration, easeLinearity: 1.0});
+        }
       }
       $sb.stop().animate({
         width: width
