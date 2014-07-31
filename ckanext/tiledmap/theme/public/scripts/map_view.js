@@ -78,16 +78,7 @@ this.tiledmap = this.tiledmap || {};
       var $rri = $('.tiled-map-info', this.el);
       if (this.map_ready) {
         if (this.map_info.draw) {
-          var template = [
-            'Displaying <span class="doc-count">{{geoRecordCount}}</span>',
-            ' of ',
-            '</span><span class="doc-count">{{recordCount}}</span>',
-            'records'
-          ].join(' ');
-          $rri.html(Mustache.render(template, {
-            recordCount: this.map_info.total_count ? this.map_info.total_count.toString() : '0',
-            geoRecordCount: this.map_info.geom_count ? this.map_info.geom_count.toString() : '0'
-          }));
+          this.updateRecordCounter();
         } else {
           $rri.html(this.map_info.error);
         }
@@ -106,6 +97,23 @@ this.tiledmap = this.tiledmap || {};
       }
       this.el.css('display', 'block');
       this.visible = true;
+    },
+
+    /**
+     * Update the record counter
+     */
+    updateRecordCounter: function(){
+      var $rri = $('.tiled-map-info', this.el);
+      var template = [
+        'Displaying <span class="doc-count">{{geoRecordCount}}</span>',
+        ' of ',
+        '</span><span class="doc-count">{{recordCount}}</span>',
+        'records'
+      ].join(' ');
+      $rri.html(Mustache.render(template, {
+        recordCount: this.map_info.total_count ? this.map_info.total_count.toString() : '0',
+        geoRecordCount: this.map_info.geom_count ? this.map_info.geom_count.toString() : '0'
+      }));
     },
 
     /**
@@ -268,6 +276,23 @@ this.tiledmap = this.tiledmap || {};
     },
 
     /**
+     * _refresh_info
+     *
+     * Reload the number of records. Called when filters change without a page reload.
+     */
+    _refreshInfo: function(){
+      var $rri = $('.tiled-map-info', this.el);
+      $rri.html('Loading...');
+      this._fetchMapInfo($.proxy(function(info){
+        this.map_info = info;
+        this.map_info.draw = true;
+        this.updateRecordCounter();
+      }, this), function(){
+        /* NO OP */
+      });
+    },
+
+    /**
      * setGeom
      *
      * Set the geom filter. This will cause the map to be redrawn and links to views to be updated. If leave_window_url
@@ -297,6 +322,8 @@ this.tiledmap = this.tiledmap || {};
           window.parent.location = href;
         }
       }
+      // Refresh counters
+      this._refreshInfo();
       // And redraw the map
       this.redraw();
     },
