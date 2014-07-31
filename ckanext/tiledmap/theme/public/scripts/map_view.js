@@ -390,7 +390,7 @@ this.tiledmap = this.tiledmap || {};
         duration: base_duration,
         easing: 'linear',
         complete: function () {
-          $sb.css('overlow-y', 'auto');
+          $sb.css('overflow-y', 'auto');
         }
       });
     },
