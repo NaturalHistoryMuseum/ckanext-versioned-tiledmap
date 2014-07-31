@@ -123,15 +123,17 @@ div.map-hover-tooltip {
 }
 
 div.point-detail div.point-detail-title,
-div.point-detail div.point-detail-info{
+div.point-detail div.point-detail-info,
+div.point-detail div.point-detail-tree{
     padding: 8px;
-    min-width: 230px; /* Stop them compressing on slide */
+    min-width: 210px; /* Stop them compressing on slide */
 }
 
 div.point-detail div.point-detail-title {
   font-size: 1.5em;
   font-weight: bold;
   margin: 10px 0;
+  line-height: 1.1;
 }
 
 div.point-detail table{
@@ -168,11 +170,11 @@ div.point-detail-tree {
 div.point-detail .point-detail-tree-detail:after {
     content: '>';
     font-weight: bold;
+    padding: 0 3px;
 }
 
 div.point-detail .point-detail-tree-detail:last-child:after {
-    content: '>';
-    font-weight: bold;
+    content: '';
 }
 
 /* Fullscreen mode */
