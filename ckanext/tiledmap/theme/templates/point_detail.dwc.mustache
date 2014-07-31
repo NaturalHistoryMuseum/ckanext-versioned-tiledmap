@@ -37,6 +37,9 @@
             {{h.mustache('/' + field)}}
         {% endfor %}
     </div>
+
+    <table>
+
     {% for (label,field) in [
         ('Institution Code', 'institutionCode'),
         ('Catalogue Number', 'catalogNumber'),
@@ -51,10 +54,13 @@
         ('Habitat', 'habitat')
     ]%}
         {{h.mustache('#' + field)}}
-            <div class="point-detail-row">
-                <span class="point-detail-label">{{label}}:</span>
-                <span class="point-detail-value">{{h.mustache(field)}}</span>
-            </div>
+            <tr>
+                <th>{{label}}:</th>
+                <td>{{h.mustache(field)}}</td>
+            </tr>
         {{h.mustache('/' + field)}}
     {% endfor %}
+
+    </table>
+
 </div>

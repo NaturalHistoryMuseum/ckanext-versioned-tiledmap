@@ -141,8 +141,13 @@ div.point-detail table{
     min-width: 230px;
 }
 
+div.point-detail table tr{
+    margin-bottom: 5px;
+}
+
 div.point-detail table td, th{
     text-align: left;
+    vertical-align: top;
 }
 
 div.point-detail .point-detail-info {
