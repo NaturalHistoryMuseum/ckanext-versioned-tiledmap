@@ -487,13 +487,13 @@ class MapController(base.BaseController):
         # Prepare result
         quick_info_template_name = "{base}.{format}.mustache".format(
             base=self.quick_info_template,
-            format=self.resource['format']
+            format=str(self.resource['format']).lower()
         )
         if not find_template(quick_info_template_name):
             quick_info_template_name = self.quick_info_template + '.mustache'
         info_template_name = "{base}.{format}.mustache".format(
             base=self.info_template,
-            format=self.resource['format']
+            format=str(self.resource['format']).lower()
         )
         if not find_template(info_template_name):
             info_template_name = self.info_template + '.mustache'
