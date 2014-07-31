@@ -160,7 +160,8 @@ this.tiledmap = this.tiledmap || {};
         return L.DomEvent.off(this._container, "mousedown", this.keyboard._onMouseDown);
       });
       this.map = new L.Map(this.$map.get(0), {
-        worldCopyJump: true
+        worldCopyJump: true,
+        trackResize: false
       });
       if (this.map_info.geom_count > 0 || !bounds) {
         bounds = this.map_info.bounds;
