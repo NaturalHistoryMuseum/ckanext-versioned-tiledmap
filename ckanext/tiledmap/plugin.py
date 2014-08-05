@@ -9,7 +9,7 @@ import ckan.plugins.toolkit as toolkit
 import ckanext.tiledmap.logic.action as map_action
 import ckanext.tiledmap.logic.auth as map_auth
 from ckanext.tiledmap.config import config as plugin_config
-from ckanext.tiledmap.lib.helpers import mustache_wrapper
+from ckanext.tiledmap.lib.helpers import mustache_wrapper, dwc_field_title
 from ckanext.tiledmap.db import _get_engine
 from ckanext.datastore.interfaces import IDatastore
 from ckan.common import _
@@ -78,7 +78,8 @@ class TiledMapPlugin(p.SingletonPlugin):
     def get_helpers(self):
         """Add a template helper for formating mustache templates server side"""
         return {
-            'mustache': mustache_wrapper
+            'mustache': mustache_wrapper,
+            'dwc_field_title': dwc_field_title
         }
 
     ## IConfigurable

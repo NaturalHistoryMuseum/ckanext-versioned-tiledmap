@@ -1,3 +1,18 @@
+{% set taxonomy_fields = [
+    'kingdom',
+    'phylum',
+    'class',
+    'order',
+    'family',
+    'genus',
+    'subgenus',
+    'specificEpithet',
+    'infraspecificEpithet',
+    'taxonRank',
+    'scientificNameAuthorship'
+    'higherClassification',
+ ] %}
+
 <div class="point-detail">
     {% if overlapping_records_view %}
         {{h.mustache('#_multiple')}}
@@ -28,45 +43,25 @@
       {{h.mustache('/scientificName')}}
     </div>
     <div class="point-detail-tree">
-        {% for (label,field) in [
-            ('Kingdom','kingdom'),
-            ('Phylum','phylum'),
-            ('Class','class'),
-            ('Order','order'),
-            ('Family','family'),
-            ('Genus','genus'),
-            ('Subgenus', 'subgenus')
-        ]%}
-            {{h.mustache('#' + field)}}
-                <span class="point-detail-tree-label">{{label}}:</span>
-                <span class="point-detail-tree-detail">{{h.mustache(field)}}</span>
-            {{h.mustache('/' + field)}}
+        {% for taxonomy_field in taxonomy_fields %}
+            {{h.mustache('#' + taxonomy_field)}}
+                <span class="point-detail-tree-label">{{h.dwc_field_title(taxonomy_field)}}:</span>
+                <span class="point-detail-tree-detail">{{h.mustache(taxonomy_field)}}</span>
+            {{h.mustache('/' + taxonomy_field)}}
         {% endfor %}
     </div>
 
     <table>
-
-    {% for (label,field) in [
-        ('Institution Code', 'institutionCode'),
-        ('Catalogue Number', 'catalogNumber'),
-        ('Collection Code', 'collectionCode'),
-        ('Identified By', 'identifiedBy'),
-        ('Date', 'dateIdentified'),
-        ('Continent', 'continent'),
-        ('Country', 'country'),
-        ('State/Province', 'stateProvince'),
-        ('County', 'county'),
-        ('Locality', 'locality'),
-        ('Habitat', 'habitat')
-    ]%}
-        {{h.mustache('#' + field)}}
-            <tr>
-                <th>{{label}}:</th>
-                <td>{{h.mustache(field)}}</td>
-            </tr>
-        {{h.mustache('/' + field)}}
-    {% endfor %}
-
+        {% for field in fields %}
+            {% if field not in taxonomy_fields and field != 'scientificName' %}
+                {{h.mustache('#' + field)}}
+                    <tr>
+                        <th>{{h.dwc_field_title(field)}}:</th>
+                        <td>{{h.mustache(field)}}</td>
+                    </tr>
+                {{h.mustache('/' + field)}}
+            {% endif %}
+        {% endfor %}
     </table>
 
 </div>
