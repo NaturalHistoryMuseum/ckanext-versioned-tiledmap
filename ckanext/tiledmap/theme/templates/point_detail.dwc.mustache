@@ -53,7 +53,7 @@
 
     <table>
         {% for field in fields %}
-            {% if field not in taxonomy_fields and field != 'scientificName' %}
+            {% if field not in taxonomy_fields + ['_id', 'scientificName'] %}
                 {{h.mustache('#' + field)}}
                     <tr>
                         <th>{{h.dwc_field_title(field)}}:</th>

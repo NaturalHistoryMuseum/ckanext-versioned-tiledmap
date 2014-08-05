@@ -46,7 +46,7 @@ div.tiled-map a.leaflet-draw-draw-country:after{
 
 div.tiled-map a.leaflet-draw-edit-remove,
 div.tiled-map a.leaflet-draw-draw-country{
-    background-image: none;
+    background-image: none!important;
 }
 
 div.tiled-map-info{
