@@ -187,14 +187,6 @@ this.tiledmap = this.tiledmap || {};
         noWrap: !this.map_info.repeat_map
       }).addTo(this.map);
 
-      this.tilejson = {
-        tiles: [],
-        grids: []
-      };
-
-      this.tiles_url = '/map-tile/{z}/{x}/{y}.png';
-      this.grids_url = '/map-grid/{z}/{x}/{y}.grid.json?callback={cb}';
-
       // Set up the controls available to the map. These are assigned during redraw.
       this.controls = {
         'drawShape': new my.DrawShapeControl(this, this.map_info.control_options['drawShape']),
@@ -346,31 +338,40 @@ this.tiledmap = this.tiledmap || {};
       if (this.filters.geom) {
         filters.set_filter('_tmgeom', Terraformer.WKT.convert(this.filters.geom))
       }
+      var style = this.map_info.map_styles[this.map_info.map_style];
       params['filters'] = filters.get_filters();
 
       if (this.filters.q) {
         params['q'] = this.filters.q;
       }
 
-      params['resource_id'] = this.resource_id;
-      params['view_id'] = this.view_id;
       params['style'] = this.map_info.map_style;
 
       // Prepare layers
-      this.tilejson.tiles = [this.tiles_url + "?" + $.param(params)];
-      this.tilejson.grids = [this.grids_url + "&" + $.param(params)];
+      var tile_params = $.extend({}, params);
+      if (style.tile_source.params) {
+        tile_params = $.extend(tile_params, style.tile_source.params);
+      }
+      var tile_url = style.tile_source.url + '?' + $.param(tile_params);
+
       for (var i in this.layers) {
         this.map.removeLayer(this.layers[i]);
       }
       this._removeAllLayers();
       this._addLayer('selection', L.geoJson(this.filters.geom));
-      this._addLayer('plot', L.tileLayer(this.tilejson.tiles[0], {
+      this._addLayer('plot', L.tileLayer(tile_url, {
         noWrap: !this.map_info.repeat_map
       }));
 
-      var style = this.map_info.map_styles[this.map_info.map_style];
       if (style.has_grid) {
-        this._addLayer('grid', new L.UtfGrid(this.tilejson.grids[0], {
+        var grid_params = $.extend({}, params);
+        if (style.grid_source.params) {
+          grid_params = $.extend(grid_params, style.grid_source.params);
+        }
+        // Note: Leaflet.utfgrid plugin requires callback to be the first parameter in the query string.
+        var grid_url = style.grid_source.url + '?callback={cb}&' + $.param(grid_params);
+
+        this._addLayer('grid', new L.UtfGrid(grid_url, {
           resolution: style.grid_resolution,
           pointerCursor: false
         }));
