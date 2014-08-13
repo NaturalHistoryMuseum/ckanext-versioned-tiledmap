@@ -13,9 +13,12 @@
     'higherClassification',
  ] %}
 
-<div class="point-detail">
+    {% set overlap_cls = '' %}
+
     {% if overlapping_records_view %}
         {{h.mustache('#_multiple')}}
+
+            {% set overlap_cls = 'multiple-records' %}
             <div class="point-detail-info">There are multiple records at this location. The information displayed here is for one of the records only.
               {% if overlapping_records_view %}
                 <br/>
@@ -34,34 +37,40 @@
          </div>
     {% endif %}
 
-    <div class="point-detail-title">
-      {{h.mustache('#scientificName')}}
-        {{h.mustache('scientificName')}}
-      {{h.mustache('/scientificName')}}
-      {{h.mustache('^scientificName')}}
-        Record {{h.mustache('_id')}}
-      {{h.mustache('/scientificName')}}
-    </div>
-    <div class="point-detail-tree">
-        {% for taxonomy_field in taxonomy_fields %}
-            {{h.mustache('#' + taxonomy_field)}}
-                <span class="point-detail-tree-label">{{h.dwc_field_title(taxonomy_field)}}:</span>
-                <span class="point-detail-tree-detail">{{h.mustache(taxonomy_field)}}</span>
-            {{h.mustache('/' + taxonomy_field)}}
-        {% endfor %}
-    </div>
+    <div class="point-detail {{ overlap_cls }}">
 
-    <table>
-        {% for field in fields %}
-            {% if field not in taxonomy_fields + ['_id', 'scientificName'] %}
-                {{h.mustache('#' + field)}}
-                    <tr>
-                        <th>{{h.dwc_field_title(field)}}:</th>
-                        <td>{{h.mustache(field)}}</td>
-                    </tr>
-                {{h.mustache('/' + field)}}
-            {% endif %}
-        {% endfor %}
-    </table>
+    <div class="point-detail-wrapper">
+
+        <div class="point-detail-title">
+          {{h.mustache('#scientificName')}}
+            {{h.mustache('scientificName')}}
+          {{h.mustache('/scientificName')}}
+          {{h.mustache('^scientificName')}}
+            Record {{h.mustache('_id')}}
+          {{h.mustache('/scientificName')}}
+        </div>
+        <div class="point-detail-tree">
+            {% for taxonomy_field in taxonomy_fields %}
+                {{h.mustache('#' + taxonomy_field)}}
+                    <span class="point-detail-tree-label">{{h.dwc_field_title(taxonomy_field)}}:</span>
+                    <span class="point-detail-tree-detail">{{h.mustache(taxonomy_field)}}</span>
+                {{h.mustache('/' + taxonomy_field)}}
+            {% endfor %}
+        </div>
+
+        <table>
+            {% for field in fields %}
+                {% if field not in taxonomy_fields + ['_id', 'scientificName'] %}
+                    {{h.mustache('#' + field)}}
+                        <tr>
+                            <th>{{h.dwc_field_title(field)}}:</th>
+                            <td>{{h.mustache(field)}}</td>
+                        </tr>
+                    {{h.mustache('/' + field)}}
+                {% endif %}
+            {% endfor %}
+        </table>
+
+    </div>
 
 </div>
