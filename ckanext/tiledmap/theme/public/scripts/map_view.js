@@ -368,11 +368,12 @@ this.tiledmap = this.tiledmap || {};
         if (style.grid_source.params) {
           grid_params = $.extend(grid_params, style.grid_source.params);
         }
-        // Note: Leaflet.utfgrid plugin requires callback to be the first parameter in the query string.
-        var grid_url = style.grid_source.url + '?callback={cb}&' + $.param(grid_params);
+        var grid_url = style.grid_source.url + '?' + $.param(grid_params);
 
         this._addLayer('grid', new L.UtfGrid(grid_url, {
           resolution: style.grid_resolution,
+          useJsonP: false,
+          maxRequests: 4,
           pointerCursor: false
         }));
       }
