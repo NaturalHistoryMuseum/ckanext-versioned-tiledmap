@@ -29,6 +29,7 @@ this.tiledmap = this.tiledmap || {};
       this.sidebar_view = new my.PointDetailView();
       // Handle window resize
       $(window.parent).resize($.proxy(this, '_resize'));
+      this._resize();
       // Handle on pop state
       $(window.parent).on('popstate', $.proxy(this, '_popstate'));
     },
@@ -131,6 +132,9 @@ this.tiledmap = this.tiledmap || {};
      */
     _resize: function () {
       $('div.panel.map, div.panel.sidebar', this.el).height($(window.parent).height() * 0.90);
+      if (this.map) {
+        this.map.invalidateSize();
+      }
     },
 
     /**
