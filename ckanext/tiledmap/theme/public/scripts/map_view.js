@@ -421,10 +421,7 @@ this.tiledmap = this.tiledmap || {};
         width: width
       }, {
         duration: base_duration,
-        easing: 'linear',
-        complete: function () {
-          $sb.css('overflow-y', 'auto');
-        }
+        easing: 'linear'
       });
     },
 

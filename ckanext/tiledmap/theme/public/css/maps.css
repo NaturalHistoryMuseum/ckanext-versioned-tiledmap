@@ -46,7 +46,7 @@ div.tiled-map a.leaflet-draw-draw-country:after{
 
 div.tiled-map a.leaflet-draw-edit-remove,
 div.tiled-map a.leaflet-draw-draw-country{
-    background-image: none;
+    background-image: none!important;
 }
 
 div.tiled-map-info{
@@ -104,6 +104,25 @@ div.tiled-map-info{
     position: relative;
 }
 
+div.tiled-map-point-detail,
+div.point-detail{
+    height: inherit;
+}
+
+div.point-detail{
+    box-sizing: border-box;
+    padding-bottom: 30px;
+}
+
+div.point-detail.multiple-records{
+    padding-bottom: 115px;
+}
+
+div.point-detail-wrapper{
+    overflow-y: auto;
+    height: 100%;
+}
+
 .panel.sidebar .close{
     position: absolute;
     top: 4px;
@@ -123,35 +142,56 @@ div.map-hover-tooltip {
 }
 
 div.point-detail div.point-detail-title,
-div.point-detail div.point-detail-info{
+div.point-detail div.point-detail-info,
+div.point-detail div.point-detail-tree{
     padding: 8px;
-    min-width: 230px; /* Stop them compressing on slide */
+    min-width: 210px; /* Stop them compressing on slide */
 }
 
 div.point-detail div.point-detail-title {
   font-size: 1.5em;
   font-weight: bold;
   margin: 10px 0;
+  line-height: 1.1;
 }
 
 div.point-detail table{
     margin: 0 8px;
-    min-width: 230px;
+    width: 210px;
+}
+
+div.point-detail table tr{
+    margin-bottom: 5px;
 }
 
 div.point-detail table td, th{
     text-align: left;
+    vertical-align: top;
 }
 
-div.point-detail .point-detail-info {
+div.point-detail table td{
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+div.point-detail table{
+    width: 100px;
+    overflow: hidden;
+}
+
+div.point-detail-info {
   font-size: 0.9em;
   color: #888;
   position: absolute;
   bottom: 0;
   background: #E4E4E4;
+  padding: 0;
+  text-align: center;
+  min-width: 230px;
+  padding: 10px;
 }
 
-div.point-detail .point-detail-info a:hover{
+div.point-detail-info a:hover{
     text-decoration: underline;
 }
 
@@ -160,7 +200,8 @@ div.point-detail .point-detail-tree-label {
   font-size: 0.9em;
 }
 
-div.point-detail-tree {
+div.point-detail-tree,
+div.point-detail table{
     font-size: 0.9em;
     margin-bottom: 1em;
 }
@@ -168,11 +209,11 @@ div.point-detail-tree {
 div.point-detail .point-detail-tree-detail:after {
     content: '>';
     font-weight: bold;
+    padding: 0 3px;
 }
 
 div.point-detail .point-detail-tree-detail:last-child:after {
-    content: '>';
-    font-weight: bold;
+    content: '';
 }
 
 /* Fullscreen mode */

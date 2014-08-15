@@ -1,6 +1,24 @@
-<div class="point-detail">
+{% set taxonomy_fields = [
+    'kingdom',
+    'phylum',
+    'class',
+    'order',
+    'family',
+    'genus',
+    'subgenus',
+    'specificEpithet',
+    'infraspecificEpithet',
+    'taxonRank',
+    'scientificNameAuthorship'
+    'higherClassification',
+ ] %}
+
+    {% set overlap_cls = '' %}
+
     {% if overlapping_records_view %}
         {{h.mustache('#_multiple')}}
+
+            {% set overlap_cls = 'multiple-records' %}
             <div class="point-detail-info">There are multiple records at this location. The information displayed here is for one of the records only.
               {% if overlapping_records_view %}
                 <br/>
@@ -19,48 +37,40 @@
          </div>
     {% endif %}
 
-    <div class="point-detail-title">
-      {{h.mustache('#scientificName')}}
-        {{h.mustache('scientificName')}}
-      {{h.mustache('/scientificName')}}
-      {{h.mustache('^scientificName')}}
-        Record {{h.mustache('_id')}}
-      {{h.mustache('/scientificName')}}
+    <div class="point-detail {{ overlap_cls }}">
+
+    <div class="point-detail-wrapper">
+
+        <div class="point-detail-title">
+          {{h.mustache('#scientificName')}}
+            {{h.mustache('scientificName')}}
+          {{h.mustache('/scientificName')}}
+          {{h.mustache('^scientificName')}}
+            Record {{h.mustache('_id')}}
+          {{h.mustache('/scientificName')}}
+        </div>
+        <div class="point-detail-tree">
+            {% for taxonomy_field in taxonomy_fields %}
+                {{h.mustache('#' + taxonomy_field)}}
+                    <span class="point-detail-tree-label">{{h.dwc_field_title(taxonomy_field)}}:</span>
+                    <span class="point-detail-tree-detail">{{h.mustache(taxonomy_field)}}</span>
+                {{h.mustache('/' + taxonomy_field)}}
+            {% endfor %}
+        </div>
+
+        <table>
+            {% for field in fields %}
+                {% if field not in taxonomy_fields + ['_id', 'scientificName'] %}
+                    {{h.mustache('#' + field)}}
+                        <tr>
+                            <th>{{h.dwc_field_title(field)}}:</th>
+                            <td>{{h.mustache(field)}}</td>
+                        </tr>
+                    {{h.mustache('/' + field)}}
+                {% endif %}
+            {% endfor %}
+        </table>
+
     </div>
-    <div class="point-detail-tree">
-        {% for (label,field) in [
-            ('Kingdom','kingdom'),
-            ('Phylum','phylum'),
-            ('Class','class'),
-            ('Order','order'),
-            ('Family','family'),
-            ('Genus','genus'),
-            ('Subgenus', 'subgenus')
-        ]%}
-            {{h.mustache('#' + field)}}
-                <span class="point-detail-tree-label">{{label}}:</span>
-                <span class="point-detail-tree-detail">{{h.mustache(field)}}</span>
-            {{h.mustache('/' + field)}}
-        {% endfor %}
-    </div>
-    {% for (label,field) in [
-        ('Institution Code', 'institutionCode'),
-        ('Catalogue Number', 'catalogNumber'),
-        ('Collection Code', 'collectionCode'),
-        ('Identified By', 'identifiedBy'),
-        ('Date', 'dateIdentified'),
-        ('Continent', 'continent'),
-        ('Country', 'country'),
-        ('State/Province', 'stateProvince'),
-        ('County', 'county'),
-        ('Locality', 'locality'),
-        ('Habitat', 'habitat')
-    ]%}
-        {{h.mustache('#' + field)}}
-            <div class="point-detail-row">
-                <span class="point-detail-label">{{label}}:</span>
-                <span class="point-detail-value">{{h.mustache(field)}}</span>
-            </div>
-        {{h.mustache('/' + field)}}
-    {% endfor %}
+
 </div>

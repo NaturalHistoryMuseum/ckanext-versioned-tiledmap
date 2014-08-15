@@ -1,21 +1,11 @@
-<div class="point-detail">
-    {{h.mustache('#' + title)}}
-      <div class="point-detail-title">{{h.mustache(title)}}</div>
-    {{h.mustache('/' + title)}}
 
-    <table>
-        {% for field in fields %}
-            {{h.mustache('#' + field)}}
-                <tr>
-                    <th>{{field.title()}}:</th>
-                    <td>{{h.mustache(field)}}</td>
-                </tr>
-            {{h.mustache('/' + field)}}
-        {% endfor %}
-    </table>
+{% set overlap_cls = '' %}
 
     {% if overlapping_records_view %}
         {{h.mustache('^_multiple')}}
+
+            {% set overlap_cls = 'multiple-records' %}
+
             <div class="point-detail-info">
                 <a target="_parent" href="{{h.mustache('_resource_url')}}/record/{{h.mustache('_id')}}">View full record</a>
              </div>
@@ -34,4 +24,26 @@
             <a target="_parent" href="{{h.mustache('_resource_url')}}/record/{{h.mustache('_id')}}">View full record</a>
          </div>
     {% endif %}
+
+<div class="point-detail {{ overlap_cls }}">
+
+    <div class="point-detail-wrapper">
+
+    {{h.mustache('#' + title)}}
+      <div class="point-detail-title">{{h.mustache(title)}}</div>
+    {{h.mustache('/' + title)}}
+
+    <table>
+        {% for field in fields %}
+            {{h.mustache('#' + field)}}
+                <tr>
+                    <th>{{field.title()}}:</th>
+                    <td>{{h.mustache(field)}}</td>
+                </tr>
+            {{h.mustache('/' + field)}}
+        {% endfor %}
+    </table>
+
+    </div>
+
 </div>
