@@ -62,7 +62,7 @@ this.tiledmap = this.tiledmap || {};
 
         var body = jQuery('body').get(0);
         this.$bar = $('<div>').addClass('leaflet-bar');
-        if (body.requestFullscreen || body.mozRequestFullScreen || body.webkitRequestFullscreen || body.msRequestFullscreen){
+        if (body.requestFullscreen || body.mozRequestFullScreen || body.webkitRequestFullscreen /*|| body.msRequestFullscreen*/){
             var $elem = $('<a></a>').attr('href', '#').attr('title', 'full screen').html('<i class="fa fa-expand"></i>').appendTo(this.$bar)
             .click($.proxy(this, '_onClick'));
         }
