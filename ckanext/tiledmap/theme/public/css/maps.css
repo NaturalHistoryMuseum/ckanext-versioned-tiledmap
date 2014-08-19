@@ -231,3 +231,11 @@ body.fullscreen div.tiled-map {
 body.fullscreen .fa-expand:before {
 content: "\f066";
 }
+
+body.fullscreen .panel.sidebar {
+    max-width: 400px;
+}
+
+body.fullscreen div.point-detail-info {
+  min-width: 400px;
+}
