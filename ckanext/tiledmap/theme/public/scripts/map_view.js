@@ -173,7 +173,9 @@ this.tiledmap = this.tiledmap || {};
       });
       this.map = new L.Map(this.$map.get(0), {
         worldCopyJump: true,
-        trackResize: false
+        trackResize: false,
+        minZoom: this.map_info.zoom_bounds.min,
+        maxZoom: this.map_info.zoom_bounds.max
       });
       if (this.map_info.geom_count > 0 || !bounds) {
         bounds = this.map_info.bounds;

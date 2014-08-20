@@ -55,6 +55,10 @@ class MapController(base.BaseController):
             'min': int(config['tiledmap.initial_zoom.min']),
             'max': int(config['tiledmap.initial_zoom.max'])
         }
+        self.zoom_bounds = {
+            'min': int(config['tiledmap.zoom_bounds.min']),
+            'max': int(config['tiledmap.zoom_bounds.max'])
+        }
         self.mss_options = {
             'plot': {
                 'grid_resolution': int(config['tiledmap.style.plot.grid_resolution'])
@@ -203,7 +207,8 @@ class MapController(base.BaseController):
             'geospatial': True,
             'geom_count': 0,
             'total_count': 0,
-            'bounds': ((51.496830, -0.178812), (51.496122, -0.173877)),
+            'bounds': ((83, -170), (-83, 170)),
+            'zoom_bounds': self.zoom_bounds,
             'initial_zoom': self.initial_zoom,
             'tile_layer': self.tile_layer,
             'repeat_map': self.repeat_map,

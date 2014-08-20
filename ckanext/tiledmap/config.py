@@ -17,10 +17,14 @@ config = {
     'tiledmap.tile_layer.url': 'http://otile1.mqcdn.com/tiles/1.0.0/map/{z}/{x}/{y}.jpg',
     'tiledmap.tile_layer.opacity': '0.8',
 
+    # Max/min zoom constraints
+    'tiledmap.zoom_bounds.min': '3',
+    'tiledmap.zoom_bounds.max': '18',
+
     # The tiled map autozooms to the dataset's features. The autozoom can be constrained here to avoid too little or
     # too much context.
     # TODO: Configure this per dataset?
-    'tiledmap.initial_zoom.min': '2',
+    'tiledmap.initial_zoom.min': '3',
     'tiledmap.initial_zoom.max': '6',
 
     # The style parameters for the plot map. The colors can be defined per dataset (with the defaults provided in the
