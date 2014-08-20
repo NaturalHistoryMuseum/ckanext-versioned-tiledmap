@@ -328,8 +328,12 @@ L.UtfGrid = L.Class.extend({
     this._requests[key].timeout = window.setTimeout(function(){
       self._abort_request(key);
     }, this.options.requestTimeout);
-    this._requests[key].handler = this._requests[key].callback();
     this._requests_in_process.push(key);
+    // The callback might call _finish_request, so don't assume _requests[key] still exists.
+    var handler = this._requests[key].callback();
+    if (this._requests[key]){
+      this._requests[key].handler = handler;
+    }
   },
 
 	_utfDecode: function (c) {
