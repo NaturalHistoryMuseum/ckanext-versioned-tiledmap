@@ -19,7 +19,6 @@ L.Util.ajax = function (url, cb) {
     } else {
       response = eval("(" + request.responseText + ")");
     }
-    console.log(response);
     cb(response);
   };
   if (window.XDomainRequest){
