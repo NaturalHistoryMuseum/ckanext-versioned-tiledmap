@@ -12,20 +12,30 @@ L.Util.ajax = function (url, cb) {
 			}
 		};
 	}
-	var response, request = new XMLHttpRequest();
-	request.open("GET", url);
-	request.onreadystatechange = function () {
-		/*jshint evil: true */
-		if (request.readyState === 4 && request.status === 200) {
-			if (window.JSON) {
-				response = JSON.parse(request.responseText);
-			} else {
-				response = eval("(" + request.responseText + ")");
-			}
-			cb(response);
-		}
-	};
-	request.send();
+	var response, request;
+  var process = function(){
+    if (window.JSON) {
+      response = JSON.parse(request.responseText);
+    } else {
+      response = eval("(" + request.responseText + ")");
+    }
+    console.log(response);
+    cb(response);
+  };
+  if (window.XDomainRequest){
+    request = new window.XDomainRequest();
+    request.onload = process;
+  } else {
+    request = new XMLHttpRequest();
+    request.onreadystatechange = function () {
+      /*jshint evil: true */
+      if (request.readyState === 4 && request.status === 200) {
+        process();
+      }
+    };
+  }
+  request.open("GET", url);
+  request.send();
   return request;
 };
 L.UtfGrid = L.Class.extend({
