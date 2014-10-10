@@ -1,4 +1,5 @@
 import re
+import urllib
 
 from sqlalchemy.sql import select
 from sqlalchemy import Table, Column, MetaData, String
@@ -123,7 +124,7 @@ class MapController(base.BaseController):
         @return: A JSON encoded string representing the metadata
         """
         # Specific parameters
-        filter_str = request.params.get('filters')
+        filter_str = urllib.unquote(request.params.get('filters', ''))
         fetch_id = request.params.get('fetch_id')
         tile_url_base = 'http://{host}:{port}/database/{database}/table/{table}'.format(
             host=self.windshaft_host,
@@ -171,7 +172,7 @@ class MapController(base.BaseController):
                 except ValueError:
                     pass
 
-        fulltext = request.params.get('q')
+        fulltext = urllib.unquote(request.params.get('q', ''))
         if fulltext:
             # Simulate plainto_tsquery as SQLAlchemy only generates ts_query.
             fulltext = re.sub('([^\s]|^)\s+([^\s]|$)', '\\1&\\2', fulltext.strip())
