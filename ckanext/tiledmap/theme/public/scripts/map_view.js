@@ -131,7 +131,11 @@ this.tiledmap = this.tiledmap || {};
      * Called when the window is resized to set the map size
      */
     _resize: function () {
-      $('div.panel.map, div.panel.sidebar', this.el).height($(window.parent).height() * 0.90);
+      if (this.controls && this.controls['fullScreen'].is_full_screen){
+        $('div.panel.map, div.panel.sidebar', this.el).height($(window.parent).height() * 0.90);
+      } else {
+        $('div.panel.map, div.panel.sidebar', this.el).height($(window.parent).height() * 0.75);
+      }
       if (this.map) {
         this.map.invalidateSize();
       }
