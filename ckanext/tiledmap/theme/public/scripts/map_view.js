@@ -197,7 +197,8 @@ this.tiledmap = this.tiledmap || {};
       this.controls = {
         'drawShape': new my.DrawShapeControl(this, this.map_info.control_options['drawShape']),
         'mapType': new my.MapTypeControl(this, this.map_info.control_options['mapType']),
-        'fullScreen': new my.FullScreenControl(this, this.map_info.control_options['fullScreen'])
+        'fullScreen': new my.FullScreenControl(this, this.map_info.control_options['fullScreen']),
+        'miniMap': new my.MiniMapControl(this, this.map_info.control_options['miniMap'])
       };
 
       // Set up the plugins available to the map. These are assigned during redraw.

@@ -250,6 +250,30 @@ class MapController(base.BaseController):
                 },
                 'mapType': {
                     'position': 'bottomleft'
+                },
+                'miniMap': {
+                    'position': 'bottomright',
+                    'tile_layer': self.tile_layer,
+                    'zoomLevelFixed': 1,
+                    #'zoomLevelOffset': -10,
+                    'toggleDisplay': True,
+                    'viewport': {
+                        'marker_zoom': 8,
+                        'rect': {
+                            'weight': 1,
+                            'color': '#00F',
+                            'opacity': 1,
+                            'fill': False
+                        },
+                        'marker': {
+                            'weight': 1,
+                            'color': '#00F',
+                            'opacity': 1,
+                            'radius': 3,
+                            'fillColor': '#00F',
+                            'fillOpacity': 0.2
+                        }
+                    }
                 }
             },
             'plugin_options': {
@@ -272,7 +296,7 @@ class MapController(base.BaseController):
             result['map_styles']['heatmap'] = {
                 'name': _('Distribution Map'),
                 'icon': '<i class="fa fa-fire"></i>',
-                'controls': ['drawShape', 'mapType', 'fullScreen'],
+                'controls': ['drawShape', 'mapType', 'fullScreen', 'miniMap'],
                 'has_grid': False,
                 'tile_source': {
                     'url': tile_url_base + '/{z}/{x}/{y}.png',
@@ -287,7 +311,7 @@ class MapController(base.BaseController):
             result['map_styles']['gridded'] = {
                 'name': _('Grid Map'),
                 'icon': '<i class="fa fa-th"></i>',
-                'controls': ['drawShape', 'mapType', 'fullScreen'],
+                'controls': ['drawShape', 'mapType', 'fullScreen', 'miniMap'],
                 'plugins': ['tooltipCount'],
                 'has_grid': self.view['enable_utf_grid'],
                 'grid_resolution': self.mss_options['plot']['grid_resolution'],
@@ -310,7 +334,7 @@ class MapController(base.BaseController):
             result['map_styles']['plot'] = {
                 'name': _('Plot Map'),
                 'icon': '<i class="fa fa-dot-circle-o"></i>',
-                'controls': ['drawShape', 'mapType', 'fullScreen'],
+                'controls': ['drawShape', 'mapType', 'fullScreen', 'miniMap'],
                 'plugins': ['tooltipInfo', 'pointInfo'],
                 'has_grid': self.view['enable_utf_grid'],
                 'grid_resolution': self.mss_options['plot']['grid_resolution'],
