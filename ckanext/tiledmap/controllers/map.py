@@ -294,7 +294,7 @@ class MapController(base.BaseController):
 
         if self.view['enable_heat_map']:
             result['map_styles']['heatmap'] = {
-                'name': _('Distribution Map'),
+                'name': _('Heat Map'),
                 'icon': '<i class="fa fa-fire"></i>',
                 'controls': ['drawShape', 'mapType', 'fullScreen', 'miniMap'],
                 'has_grid': False,

@@ -59,8 +59,8 @@
 {% endcall %}
 
 {% call checkbox_group('enable_heat_map',
-          group=_('Distribution map'),
-          info=_('Distribution maps use color gradients to show the distribution of the records.'),
+          group=_('Heat map'),
+          info=_('Heat maps use color gradients to show the distribution of the records.'),
           checked=False if is_new else data.enable_heat_map,
           error=errors.enable_heat_map) %}
     {{ form.input('heat_intensity', label=_('Intensity'), value=(data.heat_intensity or defaults['tiledmap.style.heatmap.intensity']), error=errors.heat_intensity) }}
