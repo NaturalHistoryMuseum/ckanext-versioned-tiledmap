@@ -182,12 +182,9 @@ div.point-detail table{
 div.point-detail-info {
   font-size: 0.9em;
   color: #888;
-  position: absolute;
-  bottom: 0;
   background: #E4E4E4;
-  padding: 0;
   text-align: center;
-  min-width: 230px;
+  min-width: 210px;
   padding: 10px;
 }
 
