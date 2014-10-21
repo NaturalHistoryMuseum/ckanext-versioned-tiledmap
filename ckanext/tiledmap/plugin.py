@@ -88,6 +88,11 @@ class TiledMapPlugin(p.SingletonPlugin):
 
     ## IDataStore
     def datastore_validate(self, context, data_dict, all_field_ids):
+        # Validate geom fields
+        if 'fields' in data_dict:
+            geom_fields = [plugin_config['tiledmap.geom_field'], plugin_config['tiledmap.geom_field_4326']]
+            data_dict['fields'] = [f for f in data_dict['fields'] if f not in geom_fields]
+        # Validate geom filters
         try:
             # We could use ST_IsValid for this, though that be an extra database query. We'll just check that this
             # *looks* like a WKT, in which case we will trust it's valid. Worst case the query will fail, which is
