@@ -61,6 +61,8 @@ class MapController(toolkit.BaseController):
         self.info_title = self.view['utf_grid_title']
         try:
             self.info_fields = self.view['utf_grid_fields']
+            if not isinstance(self.info_fields, list):
+                self.info_fields = [self.info_fields]
         except KeyError:
             self.info_fields = []
         self.info_template = config['tiledmap.info_template']
