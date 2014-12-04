@@ -121,13 +121,15 @@ def update_geom_columns(context, data_dict):
     # Retrieve all IDs of records that require updating
     # Either: lat field doesn't match that in the geom column
     # OR geom is  null and /lat/lon is populated
-
-
-
     read_sql = """
           SELECT _id
           FROM "{resource_id}"
           WHERE "{lat_field}" <= 90 AND "{lat_field}" >= -90 AND "{long_field}" <= 180 AND "{long_field}" >= -180
+            AND (
+              (_geom IS NULL AND "{lat_field}" IS NOT NULL OR ST_Y(_geom) <> "{lat_field}")
+              OR
+              (_geom IS NULL AND "{long_field}" IS NOT NULL OR ST_X(_geom) <> "{long_field}")
+            )
          """.format(
             resource_id=resource_id,
             geom_field=geom_field,
