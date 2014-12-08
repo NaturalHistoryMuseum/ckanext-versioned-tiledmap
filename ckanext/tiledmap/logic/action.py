@@ -47,6 +47,8 @@ def create_geom_columns(context, data_dict):
     """
     # Read parameters
     resource_id = data_dict['resource_id']
+    latitude_field = data_dict['latitude_field']
+    longitude_field = data_dict['longitude_field']
     geom_field = config['tiledmap.geom_field']
     geom_field_4326 = config['tiledmap.geom_field_4326']
     if 'populate' in data_dict:
@@ -74,6 +76,14 @@ def create_geom_columns(context, data_dict):
         ))
         connection.execute(s)
 
+        # We also want to index the lat / long columns
+        for field_name in [latitude_field, longitude_field]:
+            s = sqlalchemy.text('CREATE INDEX ON "{resource_id}" ("{field_name}")'.format(
+                resource_id=resource_id,
+                field_name=field_name
+            ))
+            connection.execute(s)
+
     if populate:
         ugc = toolkit.get_action('update_geom_columns')
         ugc(context, data_dict)
@@ -99,34 +109,70 @@ def update_geom_columns(context, data_dict):
     engine = _get_engine(write=True)
     # TODO: change to sqlalchemy so we don't have to worry about escaping column names!
     # TODO: should the ANALYZE be optional/configurable?
-    with engine.begin() as connection:
-        s = sqlalchemy.text("""
-          UPDATE "{resource_id}"
-          SET "{geom_field_4326}" = st_setsrid(st_makepoint("{long_field}"::float8, "{lat_field}"::float8), 4326)
-          WHERE "{lat_field}" IS NOT NULL
-        """.format(
+
+    connection = engine.raw_connection()
+
+    # This is timing out for big datasets (KE EMu), so we're going to break into a batch operation
+    # We need two cursors, one for reading; one for writing
+    # And the write cursor will be committed every x number of times (incremental_commit_size)
+    read_cursor = connection.cursor()
+    write_cursor = connection.cursor()
+
+    # Retrieve all IDs of records that require updating
+    # Either: lat field doesn't match that in the geom column
+    # OR geom is  null and /lat/lon is populated
+    read_sql = """
+          SELECT _id
+          FROM "{resource_id}"
+          WHERE "{lat_field}" <= 90 AND "{lat_field}" >= -90 AND "{long_field}" <= 180 AND "{long_field}" >= -180
+            AND (
+              (_geom IS NULL AND "{lat_field}" IS NOT NULL OR ST_Y(_geom) <> "{lat_field}")
+              OR
+              (_geom IS NULL AND "{long_field}" IS NOT NULL OR ST_X(_geom) <> "{long_field}")
+            )
+         """.format(
             resource_id=resource_id,
+            geom_field=geom_field,
             geom_field_4326=geom_field_4326,
             long_field=long_field,
             lat_field=lat_field
-        ))
-        connection.execute(s)
-        s = sqlalchemy.text("""
+        )
+
+    read_cursor.execute(read_sql)
+
+    count = 0
+    incremental_commit_size = 1000
+
+    sql = """
           UPDATE "{resource_id}"
-          SET "{geom_field}" = st_transform("{geom_field_4326}", 3857)
-          WHERE st_y("{geom_field_4326}") <= 90 AND st_y("{geom_field_4326}") >= -90
-        """.format(
+          SET "{geom_field_4326}" = st_setsrid(st_makepoint("{long_field}"::float8, "{lat_field}"::float8), 4326),
+              "{geom_field}" = st_transform(st_setsrid(st_makepoint("{long_field}"::float8, "{lat_field}"::float8), 4326), 3857)
+          WHERE _id = %s
+         """.format(
             resource_id=resource_id,
             geom_field=geom_field,
-            geom_field_4326=geom_field_4326
-        ))
-        connection.execute(s)
-        s = sqlalchemy.text("""
-          ANALYZE "{resource_id}"
-        """.format(
-            resource_id=resource_id
-        ))
-        connection.execute(s)
+            geom_field_4326=geom_field_4326,
+            long_field=long_field,
+            lat_field=lat_field
+        )
+
+    while True:
+
+        output = read_cursor.fetchmany(incremental_commit_size)
+
+        if not output:
+            break
+
+        for row in output:
+            write_cursor.execute(sql,([row[0]]))
+
+        #commit, invoked every incremental commit size
+        connection.commit()
+        count = count + incremental_commit_size
+
+        print '%s records updated' % count
+
+    connection.commit()
 
 
 def resource_view_create(context, data_dict):
