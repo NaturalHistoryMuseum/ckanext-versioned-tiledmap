@@ -6,7 +6,6 @@ this.tiledmap = this.tiledmap || {};
  * Class used to parse and create URLs with a query string parameter 'filter' build as 'name:value|....'
  */
 my.CkanFilterUrl = function(input_url){
-
   /**
    * initialize
    *
@@ -86,11 +85,11 @@ my.CkanFilterUrl = function(input_url){
    * Set a filter value on the URL. If the value evaluates to false, the filter is removed
    */
   this.set_filter = function(name, value){
-        if (!value){
-          this.remove_filter(name);
-        } else {
-          this.add_filter(name, value);
-        }
+    if (!value){
+      this.remove_filter(name);
+    } else {
+      this.add_filter(name, value);
+    }
     return this;
   }
 
