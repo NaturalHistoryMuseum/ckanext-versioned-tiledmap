@@ -7,9 +7,6 @@ this.tiledmap = this.tiledmap || {};
  */
 my.CkanFilterUrl = function(input_url){
 
-  // List of filters that are used internally - for example, for field filters (_f)
-  internal_filters = ['_f']
-
   /**
    * initialize
    *
@@ -89,14 +86,11 @@ my.CkanFilterUrl = function(input_url){
    * Set a filter value on the URL. If the value evaluates to false, the filter is removed
    */
   this.set_filter = function(name, value){
-    if($.inArray(name, internal_filters) == -1){
         if (!value){
           this.remove_filter(name);
         } else {
           this.add_filter(name, value);
         }
-
-    }
     return this;
   }
 
