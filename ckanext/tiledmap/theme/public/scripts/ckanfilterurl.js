@@ -90,6 +90,7 @@ my.CkanFilterUrl = function(input_url){
     } else {
       this.add_filter(name, value);
     }
+      
     return this;
   }
 
