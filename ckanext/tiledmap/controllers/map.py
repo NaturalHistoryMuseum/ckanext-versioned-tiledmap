@@ -160,8 +160,6 @@ class MapController(base.BaseController):
                                 )
                             )
                         )
-                    elif name.startswith('_'):
-                        continue
                     else:
                         geo_table.append_column(Column(name, String(255)))
                         query = query.where(geo_table.c[name] == value)
