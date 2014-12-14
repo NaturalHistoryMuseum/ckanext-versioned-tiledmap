@@ -353,7 +353,8 @@ class MapController(toolkit.BaseController):
             r = query_result.fetchone()
 
         result['geom_count'] = r['count']
-        result['bounds'] = ((r['ymin'], r['xmin']), (r['ymax'], r['xmax']))
+        # BS Added 141214: Only set bounds if we have records
+        result['bounds'] = ((r['ymin'], r['xmin']), (r['ymax'], r['xmax'])) if r['count'] else None
         return result
 
     def _get_request_fields(self):
