@@ -224,6 +224,7 @@ this.tiledmap = this.tiledmap || {};
         self.invoke('active', true);
         self.layers['plot'].setOpacity(1);
       });
+      this._resize();
     },
 
     /**
