@@ -54,11 +54,13 @@ my.CkanFilterUrl = function(input_url){
     if (typeof this.qs['filters'] === 'undefined'){
       this.qs['filters'] = {};
     }
+    if (typeof this.qs['filters'][name] === 'undefined'){
+      this.qs['filters'][name] = [];
+    }
     if ($.isArray(value)){
-      // TODO: check how ckan handles multivalued.
-      this.qs['filters'][name] = value.join('');
+      this.qs['filters'][name] = this.qs['filters'][name].concat(value);
     } else {
-      this.qs['filters'][name] = value;
+      this.qs['filters'][name].push(value);
     }
 
     return this;
@@ -129,7 +131,9 @@ my.CkanFilterUrl = function(input_url){
     }
     var b_filter = [];
     for (var f in this.qs['filters']){
-      b_filter.push(f + ':' + this.qs['filters'][f])
+      for (var i = 0; i < this.qs['filters'][f].length; i++){
+        b_filter.push(f + ':' + this.qs['filters'][f][i]);
+      }
     }
     return b_filter.join('|')
   }
@@ -137,11 +141,11 @@ my.CkanFilterUrl = function(input_url){
   /**
    * get_filter
    *
-   * Return the value of a single filter in the filter query string
+   * Return the values (as an array) of a single filter in the filter query string
    */
   this.get_filter = function(name){
     if (!this.qs['filters'] || !this.qs['filters'][name]){
-      return '';
+      return [];
     }
     return this.qs['filters'][name];
   }

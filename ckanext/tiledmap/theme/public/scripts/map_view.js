@@ -150,8 +150,9 @@ this.tiledmap = this.tiledmap || {};
       } else {
         var geom_t = new my.CkanFilterUrl(window.parent.location.href).get_filter('_tmgeom');
         var geom = null;
-        if (geom_t) {
-          geom = Terraformer.WKT.parse(geom_t);
+        if (geom_t.length > 0) {
+          // TODO: We don't support multi-value filters.
+          geom = Terraformer.WKT.parse(geom_t[0]);
         }
         this.setGeom(geom, true);
       }
