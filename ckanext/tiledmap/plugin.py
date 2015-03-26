@@ -14,6 +14,11 @@ from ckanext.tiledmap.db import _get_engine
 from ckanext.datastore.interfaces import IDatastore
 from ckan.common import _
 
+try:
+    from ckanext.datasolr.interfaces import IDataSolr
+except ImportError:
+    pass
+
 import ckan.logic as logic
 get_action = logic.get_action
 
@@ -38,6 +43,10 @@ class TiledMapPlugin(p.SingletonPlugin):
     p.implements(p.IResourceView, inherit=True)
     p.implements(p.IConfigurable)
     p.implements(IDatastore)
+    try:
+        p.implements(IDataSolr)
+    except NameError:
+        pass
 
     ## IConfigurer
     def update_config(self, config):
@@ -127,6 +136,24 @@ class TiledMapPlugin(p.SingletonPlugin):
         return query_dict
 
     def datastore_delete(self, context, data_dict, all_field_ids, query_dict):
+        return query_dict
+
+    ## IDataSolr
+    def datasolr_validate(self, context, data_dict, fields_types):
+        return self.datastore_validate(context, data_dict, fields_types)
+
+    def datasolr_search(self, context, data_dict, fields_types, query_dict):
+        try:
+            tmgeom = data_dict['filters']['_tmgeom']
+        except KeyError:
+            return query_dict
+        pass
+        field_name = plugin_config['tiledmap.geom_field_4326']
+        for geom in tmgeom:
+            query_dict['q'][0].append(
+                '{}:"Intersects({{}}) distErrPct=0"'.format(field_name)
+            )
+            query_dict['q'][1].append(geom)
         return query_dict
 
     ## IResourceView
