@@ -14,11 +14,6 @@ from ckanext.tiledmap.db import _get_engine
 from ckanext.datastore.interfaces import IDatastore
 from ckan.common import _
 
-try:
-    from ckanext.datasolr.interfaces import IDataSolr
-except ImportError:
-    pass
-
 import ckan.logic as logic
 get_action = logic.get_action
 
@@ -42,11 +37,6 @@ class TiledMapPlugin(p.SingletonPlugin):
     p.implements(p.ITemplateHelpers)
     p.implements(p.IResourceView, inherit=True)
     p.implements(p.IConfigurable)
-    p.implements(IDatastore)
-    try:
-        p.implements(IDataSolr)
-    except NameError:
-        pass
 
     ## IConfigurer
     def update_config(self, config):
@@ -66,10 +56,8 @@ class TiledMapPlugin(p.SingletonPlugin):
 
     ## IActions
     def get_actions(self):
-        """Add actions for creating/updating geom columns and override resource create/update/delete actions"""
+        """Add actions to override resource create/update/delete actions"""
         return {
-            'create_geom_columns': map_action.create_geom_columns,
-            'update_geom_columns': map_action.update_geom_columns,
             'resource_view_create': map_action.resource_view_create,
             'resource_view_update': map_action.resource_view_update,
             'resource_view_delete': map_action.resource_view_delete
@@ -94,67 +82,6 @@ class TiledMapPlugin(p.SingletonPlugin):
     ## IConfigurable
     def configure(self, config):
         plugin_config.update(config)
-
-    ## IDataStore
-    def datastore_validate(self, context, data_dict, all_field_ids):
-        # Validate geom fields
-        if 'fields' in data_dict:
-            geom_fields = [plugin_config['tiledmap.geom_field'], plugin_config['tiledmap.geom_field_4326']]
-            data_dict['fields'] = [f for f in data_dict['fields'] if f not in geom_fields]
-        # Validate geom filters
-        try:
-            # We could use ST_IsValid for this, though that be an extra database query. We'll just check that this
-            # *looks* like a WKT, in which case we will trust it's valid. Worst case the query will fail, which is
-            # handled gracefully anyway.
-            for i, v in enumerate(data_dict['filters']['_tmgeom']):
-                if re.search('^\s*(POLYGON|MULTIPOLYGON)\s*\([-+0-9,(). ]+\)\s*$', v):
-                    del data_dict['filters']['_tmgeom'][i]
-            if len(data_dict['filters']['_tmgeom']) == 0:
-                del data_dict['filters']['_tmgeom']
-        except KeyError:
-            pass
-        except TypeError:
-            pass
-
-        return data_dict
-
-    def datastore_search(self, context, data_dict, all_field_ids, query_dict):
-        try:
-            tmgeom = data_dict['filters']['_tmgeom']
-        except KeyError:
-            return query_dict
-
-        clauses = []
-        field_name = plugin_config['tiledmap.geom_field']
-        for geom in tmgeom:
-            clauses.append((
-                "ST_Intersects(\"{field}\", ST_Transform(ST_GeomFromText(%s, 4326), 3857))".format(field=field_name),
-                geom
-            ))
-
-        query_dict['where'] += clauses
-        return query_dict
-
-    def datastore_delete(self, context, data_dict, all_field_ids, query_dict):
-        return query_dict
-
-    ## IDataSolr
-    def datasolr_validate(self, context, data_dict, fields_types):
-        return self.datastore_validate(context, data_dict, fields_types)
-
-    def datasolr_search(self, context, data_dict, fields_types, query_dict):
-        try:
-            tmgeom = data_dict['filters']['_tmgeom']
-        except KeyError:
-            return query_dict
-        pass
-        field_name = plugin_config['tiledmap.geom_field_4326']
-        for geom in tmgeom:
-            query_dict['q'][0].append(
-                '{}:"Intersects({{}}) distErrPct=0"'.format(field_name)
-            )
-            query_dict['q'][1].append(geom)
-        return query_dict
 
     ## IResourceView
     def info(self):

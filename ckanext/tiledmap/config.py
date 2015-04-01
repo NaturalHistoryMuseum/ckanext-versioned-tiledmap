@@ -1,17 +1,5 @@
 # Default configuration
 config = {
-    # Unique id field on the datastore table containing the geometric data. By default this is _id,
-    # and you should only change this if you know what you are doing. For performance reasons it is
-    # important that there is a unique index on that column.
-    'tiledmap.unique_id_field': '_id',
-
-    # The named of the fields that are inserted into the datastore table to hold the geom data. Imported data
-    # *cannot* contain fields with the same name. Note that fields that start with an underscore are considered hidden
-    #  by the datastore. Also note that if you change those after some map views were created, those map views won't
-    # work anymore and will need manual fix.
-    'tiledmap.geom_field': '_the_geom_webmercator',
-    'tiledmap.geom_field_4326': '_geom',
-
     # Information about the base layer used for the maps.
     # We don't want to let users define this per dataset, as we need to ensure we have the right to use the tiles.
     'tiledmap.tile_layer.url': 'http://otile1.mqcdn.com/tiles/1.0.0/map/{z}/{x}/{y}.jpg',

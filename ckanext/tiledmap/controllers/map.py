@@ -36,10 +36,6 @@ class MapController(toolkit.BaseController):
         # Run super
         super(MapController, self).__before__(action, **params)
 
-        # Setup fields names
-        self.geom_field = config['tiledmap.geom_field']
-        self.geom_field_4326 = config['tiledmap.geom_field_4326']
-
         # Get request resource_id
         if not request.params.get('resource_id'):
             toolkit.abort(400, _("Missing resource id"))
@@ -280,7 +276,14 @@ class MapController(toolkit.BaseController):
             }
             result['map_style'] = 'plot'
 
-        info = self._get_data_info()
+        # Get query extent and count
+        info = toolkit.get_action('datastore_query_extent')({}, {
+            'resource_id': self.resource_id,
+            'filters': self._get_request_filters(),
+            'limit': 1,
+            'q': urllib.unquote(request.params.get('q', '')),
+            'fields': '_id'
+        })
         result['total_count'] = info['total_count']
         result['geom_count'] = info['geom_count']
         if info['bounds']:
@@ -288,89 +291,6 @@ class MapController(toolkit.BaseController):
 
         response.headers['Content-type'] = 'application/json'
         return json.dumps(result)
-
-    def _get_data_info(self):
-        """Returns the specific map info for the current query
-
-        Notes: We can't use datastore_search directly, as our query is too
-               complex, but we still want to invoke the various plugins to
-               ensure we get custom filters applied.
-
-        @return: A dict defining three elements:
-                 - count: Number of entries for current request
-                 - geom_count: Number of entries that have a geom
-                 - bounds: ((ymin, xmin), (ymax, xmax)
-        """
-        result = {}
-        fields = self._get_request_fields()
-        filters = self._get_request_filters()
-        datastore_search = toolkit.get_action('datastore_search')
-        data_dict = {
-            'resource_id': self.resource_id,
-            'filters': filters,
-            'limit': 1,
-            'q': urllib.unquote(request.params.get('q', '')),
-            'fields': fields
-        }
-        # Get the total count and field types
-        r = datastore_search({}, data_dict)
-        if 'total' not in r or r['total'] == 0:
-            return {
-                'total_count': 0,
-                'geom_count': 0,
-                'bounds': None
-            }
-        result['total_count'] = r['total']
-        field_types = dict([(f['id'], f['type']) for f in r['fields']])
-        field_types['_id'] = 'int'
-        # Call plugin to obtain correct where statement
-        (ts_query, where_clause, values) = self._get_request_where_clause(data_dict, field_types)
-        # Prepare and run our query
-        query = """
-            SELECT COUNT(r) AS count,
-                   ST_YMIN(ST_EXTENT(r)) AS ymin,
-                   ST_XMIN(ST_EXTENT(r)) AS xmin,
-                   ST_YMAX(ST_EXTENT(r)) AS ymax,
-                   ST_XMAX(ST_EXTENT(r)) AS xmax
-            FROM   (
-              SELECT "{geom_field}" AS r
-              FROM   "{resource_id}" {ts_query}
-              {where_clause}
-            ) _tilemap_sub
-        """.format(
-            geom_field=self.geom_field_4326,
-            resource_id=self.resource_id,
-            where_clause=where_clause,
-            ts_query=ts_query
-        )
-        if not is_single_statement(query):
-            raise datastore_db.ValidationError({
-                'query': ['Query is not a single statement.']
-            })
-        engine = _get_engine()
-        with engine.begin() as connection:
-            query_result = connection.execute(query, values)
-            r = query_result.fetchone()
-
-        result['geom_count'] = r['count']
-        # BS Added 141214: Only set bounds if we have records
-        result['bounds'] = ((r['ymin'], r['xmin']), (r['ymax'], r['xmax'])) if r['count'] else None
-        return result
-
-    def _get_request_fields(self):
-        """Return the list of fields of the current request's resource"""
-        fields = []
-        engine = _get_engine()
-        with engine.begin() as connection:
-            r = connection.execute("""
-                SELECT * FROM "{}" LIMIT 1
-            """.format(self.resource_id))
-            for field in r.cursor.description:
-                if not field[0].startswith('_'):
-                    fields.append(field[0].decode('utf-8'))
-        fields.append(self.geom_field_4326)
-        fields.append(self.geom_field)
-        return fields
 
     def _get_request_filters(self):
         """Return a dict representing the filters of the current request"""
@@ -382,42 +302,3 @@ class MapController(toolkit.BaseController):
                     filters[k] = []
                 filters[k].append(v)
         return filters
-
-    def _get_request_where_clause(self, data_dict, field_types):
-        """Return the where clause that applies to a query matching the given request
-
-        @param data_dict: A dictionary representing a datastore API request
-        @param field_types: A dictionary of field name to field type. Must
-                            include all the fields that may be used in the
-                            query
-        @return: Tuple defining (
-                    extra from statement for full text queries,
-                    where clause,
-                    list of replacement values
-                )
-        """
-        query_dict = {
-            'select': [],
-            'sort': [],
-            'where': []
-        }
-        for plugin in plugins.PluginImplementations(interfaces.IDatastore):
-            query_dict = plugin.datastore_search(
-                {}, data_dict, field_types, query_dict
-            )
-        clauses = []
-        values = []
-        for clause_and_values in query_dict['where']:
-            clauses.append('(' + clause_and_values[0] + ')')
-            values += clause_and_values[1:]
-
-        where_clause = u' AND '.join(clauses)
-        if where_clause:
-            where_clause = u'WHERE ' + where_clause
-
-        if 'ts_query' in query_dict and query_dict['ts_query']:
-            ts_query = query_dict['ts_query']
-        else:
-            ts_query = ''
-
-        return ts_query, where_clause, values
