@@ -2,7 +2,7 @@
 config = {
     # Information about the base layer used for the maps.
     # We don't want to let users define this per dataset, as we need to ensure we have the right to use the tiles.
-    'tiledmap.tile_layer.url': 'http://otile1.mqcdn.com/tiles/1.0.0/map/{z}/{x}/{y}.jpg',
+    'tiledmap.tile_layer.url': 'http://{s}.tiles.mapbox.com/v4/mapbox.streets/{z}/{x}/{y}@2x.png?access_token=pk.eyJ1IjoibmhtIiwiYSI6ImNpcjU5a3VuNDAwMDNpYm5vY251MW5oNTIifQ.JuGQ2xZ66FKOAOhYl2HdWQ',
     'tiledmap.tile_layer.opacity': '0.8',
 
     # Max/min zoom constraints
