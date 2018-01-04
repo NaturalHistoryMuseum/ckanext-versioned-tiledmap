@@ -1,4 +1,4 @@
-ckanext-tiledmap
+ckanext-map
 ===========
 
 A Ckan plugin to create a map view that uses server-generated tiles, allowing for maps visualization of large datasets with millions of data points. The tile server to go with this extension is available at  <a href="https://github.com/NaturalHistoryMuseum/nhm-windshaft-app">https://github.com/NaturalHistoryMuseum/nhm-windshaft-app</a>
