@@ -1,79 +1,44 @@
-ckanext-map
-===========
+# Versioned datastore maps
 
-A Ckan plugin to create a map view that uses server-generated tiles, allowing for maps visualization of large datasets with millions of data points. The tile server to go with this extension is available at  <a href="https://github.com/NaturalHistoryMuseum/nhm-windshaft-app">https://github.com/NaturalHistoryMuseum/nhm-windshaft-app</a>
+A CKAN plugin with a map view for versioned-datastore backed resources allowing for map visualizations of large resources with millions of data points.
 
-Note that this plugin requires the [ckanext-dataspatial](https://github.com/NaturalHistoryMuseum/ckanext-dataspatial) plugin, to create the geospatial columns in your dataset and provide functionality such as spatial query extent.
+To use this extension you must be install:
 
-setup
-=====
+- [ckanext-versioned-datastore extension](https://github.com/NaturalHistoryMuseum/ckanext-versioned-datastore)
+- [versioned-datastore-tile-server](https://github.com/NaturalHistoryMuseum/versioned-datastore-tile-server)
 
-Postgis
--------
+See those repositories for installing information.
 
-Your postgresql database must have <a href="http://postgis.net/">postgis</a> support. On Ubuntu 12.04 LTS, assuming a
-default postgres 9.1 install you can setup your database by doing:
+This repository is a fork* of [ckanext-map](https://github.com/NaturalHistoryMuseum/ckanext-map).
 
-```bash
-  sudo apt-get install -y postgresql-9.1-postgis
-  sudo -u postgres psql -d ${DATASTORE_DB_NAME} -f /usr/share/postgresql/9.1/contrib/postgis-1.5/postgis.sql
-  sudo -u postgres psql -d ${DATASTORE_DB_NAME} -c "ALTER TABLE geometry_columns OWNER TO $DB_USER"
-  sudo -u postgres psql -d ${DATASTORE_DB_NAME} -c "ALTER TABLE spatial_ref_sys OWNER TO $DB_USER"
-  sudo -u postgres psql -d ${DATASTORE_DB_NAME} -f /usr/share/postgresql/9.1/contrib/postgis-1.5/spatial_ref_sys.sql
-```
+_*you can't fork repositories within the same organisation so this repository is a duplicate of ckanext-map_
 
-Where ```DATASTORE_DB_NAME``` is the name of your postgres database that holds the datastore name, and ```DB_USER``` is
-your database user.
-
-Tile server
-----------------
-
-You then need to setup a tile server. You can download the server at
-<a href="https://github.com/NaturalHistoryMuseum/nhm-windshaft-app">https://github.com/NaturalHistoryMuseum/nhm-windshaft-app</a>
-and configure it to set up the ckan datastore database.
-
-Configuration
-=============
-
+## Configuration
 The plugin supports the following configuration options:
 
-- tiledmap.windshaft.host: The hostname of the tile server. There is no default, and the extension will not allow
-  you to add map views if this is not defined;
-- tiledmap.windshaft.port: The port for the tile server. There is no default, and the extension will not allow
-  you to add map views if this is not defined;
-- tiledmap.tile_layer.url: URL of the tile layer. Defaults to http://otile1.mqcdn.com/tiles/1.0.0/map/{z}/{x}/{y}.jpg ;
-- tiledmap.tile_layer.opacity: Opacity of the tile layer. Defaults to 0.8 ;
-- tiledmap.initial_zoom.min: Minimum zoom level for initial display of dataset, defaults to 2;
-- tiledmap.initial_zoom.max: Maximum zoom level for initial display of dataset, defaults to 6;
-- tiledmap.style.plot.fill_color: Default fill color for plot markers. Users can override this per-view. Defaults to
-  '#EE0000';
-- tiledmap.style.plot.line_color: Default line color for plot markers. Users can override this per-view. Defaults to
-  '#FFFFFF';
-- tiledmap.style.plot.marker_size': Size of the plot marker. Cannot be overriden per-view as it has a notable
-  performance impact. Defaults to 8;
-- tiledmap.style.plot.grid_resolution: Resolution of the grid used to generator hover/popup information on the map.
-  Cannot be overriden per-view as it has a notable performance impact. Should typically be half the marker size.
-  Defaults to 4;
-- tiledmap.style.gridded.base_color: Default base color for grid views. Users can override this per-view. Defaults to
-  '#F02323';
-- tiledmap.style.gridded.marker_size: Marker size for the grid view. Cannot be overidden per-view as it has a notable
-  performance impact. Defaults to 8;
-- tiledmap.style.gridded.grid_resolution: Grid resolution for the grid view. Cannot be overridden per-view as it has a
-  notable performance impact. Should be the same as the marker size. Defaults to 8;
-- tiledmap.style.heatmap.intensity: Default heat map intensitiy. Users can override this per-view. Defaults to 0.1;
-- tiledmap.style.heatmap.gradient: Heat map gradient colors. Defaults to
-  '#0000FF, #00FFFF, #00FF00, #FFFF00, #FFA500, #FF0000',
-- tiledmap.style.heatmap.marker_url: Heatmap marker. Defaults to '!markers!/alpharadiantdeg20px.png' (where !markers!
-  is the marker directory on the windshaft server);
-- tiledmap.style.heatmap.marker_size: Heatmap marker size. Defaults to 20.
+| Name | Description | Default |
+|------|-------------|---------|
+| `versioned_tilemap.tile_layer.url` | The URL to use for the base world tiles | `https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png` |
+| `versioned_tilemap.tile_layer.opacity` | The opacity for the tile layer | `0.8` |
+| `versioned_tilemap.zoom_bounds.min` | Minimum zoom level for initial display of the resource's data | `3` |
+| `versioned_tilemap.zoom_bounds.max` | Maximum zoom level for initial display of the resource's data | `18` |
+| `versioned_tilemap.style.plot.point_radius` | The integer radius of the rendered points (including the border) | `4` |
+| `versioned_tilemap.style.plot.point_colour` | The hex value to render the points in | `#ee0000` ![#ee0000](https://placehold.it/15/ee0000/000000?text=+) |
+| `versioned_tilemap.style.plot.border_width` | The integer border width of the rendered points | `1` |
+| `versioned_tilemap.style.plot.border_colour` | The hex value to render the borders of the points in | `#ffffff` ![#ffffff](https://placehold.it/15/ffffff/000000?text=+) |
+| `versioned_tilemap.style.plot.grid_resolution` | The integer size of the cells in the grid that each tile is split into for the UTFGrid. The default of `4` produces a 64x64 grid within each tile | `4` |
+| `versioned_tilemap.style.gridded.cold_colour` |  The hex value to be used to render the points with the lowest counts | `#f4f11a` ![#f4f11a](https://placehold.it/15/f4f11a/000000?text=+) |
+| `versioned_tilemap.style.gridded.hot_colour` |  The hex value to be used to render the points with the highest counts | `#f02323` ![#f02323](https://placehold.it/15/f02323/000000?text=+) |
+| `versioned_tilemap.style.gridded.range_size` |  This many colours will be used to render the points dependant on their counts | `12` |
+| `versioned_tilemap.style.gridded.resize_factor` | A resize value to use when smoothing the tile. This value will be used to scale the tile and then down (with anti-aliasing) to produce a smoother output. Increasing this value will negatively impact performance | `4` |
+| `versioned_tilemap.style.gridded.grid_resolution` | The integer size of the cells in the grid that each tile is split into. The default of `8` produces a 32x32 grid within each tile and therefore matches the default `grid.json` setting too | `8` |
+| `versioned_tilemap.style.heatmap.point_radius` | The integer radius of the rendered points (including the border) | `8` |
+| `versioned_tilemap.style.heatmap.cold_colour` |  The hex value to be used to render the points with the lowest counts | `#0000ee` ![#0000ee](https://placehold.it/15/0000ee/000000?text=+) |
+| `versioned_tilemap.style.heatmap.hot_colour` |  The hex value to be used to render the points with the highest counts | `#ee0000` ![#ee0000](https://placehold.it/15/ee0000/000000?text=+) |
+| `versioned_tilemap.style.heatmap.intensity` | The decimal intensity (between 0 and 1) to render the tile with | `0.5` |
+| `versioned_tilemap.info_template` | The name of the template to use when a point is clicked | `point_detail` |
+| `versioned_tilemap.quick_info_template` | The name of the template to use when a point is hovered over | `point_detail_hover` |
 
-
-Usage
-=====
-
-Users
------
-
-Once the plugin has been enabled (added to the list of plugins in the .ini file), users can add tiled map views from
-the resource management page. Users will select (amongst other options) the latitude and longitude fields in their
-dataset. The extension will then automatically create (and populate) geometry columns as required.
+## Usage
+Once the plugin has been enabled (added to the list of plugins in the .ini file), users can add tiled map views from the resource management page.
+The view will only be available to the user if they have selected a latitude and longitude field for the resource, this can be done on the edit resource page.
