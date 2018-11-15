@@ -62,7 +62,7 @@ class MapController(toolkit.BaseController):
         except toolkit.NotAuthorized:
             return toolkit.abort(401, _(u'Unauthorized to read resource view'))
 
-        fetch_id = request.params.get(u'fetch_id')
+        fetch_id = int(request.params.get(u'fetch_id'))
 
         # create a settings object, ready for use in the map_info call
         self.view_settings = MapViewSettings(fetch_id, view, resource)
