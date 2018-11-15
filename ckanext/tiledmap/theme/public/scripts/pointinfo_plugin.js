@@ -1,8 +1,7 @@
 this.tiledmap = this.tiledmap || {};
+
 (function(my, $) {
     /**
-     * PointInfoPlugin
-     *
      * Plugin used to display information about a clicked point
      */
     my.PointInfoPlugin = function(view, options) {
@@ -12,7 +11,7 @@ this.tiledmap = this.tiledmap || {};
         this.enable = function() {
             this.grid = null;
             this.isactive = true;
-        }
+        };
 
         /**
          * Disable this plugin
@@ -20,7 +19,7 @@ this.tiledmap = this.tiledmap || {};
         this.disable = function() {
             // remove handlers
             this._disable_event_handlers();
-        }
+        };
 
         /**
          * Activate/disactive this plugin
@@ -28,7 +27,7 @@ this.tiledmap = this.tiledmap || {};
          */
         this.active = function(state) {
             this.isactive = state;
-        }
+        };
 
         /**
          * Remove event handlers
@@ -37,7 +36,7 @@ this.tiledmap = this.tiledmap || {};
             if (this.grid) {
                 this.grid.off('click', $.proxy(this, "_on_click"));
             }
-        }
+        };
 
         /**
          * redraw hanlder
@@ -51,7 +50,7 @@ this.tiledmap = this.tiledmap || {};
 
             // todo: should we handle clicks outside the map, and remove the marker?
             // todo: should we handler the escape key and remove the marker ?
-        }
+        };
 
         /**
          * click handler

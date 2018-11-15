@@ -1,8 +1,7 @@
 this.tiledmap = this.tiledmap || {};
+
 (function(my, $) {
     /**
-     * TooltipPlugin
-     *
      * Plugin used to add a tooltip on point hover
      */
     my.TooltipPlugin = function(view, options) {
@@ -20,7 +19,7 @@ this.tiledmap = this.tiledmap || {};
                 zIndex: 100
             }).appendTo(view.map.getContainer());
             this.hover = false;
-        }
+        };
 
         /**
          * Disable this plugin
@@ -29,7 +28,7 @@ this.tiledmap = this.tiledmap || {};
             this._disable_event_handlers();
             this.$el.remove();
             this.$el = null;
-        }
+        };
 
         /**
          * Remove event handlers
@@ -41,7 +40,7 @@ this.tiledmap = this.tiledmap || {};
                 view.map.off('mouseout', $.proxy(this, "_mouseout"));
                 this.grid = null;
             }
-        }
+        };
 
         /**
          * Activate/disactive this plugin
@@ -49,7 +48,7 @@ this.tiledmap = this.tiledmap || {};
          */
         this.active = function(state) {
             this.isactive = state;
-        }
+        };
 
         /**
          * Mouseover handler
@@ -112,7 +111,7 @@ this.tiledmap = this.tiledmap || {};
             }
             // Set the mouse cursor.
             $('div.panel.map').css('cursor', 'pointer');
-        }
+        };
 
         /**
          * Mouseout handler
@@ -132,7 +131,7 @@ this.tiledmap = this.tiledmap || {};
                 // Remove the mouse cursor
                 $('div.panel.map').css('cursor', '');
             }
-        }
+        };
 
         /**
          * redraw handler

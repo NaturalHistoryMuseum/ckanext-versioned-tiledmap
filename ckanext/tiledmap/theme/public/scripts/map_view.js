@@ -1,7 +1,6 @@
 this.tiledmap = this.tiledmap || {};
+
 /**
- * NHMMap
- *
  * Custom backbone view to display the Windshaft based maps.
  */
 (function(my, $) {
@@ -10,8 +9,6 @@ this.tiledmap = this.tiledmap || {};
         template: '<div class="tiled-map-info"></div><div class="panel sidebar"><a class="close">x</a></div><div class="panel map"></div>',
 
         /**
-         * Initialize
-         *
          * This is only called once.
          */
         initialize: function() {
@@ -264,7 +261,7 @@ this.tiledmap = this.tiledmap || {};
                 success: $.proxy(function(data, status, jqXHR) {
                     this.jqxhr = null;
                     // Ensure this is the result we want, not a previous query!
-                    if (data.fetch_id == this.fetch_count) {
+                    if (data.fetch_id === this.fetch_count) {
                         if (typeof data.geospatial !== 'undefined' && data.geospatial) {
                             callback(data);
                         } else {
@@ -273,7 +270,7 @@ this.tiledmap = this.tiledmap || {};
                     }
                 }, this),
                 error: function(jqXHR, status, error) {
-                    if (status != 'abort') {
+                    if (status !== 'abort') {
                         error_cb("Error while loading the map");
                     }
                 }
@@ -281,8 +278,6 @@ this.tiledmap = this.tiledmap || {};
         },
 
         /**
-         * _refresh_info
-         *
          * Reload the number of records. Called when filters change without a page reload.
          */
         _refreshInfo: function() {
@@ -300,10 +295,9 @@ this.tiledmap = this.tiledmap || {};
         },
 
         /**
-         * setGeom
-         *
-         * Set the geom filter. This will cause the map to be redrawn and links to views to be updated. If leave_window_url
-         * if false or undefined, this will also update the browser url (or reload the page in older browsers).
+         * Set the geom filter. This will cause the map to be redrawn and links to views to be
+         * updated. If leave_window_url if false or undefined, this will also update the browser url
+         * (or reload the page in older browsers).
          */
         setGeom: function(geom, leave_window_url) {
             // Get the geometry drawn
@@ -329,10 +323,8 @@ this.tiledmap = this.tiledmap || {};
                     window.parent.location = href;
                 }
             }
-            // Refresh counters
+            // refresh the map info and redraw after
             this._refreshInfo();
-            // // And redraw the map
-            // this.redraw();
         },
 
         /**
@@ -405,8 +397,6 @@ this.tiledmap = this.tiledmap || {};
         },
 
         /**
-         * openSidebar
-         *
          * Open the sidebar.
          */
         openSidebar: function(x, y) {
@@ -430,8 +420,6 @@ this.tiledmap = this.tiledmap || {};
         },
 
         /**
-         * closeSidebar
-         *
          * Close the sidebar
          */
         closeSidebar: function() {
@@ -446,8 +434,6 @@ this.tiledmap = this.tiledmap || {};
         },
 
         /**
-         * _addLayer
-         *
          * This function adds a new layer to the map
          */
         _addLayer: function(name, layer) {
@@ -459,8 +445,6 @@ this.tiledmap = this.tiledmap || {};
         },
 
         /**
-         * _removeLayer
-         *
          * This function removes a layer from the map
          */
         _removeLayer: function(name) {
@@ -471,8 +455,6 @@ this.tiledmap = this.tiledmap || {};
         },
 
         /**
-         * _removeAllLayers
-         *
          * Removes all layers from the map
          */
         _removeAllLayers: function() {
@@ -483,8 +465,6 @@ this.tiledmap = this.tiledmap || {};
         },
 
         /**
-         * updateControls
-         *
          * Updates the controls used on the map for the current style
          */
         updateControls: function() {
@@ -496,8 +476,6 @@ this.tiledmap = this.tiledmap || {};
         },
 
         /**
-         * updatePlugins
-         *
          * Updates the plugins used on this map
          */
         updatePlugins: function() {
@@ -509,8 +487,6 @@ this.tiledmap = this.tiledmap || {};
         },
 
         /**
-         * disablePlugins
-         *
          * Disable all plugins
          */
         disablePlugins: function() {
@@ -528,8 +504,6 @@ this.tiledmap = this.tiledmap || {};
         },
 
         /**
-         * invoke
-         *
          * Invoke a particular hook on enabled plugins and controls
          */
         invoke: function(hook, args) {
@@ -553,8 +527,6 @@ this.tiledmap = this.tiledmap || {};
         },
 
         /**
-         * _updateAddons
-         *
          * Generic function for updating controls and plugins.
          */
         _updateAddons: function(type, add_cb, remove_cb) {
@@ -570,14 +542,14 @@ this.tiledmap = this.tiledmap || {};
                 for (var i in style[type]) {
                     var addon = style[type][i];
                     new_addons.push(addon);
-                    if (add_cb && $.inArray(addon, this._current_addons[type]) == -1) {
+                    if (add_cb && $.inArray(addon, this._current_addons[type]) === -1) {
                         add_cb(addon);
                     }
                 }
             }
             for (var i in this._current_addons[type]) {
                 var addon = this._current_addons[type][i];
-                if (remove_cb && $.inArray(addon, new_addons) == -1) {
+                if (remove_cb && $.inArray(addon, new_addons) === -1) {
                     remove_cb(addon);
                 }
             }

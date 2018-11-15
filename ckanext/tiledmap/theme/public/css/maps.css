@@ -1,12 +1,12 @@
-body{
+body {
     margin: 0;
 }
 
 div.tiled-map {
-  font-size: 13px;
-  font-family: "Helvetica Neuee", Helvetica, Arial, sans-serif;
-  line-height: 18px;
-  color: #333;
+    font-size: 13px;
+    font-family: "Helvetica Neuee", Helvetica, Arial, sans-serif;
+    line-height: 18px;
+    color: #333;
 }
 
 div.tiled-map a {
@@ -25,7 +25,7 @@ div.tiled-map a:hover {
 
 /* Extra icons */
 
-div.tiled-map a:after{
+div.tiled-map a:after {
     font-family: FontAwesome;
     font-weight: lighter;
     font-style: normal;
@@ -36,52 +36,52 @@ div.tiled-map a:after{
     line-height: 16px;
 }
 
-div.tiled-map a.leaflet-draw-edit-remove:after{
+div.tiled-map a.leaflet-draw-edit-remove:after {
     content: "\f0e2";
 }
 
-div.tiled-map a.leaflet-draw-draw-country:after{
-    content: "\f0ac"  /* Puzzle piece - fa-puzzle-piece */
+div.tiled-map a.leaflet-draw-draw-country:after {
+    content: "\f0ac" /* Puzzle piece - fa-puzzle-piece */
 }
 
 div.tiled-map a.leaflet-draw-edit-remove,
-div.tiled-map a.leaflet-draw-draw-country{
-    background-image: none!important;
+div.tiled-map a.leaflet-draw-draw-country {
+    background-image: none !important;
 }
 
-div.tiled-map-info{
+div.tiled-map-info {
     padding: 12px;
 }
 
 .info {
-  color:#555;
-  padding: 6px 8px;
-  font: 14px/16px Arial, Helvetica, sans-serif;
-  background: rgba(255,255,255,0.95);
-  box-shadow: 0 0 15px rgba(0,0,0,0.7);
-  border-radius: 10px;
-  width: 300px;
-  min-height: 10em;
+    color: #555;
+    padding: 6px 8px;
+    font: 14px/16px Arial, Helvetica, sans-serif;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.7);
+    border-radius: 10px;
+    width: 300px;
+    min-height: 10em;
 }
 
-.small-info{
-  color:#555;
-  padding: 6px 8px;
-  font: 14px/16px Arial, Helvetica, sans-serif;
-  background: rgba(255,255,255,0.95);
-  box-shadow: 0 0 15px rgba(0,0,0,0.7);
-  border-radius: 10px;
-  width: 300px;
-  min-height: 2em;
+.small-info {
+    color: #555;
+    padding: 6px 8px;
+    font: 14px/16px Arial, Helvetica, sans-serif;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.7);
+    border-radius: 10px;
+    width: 300px;
+    min-height: 2em;
 }
 
 .leaflet-container {
-  background: #CBE6FE;
+    background: #CBE6FE;
 }
 
 .leaflet-bar a.active-selection {
-  font-weight: bold;
-  background: #f4f4f4;
+    font-weight: bold;
+    background: #f4f4f4;
 }
 
 .panel.map {
@@ -89,7 +89,7 @@ div.tiled-map-info{
 }
 
 .panel.map,
-.panel.sidebar{
+.panel.sidebar {
     min-height: 350px;
 }
 
@@ -105,25 +105,25 @@ div.tiled-map-info{
 }
 
 div.tiled-map-point-detail,
-div.point-detail{
+div.point-detail {
     height: inherit;
 }
 
-div.point-detail{
+div.point-detail {
     box-sizing: border-box;
     padding-bottom: 30px;
 }
 
-div.point-detail.multiple-records{
+div.point-detail.multiple-records {
     padding-bottom: 115px;
 }
 
-div.point-detail-wrapper{
+div.point-detail-wrapper {
     overflow-y: auto;
     height: 100%;
 }
 
-.panel.sidebar .close{
+.panel.sidebar .close {
     position: absolute;
     top: 4px;
     right: 8px;
@@ -133,72 +133,72 @@ div.point-detail-wrapper{
 
 /* Map tooltips */
 div.map-hover-tooltip {
-  color: #FFF;
-  background: #000;
-  font-size: 1em;
-  padding: 3px 5px;
-  border-radius: 2px;
-  opacity: 0.7;
+    color: #FFF;
+    background: #000;
+    font-size: 1em;
+    padding: 3px 5px;
+    border-radius: 2px;
+    opacity: 0.7;
 }
 
 div.point-detail div.point-detail-title,
 div.point-detail div.point-detail-info,
-div.point-detail div.point-detail-tree{
+div.point-detail div.point-detail-tree {
     padding: 8px;
     min-width: 210px; /* Stop them compressing on slide */
 }
 
 div.point-detail div.point-detail-title {
-  font-size: 1.5em;
-  font-weight: bold;
-  margin: 10px 0;
-  line-height: 1.1;
+    font-size: 1.5em;
+    font-weight: bold;
+    margin: 10px 0;
+    line-height: 1.1;
 }
 
-div.point-detail table{
+div.point-detail table {
     margin: 0 8px;
     width: 210px;
 }
 
-div.point-detail table tr{
+div.point-detail table tr {
     margin-bottom: 5px;
 }
 
-div.point-detail table td, th{
+div.point-detail table td, th {
     text-align: left;
     vertical-align: top;
 }
 
-div.point-detail table td{
+div.point-detail table td {
     word-wrap: break-word;
     overflow-wrap: break-word;
 }
 
-div.point-detail table{
+div.point-detail table {
     width: 100px;
     overflow: hidden;
 }
 
 div.point-detail-info {
-  font-size: 0.9em;
-  color: #888;
-  background: #E4E4E4;
-  text-align: center;
-  min-width: 210px;
-  padding: 10px;
+    font-size: 0.9em;
+    color: #888;
+    background: #E4E4E4;
+    text-align: center;
+    min-width: 210px;
+    padding: 10px;
 }
 
-div.point-detail-info a:hover{
+div.point-detail-info a:hover {
     text-decoration: underline;
 }
 
 div.point-detail .point-detail-tree-label {
-  color: #888;
-  font-size: 0.9em;
+    color: #888;
+    font-size: 0.9em;
 }
 
 div.point-detail-tree,
-div.point-detail table{
+div.point-detail table {
     font-size: 0.9em;
     margin-bottom: 1em;
 }
@@ -226,7 +226,7 @@ body.fullscreen div.tiled-map {
 }
 
 body.fullscreen .fa-expand:before {
-content: "\f066";
+    content: "\f066";
 }
 
 body.fullscreen .panel.sidebar {
@@ -234,5 +234,5 @@ body.fullscreen .panel.sidebar {
 }
 
 body.fullscreen div.point-detail-info {
-  min-width: 400px;
+    min-width: 400px;
 }
