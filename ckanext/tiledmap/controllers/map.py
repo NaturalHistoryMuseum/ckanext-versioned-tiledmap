@@ -1,304 +1,328 @@
-import urllib
+#!/usr/bin/env python
+# encoding: utf-8
 
-from ckan import plugins
-from ckan.plugins import toolkit
+import StringIO
+import base64
+import gzip
+import json
 
-from ckan.common import json, request, response, _
+from pylons import request
+
+from ckan.common import _
+from ckan.common import json, response
 from ckan.lib.render import find_template
-
-from ckanext.tiledmap.db import _get_engine
+from ckan.plugins import toolkit
 from ckanext.tiledmap.config import config
-
-from ckanext.datastore import db as datastore_db
-from ckanext.datastore import interfaces
-from ckanext.datastore.helpers import is_single_statement
+from ckanext.tiledmap.controllers.utils import extract_q_and_filters, get_base_map_info
 
 
 class MapController(toolkit.BaseController):
-    """Controller for getting map setting and information.
+    '''
+    Controller for getting map setting and information.
 
-    This is implemented as a controller (rather than providing the data directly
-    to the javascript module) because the map will generate new queries without
-    page reloads.
+    This is implemented as a controller (rather than providing the data directly to the javascript
+    module) because the map will generate new queries without page reloads.
 
     The map setting and information is available at `/map-info`.
-    This request expects a 'resource_id' parameter, and accepts `filters` and
-    `q` formatted as per resource view URLs.
+    This request expects a 'resource_id' parameter, and accepts `filters` and `q` formatted as per
+    resource view URLs.
 
     See ckanext.tiledmap.config for configuration options.
-    """
+    '''
 
     def __before__(self, action, **params):
-        """Setup the request
-
-        This will trigger a 400 error if the resource_id parameter is missing.
-        """
-        # Run super
+        '''
+        Setup the request by creating a MapViewSettings object with all the information needed to
+        serve the request and storing it on self.
+        '''
         super(MapController, self).__before__(action, **params)
 
-        # Get request resource_id
-        if not request.params.get('resource_id'):
-            toolkit.abort(400, _("Missing resource id"))
+        # get the resource id from the request
+        resource_id = request.params.get(u'resource_id', None)
+        view_id = request.params.get(u'view_id', None)
 
-        self.resource_id = request.params.get('resource_id')
+        # error if the resource id is missing
+        if resource_id is None:
+            toolkit.abort(400, _(u'Missing resource id'))
+        # error if the view id is missing
+        if view_id is None:
+            toolkit.abort(400, _(u'Missing view id'))
 
+        # attempt to retrieve the resource and the view
         try:
-            resource_show = toolkit.get_action('resource_show')
-            self.resource = resource_show(None, {'id': self.resource_id})
+            resource = toolkit.get_action(u'resource_show')({}, {u'id': resource_id})
         except toolkit.NotFound:
-            toolkit.abort(404, _('Resource not found'))
+            return toolkit.abort(404, _(u'Resource not found'))
         except toolkit.NotAuthorized:
-            toolkit.abort(401, _('Unauthorized to read resources'))
-        resource_view_show = toolkit.get_action('resource_view_show')
-        self.view_id = request.params.get('view_id')
-        self.view = resource_view_show(None, {'id': self.view_id})
-
-        # Read resource-dependent parameters
-        self.info_title = self.view['utf_grid_title']
+            return toolkit.abort(401, _(u'Unauthorized to read resource'))
         try:
-            self.info_fields = self.view['utf_grid_fields']
-            if not isinstance(self.info_fields, list):
-                self.info_fields = [self.info_fields]
-        except KeyError:
-            self.info_fields = []
-        self.info_template = config['tiledmap.info_template']
-        self.quick_info_template = config['tiledmap.quick_info_template']
-        self.repeat_map = self.view['repeat_map']
+            view = toolkit.get_action(u'resource_view_show')({}, {u'id': view_id})
+        except toolkit.NotFound:
+            return toolkit.abort(404, _(u'Resource view not found'))
+        except toolkit.NotAuthorized:
+            return toolkit.abort(401, _(u'Unauthorized to read resource view'))
 
-        # Fields that need to be added to the query. Note that postgres query fails with duplicate names
-        self.query_fields = set(self.info_fields).union(set([self.info_title]))
+        fetch_id = request.params.get(u'fetch_id')
+
+        # create a settings object, ready for use in the map_info call
+        self.view_settings = MapViewSettings(fetch_id, view, resource)
 
     def map_info(self):
-        """Controller action that returns metadata about a given map.
+        '''
+        Controller action that returns metadata about a given map in JSON form.
 
-        As a side effect this will set the content type to application/json
+        :return: A JSON encoded string representing the metadata
+        '''
+        # ensure we have at least one map style enabled
+        if not self.view_settings.is_enabled():
+            return json.dumps({u'geospatial': False})
 
-        @return: A JSON encoded string representing the metadata
-        """
-        # Specific parameters
-        fetch_id = request.params.get('fetch_id')
-        tile_url_base = 'http://{host}:{port}/database/{database}/table/{table}'.format(
-            host=config['tiledmap.windshaft.host'],
-            port=config['tiledmap.windshaft.port'],
-            database=_get_engine().url.database,
-            table=self.resource_id
-        )
-
-        ## Ensure we have at least one map style
-        if not self.view['enable_plot_map'] and not self.view['enable_grid_map'] and not self.view['enable_heat_map']:
-            return json.dumps({
-                'geospatial': False,
-                'fetch_id': fetch_id
-            })
-
-        # Prepare result
-        quick_info_template_name = "{base}.{format}.mustache".format(
-            base=self.quick_info_template,
-            format=str(self.resource['format']).lower()
-        )
-        if not find_template(quick_info_template_name):
-            quick_info_template_name = self.quick_info_template + '.mustache'
-        info_template_name = "{base}.{format}.mustache".format(
-            base=self.info_template,
-            format=str(self.resource['format']).lower()
-        )
-        if not find_template(info_template_name):
-            info_template_name = self.info_template + '.mustache'
+        response.headers[u'Content-type'] = u'application/json'
+        return json.dumps(self.view_settings.create_map_info())
 
 
-        quick_info_template = toolkit.render(quick_info_template_name, {
-            'title': self.info_title,
-            'fields': self.info_fields
+class MapViewSettings(object):
+    '''
+    Class that holds settings and functions used to build the map-info response.
+    '''
+
+    def __init__(self, fetch_id, view, resource):
+        '''
+        :param fetch_id: the id of the request, as provided by the javascript module. This is used
+                         to keep track on the javascript side of the order map-info requests.
+        :param view: the view dict
+        :param resource: the resource dict
+        '''
+        self.fetch_id = fetch_id
+        self.view = view
+        self.resource = resource
+        self.view_id = view[u'id']
+        self.resource_id = resource[u'id']
+
+    @property
+    def title(self):
+        return self.view[u'utf_grid_title']
+
+    @property
+    def fields(self):
+        info_fields = list(self.view.get(u'utf_grid_fields', []))
+        if self.title not in info_fields:
+            info_fields.append(self.title)
+        return info_fields
+
+    @property
+    def repeat_map(self):
+        return bool(self.view.get(u'repeat_map', False))
+
+    @property
+    def overlapping_records_view(self):
+        return self.view.get(u'overlapping_records_view', None)
+
+    @property
+    def enable_utf_grid(self):
+        return bool(self.view.get(u'enable_utf_grid', False))
+
+    @property
+    def plot_map_enabled(self):
+        return bool(self.view.get(u'enable_plot_map', False))
+
+    @property
+    def grid_map_enabled(self):
+        return bool(self.view.get(u'enable_grid_map', False))
+
+    @property
+    def heat_map_enabled(self):
+        return bool(self.view.get(u'enable_heat_map', False))
+
+    def is_enabled(self):
+        '''
+        Returns True if at least one of the map styles (plot, grid, heat) is enabled. If none of
+        them are, returns False.
+
+        :return: True if one map style is enabled, False if none are
+        '''
+        return self.plot_map_enabled or self.grid_map_enabled or self.heat_map_enabled
+
+    def _render_template(self, name, extra_vars):
+        '''
+        Render the given mustache template using the given variables. If the resource this view is
+        attached to has a format then this function will attempt to find a format appropriate
+        function.
+
+        :param name: the name of the template
+        :param extra_vars: a dict of variables to pass to the template renderer
+        :return: a rendered template
+        '''
+        # this is the base name of the template, if there's no format version available then we'll
+        # just return this
+        template_name = u'{}.mustache'.format(name)
+
+        resource_format = self.resource.get(u'format', None)
+        # if there is a format on the resource, attempt to find a format specific template
+        if resource_format is not None:
+            formatted_template_name = u'{}.{}.mustache'.format(name, resource_format.lower())
+            if find_template(formatted_template_name):
+                template_name = formatted_template_name
+
+        return toolkit.render(template_name, extra_vars)
+
+    def render_info_template(self):
+        '''
+        Renders the point info template and returns the result.
+
+        :return: the rendered point info template
+        '''
+        return self._render_template(config[u'versioned_tilemap.info_template'], {
+            u'title': self.title,
+            u'fields': self.fields,
+            u'overlapping_records_view': self.overlapping_records_view,
         })
-        info_template = toolkit.render(info_template_name, {
-            'title': self.info_title,
-            'fields': self.info_fields,
-            'overlapping_records_view': self.view['overlapping_records_view']
+
+    def render_quick_info_template(self):
+        '''
+        Renders the point hover info template and returns the result.
+
+        :return: the rendered point hover info template
+        '''
+        return self._render_template(config[u'versioned_tilemap.quick_info_template'], {
+            u'title': self.title,
+            u'fields': self.fields,
         })
-        result = {
-            'geospatial': True,
-            'geom_count': 0,
-            'total_count': 0,
-            'bounds': ((83, -170), (-83, 170)),
-            'zoom_bounds': {
-                'min': int(config['tiledmap.zoom_bounds.min']),
-                'max': int(config['tiledmap.zoom_bounds.max'])
-            },
-            'initial_zoom': {
-                'min': int(config['tiledmap.initial_zoom.min']),
-                'max': int(config['tiledmap.initial_zoom.max'])
-            },
-            'tile_layer': {
-                'url': config['tiledmap.tile_layer.url'],
-                'opacity': float(config['tiledmap.tile_layer.opacity'])
-            },
-            'repeat_map': self.repeat_map,
-            'map_styles': {
-            },
-            'control_options': {
-                'fullScreen': {
-                    'position': 'topright'
-                },
-                'drawShape': {
-                    'draw': {
-                        'polyline': False,
-                        'marker': False,
-                        'circle': False,
-                        'country': True,
-                        'polygon': {
-                            'allowIntersection': False,
-                            'shapeOptions': {
-                                'stroke': True,
-                                'color': '#F44',
-                                'weight': 5,
-                                'opacity': 0.5,
-                                'fill': True,
-                                'fillColor': '#F44',
-                                'fillOpacity': 0.1
-                            }
-                        }
-                    },
-                    'position': 'topleft'
-                },
-                'selectCountry': {
-                    'draw': {
-                        'fill': '#F44',
-                        'fill-opacity': '0.1',
-                        'stroke': '#F44',
-                        'stroke-opacity': '0.5'
-                    }
-                },
-                'mapType': {
-                    'position': 'bottomleft'
-                },
-                'miniMap': {
-                    'position': 'bottomright',
-                    'tile_layer': {
-                        'url': config['tiledmap.tile_layer.url']
-                    },
-                    'zoomLevelFixed': 1,
-                    #'zoomLevelOffset': -10,
-                    'toggleDisplay': True,
-                    'viewport': {
-                        'marker_zoom': 8,
-                        'rect': {
-                            'weight': 1,
-                            'color': '#00F',
-                            'opacity': 1,
-                            'fill': False
-                        },
-                        'marker': {
-                            'weight': 1,
-                            'color': '#00F',
-                            'opacity': 1,
-                            'radius': 3,
-                            'fillColor': '#00F',
-                            'fillOpacity': 0.2
-                        }
-                    }
-                }
-            },
-            'plugin_options': {
-                'tooltipInfo': {
-                    'count_field': '_tiledmap_count',
-                    'template': quick_info_template,
-                },
-                'tooltipCount': {
-                    'count_field': '_tiledmap_count'
-                },
-                'pointInfo': {
-                    'template': info_template,
-                    'count_field': '_tiledmap_count'
-                }
-            },
-            'fetch_id': fetch_id
+
+    def get_style_params(self, style, names):
+        '''
+        Returns a dict of style params for the given style. The parameters are retrieved from the
+        user defined settings on the view and if they're missing then they're retrieved from the
+        config object.
+
+        :param style: the name of the style (plot, gridded or heatmap)
+        :param names: the names of the parameters to retrieve, these are also used as the names in
+                      the dict that the parameter values are stored under
+        :return: a dict
+        '''
+        params = {}
+        for name in names:
+            view_param_name = u'{}_{}'.format(style, name)
+            config_param_name = u'versioned_tilemap.style.{}.{}'.format(style, name)
+            params[name] = self.view.get(view_param_name, config[config_param_name])
+        return params
+
+    def get_extent_info(self):
+        '''
+        Retrieves the extent information about the datastore query provided by the parameters in the
+        request. The return value is a 3-tuple containing:
+
+            - the total number of records in the query result
+            - the total number of records in the query result that have geometric data (specifically
+              ones that have a value in the `meta.geo` field
+            - the bounds of the query result, this is given as the top left and bottom right
+              latitudinal and longitudinal values, each as a list, nested in another list
+              (e.g. [[0, 4], [70, 71]]). This is how it is returned by the datastore_query_extent
+              action.
+
+        :return: a 3-tuple - (int, int, list)
+        '''
+        q, filters = extract_q_and_filters()
+        # get query extent and counts
+        extent_info = toolkit.get_action(u'datastore_query_extent')({}, {
+            u'resource_id': self.resource_id,
+            u'q': q,
+            u'filters': filters,
+        })
+        # total_count and geom_count will definitely be present, bounds on the other hand is an
+        # optional part of the response
+        return (extent_info[u'total_count'], extent_info[u'geom_count'],
+                extent_info.get(u'bounds', ((83, -170), (-83, 170))))
+
+    def get_query_body(self):
+        '''
+        Returns the actual elasticsearch query dict as a base64 encoded, gzipped, JSON string. This
+        will be passed to the map tile server. This may seem a bit weird to do this but it allows
+        all queries to come through the same code path (and therefore trigger any datastore-search
+        implementing plugins) without all map tile queries having to come through CKAN (which would
+        be a performance bottle neck). The flow is like so:
+
+            - The query is changed by the user (or indeed they arrive at the map view for the first
+              time
+            - /map-info is requested
+            - this function builds the query, and the result is added to the /map-info response
+            - the javascript on the map view receives the /map-info response and extracts the
+              compressed query that was created by this function
+            - the query body is then sent along with all tile requests to the tile server, which
+              decompresses it and uses it to search elasticsearch
+
+        :return: a url safe base64 encoded, gzipped, JSON string
+        '''
+        q, filters = extract_q_and_filters()
+        result = toolkit.get_action(u'datastore_search')({}, {
+            u'resource_id': self.resource_id,
+            u'q': q,
+            u'filters': filters,
+            u'run_query': False,
+        })
+        out = StringIO.StringIO()
+        with gzip.GzipFile(fileobj=out, mode=u'w') as f:
+            json.dump(result, f)
+        return base64.urlsafe_b64encode(out.getvalue())
+
+    def create_map_info(self):
+        '''
+        Using the settings available on this object, create the /map-info response dict and return
+        it.
+
+        :return: a dict
+        '''
+        # get the standard map info dict (this provides a fresh one each time it's called)
+        map_info = get_base_map_info()
+
+        # add the base64 encoded, gzipped, JSON query
+        map_info[u'query_body'] = self.get_query_body()
+
+        # add the extent data
+        total_count, geom_count, bounds = self.get_extent_info()
+        map_info[u'total_count'] = total_count
+        map_info[u'geom_count'] = geom_count
+        map_info[u'bounds'] = bounds
+
+        # add a few basic settings
+        map_info[u'repeat_map'] = self.repeat_map
+        map_info[u'fetch_id'] = self.fetch_id
+        map_info[u'plugin_options'][u'tooltipInfo'] = {
+            u'count_field': u'count',
+            u'template': self.render_quick_info_template(),
+        }
+        map_info[u'plugin_options'][u'pointInfo'] = {
+            u'count_field': u'count',
+            u'template': self.render_info_template(),
         }
 
-        if self.view['enable_heat_map']:
-            result['map_styles']['heatmap'] = {
-                'name': _('Heat Map'),
-                'icon': '<i class="fa fa-fire"></i>',
-                'controls': ['drawShape', 'mapType', 'fullScreen', 'miniMap'],
-                'has_grid': False,
-                'tile_source': {
-                    'url': tile_url_base + '/{z}/{x}/{y}.png',
-                    'params': {
-                        'intensity': config['tiledmap.style.heatmap.intensity'],
-                    }
-                },
-            }
-            result['map_style'] = 'heatmap'
+        # remove or augment the heatmap settings depending on whether it's enabled for this view
+        if not self.heat_map_enabled:
+            del map_info[u'map_styles'][u'heatmap']
+        else:
+            params = self.get_style_params(u'heatmap', [u'point_radius', u'cold_colour',
+                                                        u'hot_colour', u'intensity'])
+            map_info[u'map_styles'][u'heatmap'][u'tile_source'][u'params'] = params
+            map_info[u'map_style'] = u'heatmap'
 
-        if self.view['enable_grid_map']:
-            result['map_styles']['gridded'] = {
-                'name': _('Grid Map'),
-                'icon': '<i class="fa fa-th"></i>',
-                'controls': ['drawShape', 'mapType', 'fullScreen', 'miniMap'],
-                'plugins': ['tooltipCount'],
-                'has_grid': self.view['enable_utf_grid'],
-                'grid_resolution': int(config['tiledmap.style.plot.grid_resolution']),
-                'tile_source': {
-                    'url': tile_url_base + '/{z}/{x}/{y}.png',
-                    'params': {
-                        'base_color': config['tiledmap.style.gridded.base_color']
-                    }
-                },
-                'grid_source': {
-                    'url': tile_url_base + '/{z}/{x}/{y}.grid.json',
-                    'params': {
-                        'interactivity': ','.join(self.query_fields)
-                    }
-                }
-            }
-            result['map_style'] = 'gridded'
+        # remove or augment the gridded settings depending on whether it's enabled for this view
+        if not self.grid_map_enabled:
+            del map_info[u'map_styles'][u'gridded']
+        else:
+            map_info[u'map_styles'][u'gridded'][u'has_grid'] = self.enable_utf_grid
+            params = self.get_style_params(u'gridded', [u'grid_resolution', u'hot_colour',
+                                                        u'cold_colour', u'range_size'])
+            map_info[u'map_styles'][u'gridded'][u'tile_source'][u'params'] = params
+            map_info[u'map_style'] = u'gridded'
 
-        if self.view['enable_plot_map']:
-            result['map_styles']['plot'] = {
-                'name': _('Plot Map'),
-                'icon': '<i class="fa fa-dot-circle-o"></i>',
-                'controls': ['drawShape', 'mapType', 'fullScreen', 'miniMap'],
-                'plugins': ['tooltipInfo', 'pointInfo'],
-                'has_grid': self.view['enable_utf_grid'],
-                'grid_resolution': int(config['tiledmap.style.plot.grid_resolution']),
-                'tile_source': {
-                    'url': tile_url_base + '/{z}/{x}/{y}.png',
-                    'params': {
-                        'fill_color': config['tiledmap.style.plot.fill_color'],
-                        'line_color': config['tiledmap.style.plot.line_color']
-                    }
-                },
-                'grid_source': {
-                    'url': tile_url_base + '/{z}/{x}/{y}.grid.json',
-                    'params': {
-                        'interactivity': ','.join(self.query_fields)
-                    }
-                }
-            }
-            result['map_style'] = 'plot'
+        # remove or augment the plot settings depending on whether it's enabled for this view
+        if not self.plot_map_enabled:
+            del map_info[u'map_styles'][u'plot']
+        else:
+            map_info[u'map_styles'][u'plot'][u'has_grid'] = self.enable_utf_grid
+            params = self.get_style_params(u'plot', [u'point_radius', u'point_colour',
+                                                     u'border_width', u'border_colour'])
+            map_info[u'map_styles'][u'plot'][u'tile_source'][u'params'] = params
+            map_info[u'map_style'] = u'plot'
 
-        # Get query extent and count
-        info = toolkit.get_action('datastore_query_extent')({}, {
-            'resource_id': self.resource_id,
-            'filters': self._get_request_filters(),
-            'limit': 1,
-            'q': urllib.unquote(request.params.get('q', '')),
-            'fields': '_id'
-        })
-        result['total_count'] = info['total_count']
-        result['geom_count'] = info['geom_count']
-        if info['bounds']:
-            result['bounds'] = info['bounds']
-
-        response.headers['Content-type'] = 'application/json'
-        return json.dumps(result)
-
-    def _get_request_filters(self):
-        """Return a dict representing the filters of the current request"""
-        filters = {}
-        for f in urllib.unquote(request.params.get('filters', '')).split('|'):
-            if f:
-                (k, v) = f.split(':', 1)
-                if k not in filters:
-                    filters[k] = []
-                filters[k].append(v)
-        return filters
+        return map_info

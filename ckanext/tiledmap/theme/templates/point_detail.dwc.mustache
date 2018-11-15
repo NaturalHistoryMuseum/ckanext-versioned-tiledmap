@@ -28,12 +28,12 @@
         {{h.mustache('/_multiple')}}
         {{h.mustache('^_multiple')}}
             <div class="point-detail-info">
-                <a target="_parent" href="{{h.mustache('_resource_url')}}/record/{{h.mustache('_id')}}">View full record</a>
+                <a target="_parent" href="{{h.mustache('_resource_url')}}/record/{{h.mustache('data._id')}}">View full record</a>
              </div>
         {{h.mustache('/_multiple')}}
     {% else %}
         <div class="point-detail-info">
-            <a target="_parent" href="{{h.mustache('_resource_url')}}/record/{{h.mustache('_id')}}">View full record</a>
+            <a target="_parent" href="{{h.mustache('_resource_url')}}/record/{{h.mustache('data._id')}}">View full record</a>
          </div>
     {% endif %}
 
@@ -42,31 +42,31 @@
     <div class="point-detail-wrapper">
 
         <div class="point-detail-title">
-          {{h.mustache('#scientificName')}}
-            {{h.mustache('scientificName')}}
-          {{h.mustache('/scientificName')}}
-          {{h.mustache('^scientificName')}}
-            Record {{h.mustache('_id')}}
-          {{h.mustache('/scientificName')}}
+          {{h.mustache('#data.scientificName')}}
+            {{h.mustache('data.scientificName')}}
+          {{h.mustache('/data.scientificName')}}
+          {{h.mustache('^data.scientificName')}}
+            Record {{h.mustache('data._id')}}
+          {{h.mustache('/data.scientificName')}}
         </div>
         <div class="point-detail-tree">
             {% for taxonomy_field in taxonomy_fields %}
-                {{h.mustache('#' + taxonomy_field)}}
+                {{h.mustache('#data.' + taxonomy_field)}}
                     <span class="point-detail-tree-label">{{h.dwc_field_title(taxonomy_field)}}:</span>
-                    <span class="point-detail-tree-detail">{{h.mustache(taxonomy_field)}}</span>
-                {{h.mustache('/' + taxonomy_field)}}
+                    <span class="point-detail-tree-detail">{{h.mustache('data.' + taxonomy_field)}}</span>
+                {{h.mustache('/data.' + taxonomy_field)}}
             {% endfor %}
         </div>
 
         <table>
             {% for field in fields %}
                 {% if field not in taxonomy_fields + ['_id', 'scientificName'] %}
-                    {{h.mustache('#' + field)}}
+                    {{h.mustache('#data.' + field)}}
                         <tr>
                             <th>{{h.dwc_field_title(field)}}:</th>
-                            <td>{{h.mustache(field)}}</td>
+                            <td>{{h.mustache('data.' + field)}}</td>
                         </tr>
-                    {{h.mustache('/' + field)}}
+                    {{h.mustache('/data.' + field)}}
                 {% endif %}
             {% endfor %}
         </table>

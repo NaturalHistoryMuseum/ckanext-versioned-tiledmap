@@ -34,11 +34,6 @@
 {% endmacro %}
 
 
-{% call form.select('latitude_field', label=_('Latitude field'), options=map_fields, selected=data.latitude_field, error=errors.latitude_field) %}
-  {{ form.info(_('Note: You may only use one map tiled view per resource. If you create a second map tiled view using different latitude and longitude fields, these will override the existing map tile view.'), inline=True) }}
-{% endcall %}
-{{ form.select('longitude_field', label=_('Longitude field'), options=map_fields, selected=data.longitude_field, error=errors.longitude_field) }}
-
 {{ form.checkbox('repeat_map', label=_('Allow map to repeat'), value=True, checked=data.repeat_map, error=errors.repeat_map) }}
 
 {% call checkbox_group('enable_plot_map',
@@ -46,24 +41,32 @@
           info=_('Plot maps provide a single marker for each entry in the dataset.'),
           checked=True if is_new else data.enable_plot_map,
           error=errors.enable_plot_map) %}
-    {{ form.input('plot_marker_color', label=_('Marker color'), value=(data.plot_marker_color or defaults['tiledmap.style.plot.fill_color']), error=errors.plot_marker_color) }}
-    {{ form.input('plot_marker_line_color', label=_('Marker line color'), value=(data.plot_marker_line_color or defaults['tiledmap.style.plot.line_color']), error=errors.plot_marker_line_color) }}
+    {{ form.input('plot_point_radius', label=_('Point radius'), value=(data.plot_point_radius or defaults['versioned_tilemap.style.plot.point_radius']), error=errors.plot_point_radius) }}
+    {{ form.input('plot_point_colour', label=_('Point colour'), value=(data.plot_point_colour or defaults['versioned_tilemap.style.plot.point_colour']), error=errors.plot_point_colour) }}
+    {{ form.input('plot_border_width', label=_('Point border width'), value=(data.plot_border_width or defaults['versioned_tilemap.style.plot.border_width']), error=errors.plot_border_width) }}
+    {{ form.input('plot_border_colour', label=_('Point border colour'), value=(data.plot_border_colour or defaults['versioned_tilemap.style.plot.border_colour']), error=errors.plot_border_colour) }}
 {% endcall %}
 
 {% call checkbox_group('enable_grid_map',
           group=_('Grid map'),
-          info=_('At any zoom level a grid maps plot a 8x8 grid, providing hover and color coded information about the number of records in that grid tile.'),
+          info=_('At any zoom level a grid maps plot a grid, providing hover and colour coded information about the number of records in that grid tile.'),
           checked=False if is_new else data.enable_grid_map,
           error=errors.enable_grid_map) %}
-    {{ form.input('grid_base_color', label=_('Base color'), value=(data.grid_base_color or defaults['tiledmap.style.gridded.base_color']), error=errors.grid_base_color) }}
+    {{ form.input('gridded_grid_resolution', label=_('Grid resolution'), value=(data.gridded_grid_resolution or defaults['versioned_tilemap.style.gridded.grid_resolution']), error=errors.gridded_grid_resolution) }}
+    {{ form.input('gridded_cold_colour', label=_('Low record count colour'), value=(data.gridded_cold_colour or defaults['versioned_tilemap.style.gridded.cold_colour']), error=errors.gridded_cold_colour) }}
+    {{ form.input('gridded_hot_colour', label=_('High record count colour'), value=(data.gridded_hot_colour or defaults['versioned_tilemap.style.gridded.hot_colour']), error=errors.gridded_hot_colour) }}
+    {{ form.input('gridded_range_size', label=_('High record count colour'), value=(data.gridded_range_size or defaults['versioned_tilemap.style.gridded.range_size']), error=errors.gridded_range_size) }}
 {% endcall %}
 
 {% call checkbox_group('enable_heat_map',
           group=_('Heat map'),
-          info=_('Heat maps use color gradients to show the distribution of the records.'),
+          info=_('Heat maps use colour gradients to show the distribution of the records.'),
           checked=False if is_new else data.enable_heat_map,
           error=errors.enable_heat_map) %}
-    {{ form.input('heat_intensity', label=_('Intensity'), value=(data.heat_intensity or defaults['tiledmap.style.heatmap.intensity']), error=errors.heat_intensity) }}
+    {{ form.input('heatmap_point_radius', label=_('Point radius'), value=(data.heatmap_point_radius or defaults['versioned_tilemap.style.heatmap.point_radius']), error=errors.heatmap_point_radius) }}
+    {{ form.input('heatmap_cold_colour', label=_('Low record count colour'), value=(data.heatmap_cold_colour or defaults['versioned_tilemap.style.heatmap.cold_colour']), error=errors.heatmap_cold_colour) }}
+    {{ form.input('heatmap_hot_colour', label=_('High record count colour'), value=(data.heatmap_hot_colour or defaults['versioned_tilemap.style.heatmap.hot_colour']), error=errors.heatmap_hot_colour) }}
+    {{ form.input('heatmap_heat_intensity', label=_('Intensity'), value=(data.heatmap_intensity or defaults['versioned_tilemap.style.heatmap.intensity']), error=errors.heatmap_intensity) }}
 {% endcall %}
 
 {% call checkbox_group('enable_utf_grid',

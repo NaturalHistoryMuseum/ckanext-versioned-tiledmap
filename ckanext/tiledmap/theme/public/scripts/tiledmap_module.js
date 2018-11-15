@@ -19,8 +19,8 @@ this.ckan.module('tiledmap', function ($) {
       if (window.parent.ckan && window.parent.ckan.views.filters){
         var filters = window.parent.ckan.views.filters.get();
         for (var pname in filters){
-          if (pname == '_tmgeom'){
-            geom = Terraformer.WKT.parse(filters[pname][0]);
+          if (pname == '__geo__') {
+            geom = JSON.parse(filters[pname][0]);
           } else {
             fields[pname] = filters[pname][0];
           }
