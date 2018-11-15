@@ -284,10 +284,15 @@ this.tiledmap = this.tiledmap || {};
             var $rri = $('.tiled-map-info', this.el);
             $rri.html('Loading...');
             this._fetchMapInfo($.proxy(function(info) {
+                // cache the currently selected map style
+                var currentMapStyle = this.map_info.map_style;
+                // update the map_info property with the new data
                 this.map_info = info;
+                // and then write the current selection back into the object
+                this.map_info.map_style = currentMapStyle;
                 this.map_info.draw = true;
                 this.updateRecordCounter();
-                // And redraw the map
+                // and redraw the map
                 this.redraw();
             }, this), function() {
                 /* NO OP */
