@@ -77,7 +77,7 @@ class MapController(toolkit.BaseController):
         if not self.view_settings.is_enabled():
             return json.dumps({u'geospatial': False})
 
-        response.headers[u'Content-type'] = u'application/json'
+        response.headers[b'Content-type'] = b'application/json'
         return json.dumps(self.view_settings.create_map_info())
 
 
