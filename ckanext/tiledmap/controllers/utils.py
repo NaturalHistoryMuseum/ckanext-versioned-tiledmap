@@ -7,9 +7,8 @@
 import urllib
 from collections import defaultdict
 
-from pylons import request
+from ckan.plugins import toolkit
 
-from ckan.common import _
 from ckanext.tiledmap.config import config
 
 
@@ -31,11 +30,11 @@ def extract_q_and_filters():
     :return: a 2-tuple of the q value (string, or None) and the filters value (dict, or None)
     '''
     # get the query if there is one
-    q = None if u'q' not in request.params else urllib.unquote(request.params[u'q'])
+    q = None if u'q' not in toolkit.request.params else urllib.unquote(toolkit.request.params[u'q'])
 
     # pull out the filters if there are any
     filters = defaultdict(list)
-    filter_param = request.params.get(u'filters', None)
+    filter_param = toolkit.request.params.get(u'filters', None)
     if filter_param:
         for field_and_value in urllib.unquote(filter_param).split(u'|'):
             if u':' in field_and_value:
@@ -142,7 +141,7 @@ def get_base_map_info():
         },
         u'map_styles': {
             u'heatmap': {
-                u'name': _(u'Heat Map'),
+                u'name': toolkit._(u'Heat Map'),
                 u'icon': u'<i class="fa fa-fire"></i>',
                 u'controls': [u'drawShape', u'mapType', u'fullScreen', u'miniMap'],
                 u'has_grid': False,
@@ -152,7 +151,7 @@ def get_base_map_info():
                 },
             },
             u'gridded': {
-                u'name': _(u'Grid Map'),
+                u'name': toolkit._(u'Grid Map'),
                 u'icon': u'<i class="fa fa-th"></i>',
                 u'controls': [u'drawShape', u'mapType', u'fullScreen', u'miniMap'],
                 u'plugins': [u'tooltipCount'],
@@ -167,7 +166,7 @@ def get_base_map_info():
                 },
             },
             u'plot': {
-                u'name': _(u'Plot Map'),
+                u'name': toolkit._(u'Plot Map'),
                 u'icon': u'<i class="fa fa-dot-circle-o"></i>',
                 u'controls': [u'drawShape', u'mapType', u'fullScreen', u'miniMap'],
                 u'plugins': [u'tooltipInfo', u'pointInfo'],

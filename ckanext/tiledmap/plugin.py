@@ -4,37 +4,36 @@
 # This file is part of a project
 # Created by the Natural History Museum in London, UK
 
-import ckan.plugins as p
-from ckan.common import _
 from ckan.common import json
+from ckan.plugins import toolkit, implements, interfaces, SingletonPlugin
 from ckanext.tiledmap.config import config as plugin_config
 from ckanext.tiledmap.lib import validators
 from ckanext.tiledmap.lib.helpers import mustache_wrapper, dwc_field_title
 from ckanext.tiledmap.lib.utils import get_resource_datastore_fields
 
-boolean_validator = p.toolkit.get_validator(u'boolean_validator')
-ignore_empty = p.toolkit.get_validator(u'ignore_empty')
+boolean_validator = toolkit.get_validator(u'boolean_validator')
+ignore_empty = toolkit.get_validator(u'ignore_empty')
 
 
-class VersionedTiledMapPlugin(p.SingletonPlugin):
+class VersionedTiledMapPlugin(SingletonPlugin):
     '''
     Map plugin which uses the versioned-datastore-tile-server to render a map of the data in a
     resource.
     '''
-    p.implements(p.IConfigurer)
-    p.implements(p.IRoutes, inherit=True)
-    p.implements(p.ITemplateHelpers)
-    p.implements(p.IResourceView, inherit=True)
-    p.implements(p.IConfigurable)
+    implements(interfaces.IConfigurer)
+    implements(interfaces.IRoutes, inherit=True)
+    implements(interfaces.ITemplateHelpers)
+    implements(interfaces.IResourceView, inherit=True)
+    implements(interfaces.IConfigurable)
 
     # from IConfigurer interface
     def update_config(self, config):
         '''
         Add our various resources and template directories to the list of available ones.
         '''
-        p.toolkit.add_template_directory(config, u'theme/templates')
-        p.toolkit.add_public_directory(config, u'theme/public')
-        p.toolkit.add_resource(u'theme/public', u'tiledmap')
+        toolkit.add_template_directory(config, u'theme/templates')
+        toolkit.add_public_directory(config, u'theme/public')
+        toolkit.add_resource(u'theme/public', u'tiledmap')
 
     # from IRoutes interface
     def before_map(self, route_map):
@@ -126,10 +125,10 @@ class VersionedTiledMapPlugin(p.SingletonPlugin):
         # get the names of the fields on this resource in the datastore
         fields = get_resource_datastore_fields(resource[u'id'])
         # find all the views on this resource currently
-        views = p.toolkit.get_action(u'resource_view_list')(context, {u'id': resource[u'id']})
+        views = toolkit.get_action(u'resource_view_list')(context, {u'id': resource[u'id']})
 
         # build a list of view options, adding a default view option of no view first
-        view_options = [{u'text': _(u'(None)'), u'value': u''}]
+        view_options = [{u'text': toolkit._(u'(None)'), u'value': u''}]
         # then loop through and add the other views
         for view in views:
             # but make sure we don't add this view to the list of options
