@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 # encoding: utf-8
+#
+# This file is part of a project
+# Created by the Natural History Museum in London, UK
 
-# this is a namespace package
 try:
     import pkg_resources
 

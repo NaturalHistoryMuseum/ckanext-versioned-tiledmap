@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 # encoding: utf-8
+#
+# This file is part of a project
+# Created by the Natural History Museum in London, UK
 
 import ckan.plugins as p
 from ckan.common import _
@@ -41,7 +44,7 @@ class VersionedTiledMapPlugin(p.SingletonPlugin):
 
     # from ITemplateHelpers interface
     def get_helpers(self):
-        """Add a template helper for formating mustache templates server side"""
+        '''Add a template helper for formating mustache templates server side'''
         return {
             u'mustache': mustache_wrapper,
             u'dwc_field_title': dwc_field_title

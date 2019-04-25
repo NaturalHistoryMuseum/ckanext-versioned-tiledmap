@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 # encoding: utf-8
+#
+# This file is part of a project
+# Created by the Natural History Museum in London, UK
 
 import urllib
 from collections import defaultdict
