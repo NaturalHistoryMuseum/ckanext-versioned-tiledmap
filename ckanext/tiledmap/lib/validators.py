@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 # encoding: utf-8
+#
+# This file is part of a project
+# Created by the Natural History Museum in London, UK
 
 import re
 
-from ckan import plugins
-from ckan.common import _
+from ckan.plugins import toolkit
 from ckanext.tiledmap.lib.utils import get_resource_datastore_fields
 
 
@@ -22,7 +24,7 @@ def colour_validator(value, context):
         else:
             return value
     else:
-        raise plugins.toolkit.Invalid(_(u'Colors must be formed of three or six RGB hex value, '
+        raise toolkit.Invalid(toolkit._(u'Colors must be formed of three or six RGB hex value, '
                                         u'optionally preceded by a # sign (eg. #E55 or #F4A088)'))
 
 
@@ -37,9 +39,9 @@ def float_01_validator(value, context):
     try:
         value = float(value)
     except ValueError:
-        raise plugins.toolkit.Invalid(_(u'Must be a decimal number, between 0 and 1'))
+        raise toolkit.Invalid(toolkit._(u'Must be a decimal number, between 0 and 1'))
     if value < 0 or value > 1:
-        raise plugins.toolkit.Invalid(_(u'Must be a decimal number, between 0 and 1'))
+        raise toolkit.Invalid(toolkit._(u'Must be a decimal number, between 0 and 1'))
     return value
 
 
@@ -55,7 +57,7 @@ def is_datastore_field(value, context):
     fields = get_resource_datastore_fields(context[u'resource'].id)
     invalid_fields = [field for field in passed_fields if field not in fields]
     if invalid_fields:
-        raise plugins.toolkit.Invalid(u'Invalid parameters: {}'.format(u','.join(invalid_fields)))
+        raise toolkit.Invalid(u'Invalid parameters: {}'.format(u','.join(invalid_fields)))
     return value
 
 
@@ -69,7 +71,7 @@ def is_view_id(value, context):
     '''
     if value:
         data = {u'id': context[u'resource'].id}
-        views = plugins.toolkit.get_action(u'resource_view_list')(context, data)
+        views = toolkit.get_action(u'resource_view_list')(context, data)
         if value not in [view[u'id'] for view in views]:
-            raise plugins.toolkit.Invalid(_(u'Must be a view on the current resource'))
+            raise toolkit.Invalid(toolkit._(u'Must be a view on the current resource'))
     return value

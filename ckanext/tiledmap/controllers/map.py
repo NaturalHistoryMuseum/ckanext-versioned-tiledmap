@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 # encoding: utf-8
+#
+# This file is part of a project
+# Created by the Natural History Museum in London, UK
 
 import StringIO
 import base64
 import gzip
 import json
 
-from pylons import request
-
-from ckan.common import _
-from ckan.common import json, response
+from ckan.common import json
 from ckan.lib.render import find_template
 from ckan.plugins import toolkit
 from ckanext.tiledmap.config import config
@@ -38,31 +38,31 @@ class MapController(toolkit.BaseController):
         super(MapController, self).__before__(action, **params)
 
         # get the resource id from the request
-        resource_id = request.params.get(u'resource_id', None)
-        view_id = request.params.get(u'view_id', None)
+        resource_id = toolkit.request.params.get(u'resource_id', None)
+        view_id = toolkit.request.params.get(u'view_id', None)
 
         # error if the resource id is missing
         if resource_id is None:
-            toolkit.abort(400, _(u'Missing resource id'))
+            toolkit.abort(400, toolkit._(u'Missing resource id'))
         # error if the view id is missing
         if view_id is None:
-            toolkit.abort(400, _(u'Missing view id'))
+            toolkit.abort(400, toolkit._(u'Missing view id'))
 
         # attempt to retrieve the resource and the view
         try:
             resource = toolkit.get_action(u'resource_show')({}, {u'id': resource_id})
-        except toolkit.NotFound:
-            return toolkit.abort(404, _(u'Resource not found'))
+        except toolkit.ObjectNotFound:
+            return toolkit.abort(404, toolkit._(u'Resource not found'))
         except toolkit.NotAuthorized:
-            return toolkit.abort(401, _(u'Unauthorized to read resource'))
+            return toolkit.abort(401, toolkit._(u'Unauthorized to read resource'))
         try:
             view = toolkit.get_action(u'resource_view_show')({}, {u'id': view_id})
-        except toolkit.NotFound:
-            return toolkit.abort(404, _(u'Resource view not found'))
+        except toolkit.ObjectNotFound:
+            return toolkit.abort(404, toolkit._(u'Resource view not found'))
         except toolkit.NotAuthorized:
-            return toolkit.abort(401, _(u'Unauthorized to read resource view'))
+            return toolkit.abort(401, toolkit._(u'Unauthorized to read resource view'))
 
-        fetch_id = int(request.params.get(u'fetch_id'))
+        fetch_id = int(toolkit.request.params.get(u'fetch_id'))
 
         # create a settings object, ready for use in the map_info call
         self.view_settings = MapViewSettings(fetch_id, view, resource)
@@ -77,7 +77,7 @@ class MapController(toolkit.BaseController):
         if not self.view_settings.is_enabled():
             return json.dumps({u'geospatial': False})
 
-        response.headers[b'Content-type'] = b'application/json'
+        toolkit.response.headers[b'Content-type'] = b'application/json'
         return json.dumps(self.view_settings.create_map_info())
 
 
