@@ -70,7 +70,7 @@ def is_view_id(value, context):
     :return: the value
     '''
     if value:
-        data = {u'id': context[u'resource'].id}
+        data = {u'id': toolkit.c.resource[u'id']}
         views = toolkit.get_action(u'resource_view_list')(context, data)
         if value not in [view[u'id'] for view in views]:
             raise toolkit.Invalid(toolkit._(u'Must be a view on the current resource'))
