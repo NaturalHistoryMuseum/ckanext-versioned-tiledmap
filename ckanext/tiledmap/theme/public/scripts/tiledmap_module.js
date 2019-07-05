@@ -26,7 +26,7 @@ this.ckan.module('tiledmap', function($) {
                         fields[pname] = filters[pname][0];
                     }
                 }
-                q = window.parent.ckan.views.filters.getFullText();
+                q = window.parent.ckan.views.filters.get('q');
             }
             this.view = new tiledmap.NHMMap({
                 resource_id: this.options.resource.id,
