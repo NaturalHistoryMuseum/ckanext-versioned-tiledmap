@@ -54,7 +54,7 @@ def is_datastore_field(value, context):
     :return: the value
     '''
     passed_fields = value if isinstance(value, list) else [value]
-    fields = get_resource_datastore_fields(context[u'resource'].id)
+    fields = get_resource_datastore_fields(toolkit.c.resource[u'id'])
     invalid_fields = [field for field in passed_fields if field not in fields]
     if invalid_fields:
         raise toolkit.Invalid(u'Invalid parameters: {}'.format(u','.join(invalid_fields)))
