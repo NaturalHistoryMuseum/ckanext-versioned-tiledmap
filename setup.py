@@ -1,29 +1,39 @@
 #!/usr/bin/env python
 # encoding: utf-8
 #
-# This file is part of a project
+# This file is part of ckanext-versioned-tiledmap
 # Created by the Natural History Museum in London, UK
 
 from setuptools import find_packages, setup
 
-version = u'0.1'
+__version__ = u'1.0.0-alpha'
+
+with open(u'README.md', u'r') as f:
+    __long_description__ = f.read()
 
 setup(
     name=u'ckanext-versioned-tiledmap',
-    version=version,
-    description=u'',
-    long_description=u'',
-    classifiers=[],
-    keywords=u'',
-    license=u'',
-    packages=find_packages(exclude=[u'ez_setup', u'examples', u'tests']),
+    version=__version__,
+    description=u'A CKAN extension with a map view for versioned-datastore backed resources.',
+    long_description=__long_description__,
+    classifiers=[
+        u'Development Status :: 3 - Alpha',
+        u'Framework :: Flask',
+        u'Programming Language :: Python :: 2.7'
+    ],
+    keywords=u'CKAN data versioned-tiledmap',
+    author=u'Natural History Museum',
+    author_email=u'data@nhm.ac.uk',
+    url=u'https://github.com/NaturalHistoryMuseum/ckanext-versioned-tiledmap',
+    license=u'GNU GPLv3',
+    packages=find_packages(exclude=[u'tests']),
     namespace_packages=[u'ckanext', u'ckanext.tiledmap'],
     include_package_data=True,
     zip_safe=False,
     install_requires=[],
-    entry_points=
-    u'''
-    [ckan.plugins]
-    versioned_tiledmap = ckanext.tiledmap.plugin:VersionedTiledMapPlugin
-    ''',
+    entry_points= \
+        u'''
+        [ckan.plugins]
+            versioned_tiledmap=ckanext.tiledmap.plugin:VersionedTiledMapPlugin
+        ''',
     )
