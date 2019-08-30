@@ -1,84 +1,21 @@
-#!/usr/bin/env python
+# !/usr/bin/env python
 # encoding: utf-8
 #
-# This file is part of a project
+# This file is part of ckanext-versioned-tiledmap
 # Created by the Natural History Museum in London, UK
 
 import StringIO
 import base64
 import gzip
 import json
+import urllib
+from collections import defaultdict
+
+from ckanext.tiledmap.config import config
 
 from ckan.common import json
 from ckan.lib.render import find_template
 from ckan.plugins import toolkit
-from ckanext.tiledmap.config import config
-from ckanext.tiledmap.controllers.utils import extract_q_and_filters, get_base_map_info
-
-
-class MapController(toolkit.BaseController):
-    '''
-    Controller for getting map setting and information.
-
-    This is implemented as a controller (rather than providing the data directly to the javascript
-    module) because the map will generate new queries without page reloads.
-
-    The map setting and information is available at `/map-info`.
-    This request expects a 'resource_id' parameter, and accepts `filters` and `q` formatted as per
-    resource view URLs.
-
-    See ckanext.tiledmap.config for configuration options.
-    '''
-
-    def __before__(self, action, **params):
-        '''
-        Setup the request by creating a MapViewSettings object with all the information needed to
-        serve the request and storing it on self.
-        '''
-        super(MapController, self).__before__(action, **params)
-
-        # get the resource id from the request
-        resource_id = toolkit.request.params.get(u'resource_id', None)
-        view_id = toolkit.request.params.get(u'view_id', None)
-
-        # error if the resource id is missing
-        if resource_id is None:
-            toolkit.abort(400, toolkit._(u'Missing resource id'))
-        # error if the view id is missing
-        if view_id is None:
-            toolkit.abort(400, toolkit._(u'Missing view id'))
-
-        # attempt to retrieve the resource and the view
-        try:
-            resource = toolkit.get_action(u'resource_show')({}, {u'id': resource_id})
-        except toolkit.ObjectNotFound:
-            return toolkit.abort(404, toolkit._(u'Resource not found'))
-        except toolkit.NotAuthorized:
-            return toolkit.abort(401, toolkit._(u'Unauthorized to read resource'))
-        try:
-            view = toolkit.get_action(u'resource_view_show')({}, {u'id': view_id})
-        except toolkit.ObjectNotFound:
-            return toolkit.abort(404, toolkit._(u'Resource view not found'))
-        except toolkit.NotAuthorized:
-            return toolkit.abort(401, toolkit._(u'Unauthorized to read resource view'))
-
-        fetch_id = int(toolkit.request.params.get(u'fetch_id'))
-
-        # create a settings object, ready for use in the map_info call
-        self.view_settings = MapViewSettings(fetch_id, view, resource)
-
-    def map_info(self):
-        '''
-        Controller action that returns metadata about a given map in JSON form.
-
-        :return: A JSON encoded string representing the metadata
-        '''
-        # ensure we have at least one map style enabled
-        if not self.view_settings.is_enabled():
-            return json.dumps({u'geospatial': False})
-
-        toolkit.response.headers[b'Content-type'] = b'application/json'
-        return json.dumps(self.view_settings.create_map_info())
 
 
 class MapViewSettings(object):
@@ -176,7 +113,7 @@ class MapViewSettings(object):
             u'title': self.title,
             u'fields': self.fields,
             u'overlapping_records_view': self.overlapping_records_view,
-        })
+            })
 
     def render_quick_info_template(self):
         '''
@@ -187,7 +124,7 @@ class MapViewSettings(object):
         return self._render_template(config[u'versioned_tilemap.quick_info_template'], {
             u'title': self.title,
             u'fields': self.fields,
-        })
+            })
 
     def get_style_params(self, style, names):
         '''
@@ -228,7 +165,7 @@ class MapViewSettings(object):
             u'resource_id': self.resource_id,
             u'q': q,
             u'filters': filters,
-        })
+            })
         # total_count and geom_count will definitely be present, bounds on the other hand is an
         # optional part of the response
         return (extent_info[u'total_count'], extent_info[u'geom_count'],
@@ -259,7 +196,7 @@ class MapViewSettings(object):
             u'q': q,
             u'filters': filters,
             u'run_query': False,
-        })
+            })
         out = StringIO.StringIO()
         with gzip.GzipFile(fileobj=out, mode=u'w') as f:
             json.dump(result, f)
@@ -290,11 +227,11 @@ class MapViewSettings(object):
         map_info[u'plugin_options'][u'tooltipInfo'] = {
             u'count_field': u'count',
             u'template': self.render_quick_info_template(),
-        }
+            }
         map_info[u'plugin_options'][u'pointInfo'] = {
             u'count_field': u'count',
             u'template': self.render_info_template(),
-        }
+            }
 
         # remove or augment the heatmap settings depending on whether it's enabled for this view
         if not self.heat_map_enabled:
@@ -326,3 +263,215 @@ class MapViewSettings(object):
             map_info[u'map_style'] = u'plot'
 
         return map_info
+
+    @classmethod
+    def from_request(cls):
+        '''
+        Setup by creating a MapViewSettings object with all the information
+        needed to serve the request.
+        '''
+        # get the resource id from the request
+        resource_id = toolkit.request.params.get(u'resource_id', None)
+        view_id = toolkit.request.params.get(u'view_id', None)
+
+        # error if the resource id is missing
+        if resource_id is None:
+            toolkit.abort(400, toolkit._(u'Missing resource id'))
+        # error if the view id is missing
+        if view_id is None:
+            toolkit.abort(400, toolkit._(u'Missing view id'))
+
+        # attempt to retrieve the resource and the view
+        try:
+            resource = toolkit.get_action(u'resource_show')({}, {
+                u'id': resource_id
+                })
+        except toolkit.ObjectNotFound:
+            return toolkit.abort(404, toolkit._(u'Resource not found'))
+        except toolkit.NotAuthorized:
+            return toolkit.abort(401, toolkit._(u'Unauthorized to read resource'))
+        try:
+            view = toolkit.get_action(u'resource_view_show')({}, {
+                u'id': view_id
+                })
+        except toolkit.ObjectNotFound:
+            return toolkit.abort(404, toolkit._(u'Resource view not found'))
+        except toolkit.NotAuthorized:
+            return toolkit.abort(401, toolkit._(u'Unauthorized to read resource view'))
+
+        fetch_id = int(toolkit.request.params.get(u'fetch_id'))
+
+        # create a settings object, ready for use in the map_info call
+        return cls(fetch_id, view, resource)
+
+
+def build_url(*parts):
+    '''
+    Given a bunch of parts, build a URL by joining them together with a /.
+
+    :param parts: the URL parts
+    :return: a URL string
+    '''
+    return u'/'.join(part.strip(u'/') for part in parts)
+
+
+def extract_q_and_filters():
+    '''
+    Extract the q and filters query string parameters from the request. These are standard
+    parameters in the resource views and have a standardised format too.
+
+    :return: a 2-tuple of the q value (string, or None) and the filters value (dict, or None)
+    '''
+    # get the query if there is one
+    q = None if u'q' not in toolkit.request.params else urllib.unquote(toolkit.request.params[u'q'])
+
+    # pull out the filters if there are any
+    filters = defaultdict(list)
+    filter_param = toolkit.request.params.get(u'filters', None)
+    if filter_param:
+        for field_and_value in urllib.unquote(filter_param).split(u'|'):
+            if u':' in field_and_value:
+                field, value = field_and_value.split(u':', 1)
+                filters[field].append(value)
+
+    return q, filters
+
+
+def get_base_map_info():
+    '''
+    Creates the base map info dict of settings. All of the settings in this dict are static in that
+    they will be the same for all map views created on the currently running CKAN instance (they use
+    either always static values or ones that are pulled from the config which can are set on boot).
+
+    A few settings are missing, these are set in MapViewSettings.create_map_info as they require
+    custom per-map settings that the user has control over or are dependant on the target resource.
+
+    :return: a dict of settings
+    '''
+    png_url = build_url(config[u'versioned_tilemap.tile_server'], u'/{z}/{x}/{y}.png')
+    utf_grid_url = build_url(config[u'versioned_tilemap.tile_server'], u'/{z}/{x}/{y}.grid.json')
+
+    return {
+        u'geospatial': True,
+        u'zoom_bounds': {
+            u'min': int(config[u'versioned_tilemap.zoom_bounds.min']),
+            u'max': int(config[u'versioned_tilemap.zoom_bounds.max']),
+            },
+        u'initial_zoom': {
+            u'min': int(config[u'versioned_tilemap.initial_zoom.min']),
+            u'max': int(config[u'versioned_tilemap.initial_zoom.max']),
+            },
+        u'tile_layer': {
+            u'url': config[u'versioned_tilemap.tile_layer.url'],
+            u'opacity': float(config[u'versioned_tilemap.tile_layer.opacity'])
+            },
+        u'control_options': {
+            u'fullScreen': {
+                u'position': u'topright'
+                },
+            u'drawShape': {
+                u'draw': {
+                    u'polyline': False,
+                    u'marker': False,
+                    u'circle': False,
+                    u'country': True,
+                    u'polygon': {
+                        u'allowIntersection': False,
+                        u'shapeOptions': {
+                            u'stroke': True,
+                            u'colour': u'#FF4444',
+                            u'weight': 5,
+                            u'opacity': 0.5,
+                            u'fill': True,
+                            u'fillcolour': u'#FF4444',
+                            u'fillOpacity': 0.1
+                            }
+                        }
+                    },
+                u'position': u'topleft'
+                },
+            u'selectCountry': {
+                u'draw': {
+                    u'fill': u'#FF4444',
+                    u'fill-opacity': 0.1,
+                    u'stroke': u'#FF4444',
+                    u'stroke-opacity': 0.5
+                    }
+                },
+            u'mapType': {
+                u'position': u'bottomleft'
+                },
+            u'miniMap': {
+                u'position': u'bottomright',
+                u'tile_layer': {
+                    u'url': config[u'versioned_tilemap.tile_layer.url']
+                    },
+                u'zoomLevelFixed': 1,
+                u'toggleDisplay': True,
+                u'viewport': {
+                    u'marker_zoom': 8,
+                    u'rect': {
+                        u'weight': 1,
+                        u'colour': u'#0000FF',
+                        u'opacity': 1,
+                        u'fill': False
+                        },
+                    u'marker': {
+                        u'weight': 1,
+                        u'colour': u'#0000FF',
+                        u'opacity': 1,
+                        u'radius': 3,
+                        u'fillcolour': u'#0000FF',
+                        u'fillOpacity': 0.2
+                        }
+                    }
+                }
+            },
+        u'plugin_options': {
+            u'tooltipCount': {
+                u'count_field': u'count'
+                },
+            },
+        u'map_styles': {
+            u'heatmap': {
+                u'name': toolkit._(u'Heat Map'),
+                u'icon': u'<i class="fa fa-fire"></i>',
+                u'controls': [u'drawShape', u'mapType', u'fullScreen', u'miniMap'],
+                u'has_grid': False,
+                u'tile_source': {
+                    u'url': png_url,
+                    u'params': {},
+                    },
+                },
+            u'gridded': {
+                u'name': toolkit._(u'Grid Map'),
+                u'icon': u'<i class="fa fa-th"></i>',
+                u'controls': [u'drawShape', u'mapType', u'fullScreen', u'miniMap'],
+                u'plugins': [u'tooltipCount'],
+                u'grid_resolution': int(config[u'versioned_tilemap.style.gridded.grid_resolution']),
+                u'tile_source': {
+                    u'url': png_url,
+                    u'params': {},
+                    },
+                u'grid_source': {
+                    u'url': utf_grid_url,
+                    u'params': {},
+                    },
+                },
+            u'plot': {
+                u'name': toolkit._(u'Plot Map'),
+                u'icon': u'<i class="fa fa-dot-circle-o"></i>',
+                u'controls': [u'drawShape', u'mapType', u'fullScreen', u'miniMap'],
+                u'plugins': [u'tooltipInfo', u'pointInfo'],
+                u'grid_resolution': int(config[u'versioned_tilemap.style.plot.grid_resolution']),
+                u'tile_source': {
+                    u'url': png_url,
+                    u'params': {},
+                    },
+                u'grid_source': {
+                    u'url': utf_grid_url,
+                    u'params': {},
+                    },
+                },
+            },
+        }

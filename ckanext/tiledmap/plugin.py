@@ -10,6 +10,7 @@ from ckanext.tiledmap.config import config as plugin_config
 from ckanext.tiledmap.lib import validators
 from ckanext.tiledmap.lib.helpers import mustache_wrapper, dwc_field_title
 from ckanext.tiledmap.lib.utils import get_resource_datastore_fields
+from ckanext.tiledmap import routes
 
 boolean_validator = toolkit.get_validator(u'boolean_validator')
 ignore_empty = toolkit.get_validator(u'ignore_empty')
@@ -21,7 +22,7 @@ class VersionedTiledMapPlugin(SingletonPlugin):
     resource.
     '''
     implements(interfaces.IConfigurer)
-    implements(interfaces.IRoutes, inherit=True)
+    implements(interfaces.IBlueprint, inherit=True)
     implements(interfaces.ITemplateHelpers)
     implements(interfaces.IResourceView, inherit=True)
     implements(interfaces.IConfigurable)
@@ -35,11 +36,9 @@ class VersionedTiledMapPlugin(SingletonPlugin):
         toolkit.add_public_directory(config, u'theme/public')
         toolkit.add_resource(u'theme/public', u'tiledmap')
 
-    # from IRoutes interface
-    def before_map(self, route_map):
-        route_map.connect(u'/map-info', action=u'map_info',
-                          controller=u'ckanext.tiledmap.controllers.map:MapController')
-        return route_map
+    ## IBlueprint
+    def get_blueprint(self):
+        return routes.blueprints
 
     # from ITemplateHelpers interface
     def get_helpers(self):
