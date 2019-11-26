@@ -16,7 +16,7 @@
 
 {% macro checkbox_group(name, label='', group='', info='', checked=false, error="", classes=[], attrs={}, is_required=false) %}
   {%- set extra_html = caller() if caller -%}
-  <div class="control-group{{ " " ~ classes | join(" ") }}{% if error %} error{% endif %}">
+  <div class="control-group checkbox-group{{ " " ~ classes | join(" ") }}{% if error %} error{% endif %}">
     <label class="control-label">{{group}}</label>
     <div class="controls">
       <label class="checkbox" for="{{ name }}">

@@ -1,20 +1,69 @@
-# Versioned datastore maps
+<img src=".github/nhm-logo.svg" align="left" width="150px" height="100px" hspace="40"/>
+
+# ckanext-versioned-tiledmap
+
+[![Travis](https://img.shields.io/travis/NaturalHistoryMuseum/ckanext-versioned-tiledmap/master.svg?style=flat-square)](https://travis-ci.org/NaturalHistoryMuseum/ckanext-versioned-tiledmap)
+[![Coveralls](https://img.shields.io/coveralls/github/NaturalHistoryMuseum/ckanext-versioned-tiledmap/master.svg?style=flat-square)](https://coveralls.io/github/NaturalHistoryMuseum/ckanext-versioned-tiledmap)
+[![CKAN](https://img.shields.io/badge/ckan-2.9.0a-orange.svg?style=flat-square)](https://github.com/ckan/ckan)
+
+_A CKAN extension with a map view for versioned-datastore backed resources._
+
+
+# Overview
 
 A CKAN plugin with a map view for versioned-datastore backed resources allowing for map visualizations of large resources with millions of data points.
 
-To use this extension you must be install:
-
-- [ckanext-versioned-datastore extension](https://github.com/NaturalHistoryMuseum/ckanext-versioned-datastore)
-- [versioned-datastore-tile-server](https://github.com/NaturalHistoryMuseum/versioned-datastore-tile-server)
-
-See those repositories for installing information.
-
 This repository is a fork* of [ckanext-map](https://github.com/NaturalHistoryMuseum/ckanext-map).
 
-_*you can't fork repositories within the same organisation so this repository is a duplicate of ckanext-map_
+_*you can't fork repositories within the same organisation, so this repository is a duplicate of ckanext-map._
 
-## Configuration
-The plugin supports the following configuration options:
+
+# Installation
+
+0. This extension depends on these projects, which must be installed first:
+    - [ckanext-versioned-datastore extension](https://github.com/NaturalHistoryMuseum/ckanext-versioned-datastore)
+    - [versioned-datastore-tile-server](https://github.com/NaturalHistoryMuseum/versioned-datastore-tile-server)
+
+Path variables used below:
+- `$INSTALL_FOLDER` (i.e. where CKAN is installed), e.g. `/usr/lib/ckan/default`
+- `$CONFIG_FILE`, e.g. `/etc/ckan/default/development.ini`
+
+1. Clone the repository into the `src` folder:
+
+  ```bash
+  cd $INSTALL_FOLDER/src
+  git clone https://github.com/NaturalHistoryMuseum/ckanext-versioned-tiledmap.git
+  ```
+
+2. Activate the virtual env:
+
+  ```bash
+  . $INSTALL_FOLDER/bin/activate
+  ```
+
+3. Install the requirements from requirements.txt:
+
+  ```bash
+  cd $INSTALL_FOLDER/src/ckanext-versioned-tiledmap
+  pip install -r requirements.txt
+  ```
+
+4. Run setup.py:
+
+  ```bash
+  cd $INSTALL_FOLDER/src/ckanext-versioned-tiledmap
+  python setup.py develop
+  ```
+
+5. Add 'versioned-tiledmap' to the list of plugins in your `$CONFIG_FILE`:
+
+  ```ini
+  ckan.plugins = ... versioned-tiledmap
+  ```
+
+# Configuration
+
+These are the options that can be specified in your .ini config file.
 
 | Name | Description | Default |
 |------|-------------|---------|
@@ -39,6 +88,22 @@ The plugin supports the following configuration options:
 | `versioned_tilemap.info_template` | The name of the template to use when a point is clicked | `point_detail` |
 | `versioned_tilemap.quick_info_template` | The name of the template to use when a point is hovered over | `point_detail_hover` |
 
-## Usage
-Once the plugin has been enabled (added to the list of plugins in the .ini file), users can add tiled map views from the resource management page.
-The view will only be available to the user if they have selected a latitude and longitude field for the resource, this can be done on the edit resource page.
+
+# Further Setup
+
+Add latitude and longitude values for the resources you want to use this view for.
+
+
+# Usage
+
+After enabling this extension in the list of plugins, the Map view should become available for resources with latitude and longitude values.
+
+
+# Testing
+
+_Test coverage is currently extremely limited._
+
+To run the tests, use nosetests inside your virtualenv. The `--nocapture` flag will allow you to see the debug statements.
+```bash
+nosetests --ckan --with-pylons=$TEST_CONFIG_FILE --where=$INSTALL_FOLDER/src/ckanext-versioned-tiledmap --nologcapture --nocapture
+```
