@@ -14,11 +14,6 @@ div.tiled-map a {
     text-decoration: none;
 }
 
-div.tiled-map a:visited {
-    color: #363636;
-    text-decoration: none;
-}
-
 div.tiled-map a:hover {
     text-decoration: none;
 }
@@ -82,6 +77,14 @@ div.tiled-map-info {
 .leaflet-bar a.active-selection {
     font-weight: bold;
     background: #f4f4f4;
+}
+
+.leaflet-bar a.leaflet-disabled {
+    color: #666;
+}
+
+.leaflet-draw-actions a {
+    background-color: #eee;
 }
 
 .panel.map {
@@ -181,7 +184,7 @@ div.point-detail table {
 
 div.point-detail-info {
     font-size: 0.9em;
-    color: #888;
+    color: #666;
     background: #E4E4E4;
     text-align: center;
     min-width: 210px;
@@ -193,7 +196,7 @@ div.point-detail-info a:hover {
 }
 
 div.point-detail .point-detail-tree-label {
-    color: #888;
+    color: #666;
     font-size: 0.9em;
 }
 
