@@ -6,7 +6,6 @@
 
 from flask import Blueprint, jsonify
 
-from ckan.plugins import toolkit
 from . import _helpers
 
 blueprint = Blueprint(name=u'map', import_name=__name__,
@@ -25,7 +24,7 @@ def info():
     # ensure we have at least one map style enabled
     if not view_settings.is_enabled():
         return jsonify({
-                              u'geospatial': False
-                              })
+            u'geospatial': False
+        })
 
     return jsonify(view_settings.create_map_info())

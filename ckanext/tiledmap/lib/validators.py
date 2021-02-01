@@ -54,7 +54,7 @@ def is_datastore_field(value, context):
     :return: the value
     '''
     passed_fields = value if isinstance(value, list) else [value]
-    fields = get_resource_datastore_fields(toolkit.c.resource[u'id'])
+    fields = get_resource_datastore_fields(toolkit.g.resource[u'id'])
     invalid_fields = [field for field in passed_fields if field not in fields]
     if invalid_fields:
         raise toolkit.Invalid(u'Invalid parameters: {}'.format(u','.join(invalid_fields)))
@@ -70,7 +70,7 @@ def is_view_id(value, context):
     :return: the value
     '''
     if value:
-        data = {u'id': toolkit.c.resource[u'id']}
+        data = {u'id': toolkit.g.resource[u'id']}
         views = toolkit.get_action(u'resource_view_list')(context, data)
         if value not in [view[u'id'] for view in views]:
             raise toolkit.Invalid(toolkit._(u'Must be a view on the current resource'))

@@ -7,8 +7,8 @@
 import re
 
 
-def mustache_wrapper(str):
-    return u'{{' + str + u'}}'
+def mustache_wrapper(s):
+    return u'{{' + s + u'}}'
 
 
 def dwc_field_title(field):
