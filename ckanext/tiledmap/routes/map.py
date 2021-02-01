@@ -8,8 +8,7 @@ from flask import Blueprint, jsonify
 
 from . import _helpers
 
-blueprint = Blueprint(name=u'map', import_name=__name__,
-                      url_prefix='')
+blueprint = Blueprint(name='map', import_name=__name__, url_prefix='')
 
 
 @blueprint.route('/map-info')
@@ -24,7 +23,7 @@ def info():
     # ensure we have at least one map style enabled
     if not view_settings.is_enabled():
         return jsonify({
-            u'geospatial': False
+            'geospatial': False
         })
 
     return jsonify(view_settings.create_map_info())
