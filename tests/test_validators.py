@@ -1,10 +1,8 @@
-from unittest.mock import MagicMock, patch
-
 import pytest
 from ckan.plugins import toolkit
-
 from ckanext.tiledmap.lib.validators import colour_validator, float_01_validator, \
     is_datastore_field, is_view_id
+from unittest.mock import MagicMock, patch
 
 
 def test_colour_validator():

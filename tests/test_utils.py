@@ -1,6 +1,5 @@
-from unittest.mock import patch, MagicMock
-
 from ckanext.tiledmap.lib.utils import get_resource_datastore_fields
+from unittest.mock import patch, MagicMock
 
 
 def test_get_resource_datastore_fields():
