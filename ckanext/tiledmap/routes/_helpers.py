@@ -4,17 +4,16 @@
 # This file is part of ckanext-versioned-tiledmap
 # Created by the Natural History Museum in London, UK
 
-import base64
 import gzip
-import io
+from collections import defaultdict
+from pathlib import Path
+
+import base64
 import json
 import urllib
-from collections import defaultdict
-
 from ckan.common import json
 from ckan.lib.render import find_template
 from ckan.plugins import toolkit
-
 from ckanext.tiledmap.config import config
 
 
@@ -98,7 +97,8 @@ class MapViewSettings:
         # if there is a format on the resource, attempt to find a format specific template
         if resource_format is not None:
             formatted_template_name = f'{name}.{resource_format.lower()}.mustache'
-            if find_template(formatted_template_name):
+            paths = config['computed_template_paths']
+            if any(path for path in paths if path.endswith(formatted_template_name)):
                 template_name = formatted_template_name
 
         return toolkit.render(template_name, extra_vars)
