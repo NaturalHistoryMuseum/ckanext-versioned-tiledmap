@@ -197,10 +197,7 @@ class MapViewSettings:
             'filters': filters,
             'run_query': False,
         })
-        out = io.StringIO()
-        with gzip.GzipFile(fileobj=out, mode='w') as f:
-            json.dump(result, f)
-        return base64.urlsafe_b64encode(out.getvalue())
+        return base64.urlsafe_b64encode(gzip.compress(json.dumps(result).encode('utf-8')))
 
     def create_map_info(self):
         '''
