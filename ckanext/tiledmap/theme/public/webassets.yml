@@ -29,7 +29,6 @@ main-js:
 
 main-css:
   output: ckanext-versioned-tiledmap/%(version)s_main.css
-  filters: cssrewrite
   extra:
     preload:
       - vendor/font-awesome
