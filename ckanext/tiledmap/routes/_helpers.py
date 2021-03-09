@@ -4,21 +4,20 @@
 # This file is part of ckanext-versioned-tiledmap
 # Created by the Natural History Museum in London, UK
 
-import StringIO
-import base64
 import gzip
+from collections import defaultdict
+from pathlib import Path
+
+import base64
 import json
 import urllib
-from collections import defaultdict
-
-from ckanext.tiledmap.config import config
-
 from ckan.common import json
 from ckan.lib.render import find_template
 from ckan.plugins import toolkit
+from ckanext.tiledmap.config import config
 
 
-class MapViewSettings(object):
+class MapViewSettings:
     '''
     Class that holds settings and functions used to build the map-info response.
     '''
@@ -33,43 +32,43 @@ class MapViewSettings(object):
         self.fetch_id = fetch_id
         self.view = view
         self.resource = resource
-        self.view_id = view[u'id']
-        self.resource_id = resource[u'id']
+        self.view_id = view['id']
+        self.resource_id = resource['id']
 
     @property
     def title(self):
-        return self.view[u'utf_grid_title']
+        return self.view['utf_grid_title']
 
     @property
     def fields(self):
-        info_fields = list(self.view.get(u'utf_grid_fields', []))
+        info_fields = list(self.view.get('utf_grid_fields', []))
         if self.title not in info_fields:
             info_fields.append(self.title)
         return info_fields
 
     @property
     def repeat_map(self):
-        return bool(self.view.get(u'repeat_map', False))
+        return bool(self.view.get('repeat_map', False))
 
     @property
     def overlapping_records_view(self):
-        return self.view.get(u'overlapping_records_view', None)
+        return self.view.get('overlapping_records_view', None)
 
     @property
     def enable_utf_grid(self):
-        return bool(self.view.get(u'enable_utf_grid', False))
+        return bool(self.view.get('enable_utf_grid', False))
 
     @property
     def plot_map_enabled(self):
-        return bool(self.view.get(u'enable_plot_map', False))
+        return bool(self.view.get('enable_plot_map', False))
 
     @property
     def grid_map_enabled(self):
-        return bool(self.view.get(u'enable_grid_map', False))
+        return bool(self.view.get('enable_grid_map', False))
 
     @property
     def heat_map_enabled(self):
-        return bool(self.view.get(u'enable_heat_map', False))
+        return bool(self.view.get('enable_heat_map', False))
 
     def is_enabled(self):
         '''
@@ -92,13 +91,14 @@ class MapViewSettings(object):
         '''
         # this is the base name of the template, if there's no format version available then we'll
         # just return this
-        template_name = u'{}.mustache'.format(name)
+        template_name = f'{name}.mustache'
 
-        resource_format = self.resource.get(u'format', None)
+        resource_format = self.resource.get('format', None)
         # if there is a format on the resource, attempt to find a format specific template
         if resource_format is not None:
-            formatted_template_name = u'{}.{}.mustache'.format(name, resource_format.lower())
-            if find_template(formatted_template_name):
+            formatted_template_name = f'{name}.{resource_format.lower()}.mustache'
+            paths = config['computed_template_paths']
+            if any(path for path in paths if path.endswith(formatted_template_name)):
                 template_name = formatted_template_name
 
         return toolkit.render(template_name, extra_vars)
@@ -109,11 +109,11 @@ class MapViewSettings(object):
 
         :return: the rendered point info template
         '''
-        return self._render_template(config[u'versioned_tilemap.info_template'], {
-            u'title': self.title,
-            u'fields': self.fields,
-            u'overlapping_records_view': self.overlapping_records_view,
-            })
+        return self._render_template(config['versioned_tilemap.info_template'], {
+            'title': self.title,
+            'fields': self.fields,
+            'overlapping_records_view': self.overlapping_records_view,
+        })
 
     def render_quick_info_template(self):
         '''
@@ -121,10 +121,10 @@ class MapViewSettings(object):
 
         :return: the rendered point hover info template
         '''
-        return self._render_template(config[u'versioned_tilemap.quick_info_template'], {
-            u'title': self.title,
-            u'fields': self.fields,
-            })
+        return self._render_template(config['versioned_tilemap.quick_info_template'], {
+            'title': self.title,
+            'fields': self.fields,
+        })
 
     def get_style_params(self, style, names):
         '''
@@ -139,8 +139,8 @@ class MapViewSettings(object):
         '''
         params = {}
         for name in names:
-            view_param_name = u'{}_{}'.format(style, name)
-            config_param_name = u'versioned_tilemap.style.{}.{}'.format(style, name)
+            view_param_name = f'{style}_{name}'
+            config_param_name = f'versioned_tilemap.style.{style}.{name}'
             params[name] = self.view.get(view_param_name, config[config_param_name])
         return params
 
@@ -161,15 +161,15 @@ class MapViewSettings(object):
         '''
         q, filters = extract_q_and_filters()
         # get query extent and counts
-        extent_info = toolkit.get_action(u'datastore_query_extent')({}, {
-            u'resource_id': self.resource_id,
-            u'q': q,
-            u'filters': filters,
-            })
+        extent_info = toolkit.get_action('datastore_query_extent')({}, {
+            'resource_id': self.resource_id,
+            'q': q,
+            'filters': filters,
+        })
         # total_count and geom_count will definitely be present, bounds on the other hand is an
         # optional part of the response
-        return (extent_info[u'total_count'], extent_info[u'geom_count'],
-                extent_info.get(u'bounds', ((83, -170), (-83, 170))))
+        return (extent_info['total_count'], extent_info['geom_count'],
+                extent_info.get('bounds', ((83, -170), (-83, 170))))
 
     def get_query_body(self):
         '''
@@ -191,16 +191,13 @@ class MapViewSettings(object):
         :return: a url safe base64 encoded, gzipped, JSON string
         '''
         q, filters = extract_q_and_filters()
-        result = toolkit.get_action(u'datastore_search')({}, {
-            u'resource_id': self.resource_id,
-            u'q': q,
-            u'filters': filters,
-            u'run_query': False,
-            })
-        out = StringIO.StringIO()
-        with gzip.GzipFile(fileobj=out, mode=u'w') as f:
-            json.dump(result, f)
-        return base64.urlsafe_b64encode(out.getvalue())
+        result = toolkit.get_action('datastore_search')({}, {
+            'resource_id': self.resource_id,
+            'q': q,
+            'filters': filters,
+            'run_query': False,
+        })
+        return base64.urlsafe_b64encode(gzip.compress(json.dumps(result).encode('utf-8')))
 
     def create_map_info(self):
         '''
@@ -213,54 +210,54 @@ class MapViewSettings(object):
         map_info = get_base_map_info()
 
         # add the base64 encoded, gzipped, JSON query
-        map_info[u'query_body'] = self.get_query_body()
+        map_info['query_body'] = self.get_query_body()
 
         # add the extent data
         total_count, geom_count, bounds = self.get_extent_info()
-        map_info[u'total_count'] = total_count
-        map_info[u'geom_count'] = geom_count
-        map_info[u'bounds'] = bounds
+        map_info['total_count'] = total_count
+        map_info['geom_count'] = geom_count
+        map_info['bounds'] = bounds
 
         # add a few basic settings
-        map_info[u'repeat_map'] = self.repeat_map
-        map_info[u'fetch_id'] = self.fetch_id
-        map_info[u'plugin_options'][u'tooltipInfo'] = {
-            u'count_field': u'count',
-            u'template': self.render_quick_info_template(),
-            }
-        map_info[u'plugin_options'][u'pointInfo'] = {
-            u'count_field': u'count',
-            u'template': self.render_info_template(),
-            }
+        map_info['repeat_map'] = self.repeat_map
+        map_info['fetch_id'] = self.fetch_id
+        map_info['plugin_options']['tooltipInfo'] = {
+            'count_field': 'count',
+            'template': self.render_quick_info_template(),
+        }
+        map_info['plugin_options']['pointInfo'] = {
+            'count_field': 'count',
+            'template': self.render_info_template(),
+        }
 
         # remove or augment the heatmap settings depending on whether it's enabled for this view
         if not self.heat_map_enabled:
-            del map_info[u'map_styles'][u'heatmap']
+            del map_info['map_styles']['heatmap']
         else:
-            params = self.get_style_params(u'heatmap', [u'point_radius', u'cold_colour',
-                                                        u'hot_colour', u'intensity'])
-            map_info[u'map_styles'][u'heatmap'][u'tile_source'][u'params'] = params
-            map_info[u'map_style'] = u'heatmap'
+            params = self.get_style_params('heatmap', ['point_radius', 'cold_colour',
+                                                       'hot_colour', 'intensity'])
+            map_info['map_styles']['heatmap']['tile_source']['params'] = params
+            map_info['map_style'] = 'heatmap'
 
         # remove or augment the gridded settings depending on whether it's enabled for this view
         if not self.grid_map_enabled:
-            del map_info[u'map_styles'][u'gridded']
+            del map_info['map_styles']['gridded']
         else:
-            map_info[u'map_styles'][u'gridded'][u'has_grid'] = self.enable_utf_grid
-            params = self.get_style_params(u'gridded', [u'grid_resolution', u'hot_colour',
-                                                        u'cold_colour', u'range_size'])
-            map_info[u'map_styles'][u'gridded'][u'tile_source'][u'params'] = params
-            map_info[u'map_style'] = u'gridded'
+            map_info['map_styles']['gridded']['has_grid'] = self.enable_utf_grid
+            params = self.get_style_params('gridded', ['grid_resolution', 'hot_colour',
+                                                       'cold_colour', 'range_size'])
+            map_info['map_styles']['gridded']['tile_source']['params'] = params
+            map_info['map_style'] = 'gridded'
 
         # remove or augment the plot settings depending on whether it's enabled for this view
         if not self.plot_map_enabled:
-            del map_info[u'map_styles'][u'plot']
+            del map_info['map_styles']['plot']
         else:
-            map_info[u'map_styles'][u'plot'][u'has_grid'] = self.enable_utf_grid
-            params = self.get_style_params(u'plot', [u'point_radius', u'point_colour',
-                                                     u'border_width', u'border_colour'])
-            map_info[u'map_styles'][u'plot'][u'tile_source'][u'params'] = params
-            map_info[u'map_style'] = u'plot'
+            map_info['map_styles']['plot']['has_grid'] = self.enable_utf_grid
+            params = self.get_style_params('plot', ['point_radius', 'point_colour',
+                                                    'border_width', 'border_colour'])
+            map_info['map_styles']['plot']['tile_source']['params'] = params
+            map_info['map_style'] = 'plot'
 
         return map_info
 
@@ -271,35 +268,35 @@ class MapViewSettings(object):
         needed to serve the request.
         '''
         # get the resource id from the request
-        resource_id = toolkit.request.params.get(u'resource_id', None)
-        view_id = toolkit.request.params.get(u'view_id', None)
+        resource_id = toolkit.request.params.get('resource_id', None)
+        view_id = toolkit.request.params.get('view_id', None)
 
         # error if the resource id is missing
         if resource_id is None:
-            toolkit.abort(400, toolkit._(u'Missing resource id'))
+            toolkit.abort(400, toolkit._('Missing resource id'))
         # error if the view id is missing
         if view_id is None:
-            toolkit.abort(400, toolkit._(u'Missing view id'))
+            toolkit.abort(400, toolkit._('Missing view id'))
 
         # attempt to retrieve the resource and the view
         try:
-            resource = toolkit.get_action(u'resource_show')({}, {
-                u'id': resource_id
-                })
+            resource = toolkit.get_action('resource_show')({}, {
+                'id': resource_id
+            })
         except toolkit.ObjectNotFound:
-            return toolkit.abort(404, toolkit._(u'Resource not found'))
+            return toolkit.abort(404, toolkit._('Resource not found'))
         except toolkit.NotAuthorized:
-            return toolkit.abort(401, toolkit._(u'Unauthorized to read resource'))
+            return toolkit.abort(401, toolkit._('Unauthorized to read resource'))
         try:
-            view = toolkit.get_action(u'resource_view_show')({}, {
-                u'id': view_id
-                })
+            view = toolkit.get_action('resource_view_show')({}, {
+                'id': view_id
+            })
         except toolkit.ObjectNotFound:
-            return toolkit.abort(404, toolkit._(u'Resource view not found'))
+            return toolkit.abort(404, toolkit._('Resource view not found'))
         except toolkit.NotAuthorized:
-            return toolkit.abort(401, toolkit._(u'Unauthorized to read resource view'))
+            return toolkit.abort(401, toolkit._('Unauthorized to read resource view'))
 
-        fetch_id = int(toolkit.request.params.get(u'fetch_id'))
+        fetch_id = int(toolkit.request.params.get('fetch_id'))
 
         # create a settings object, ready for use in the map_info call
         return cls(fetch_id, view, resource)
@@ -312,7 +309,7 @@ def build_url(*parts):
     :param parts: the URL parts
     :return: a URL string
     '''
-    return u'/'.join(part.strip(u'/') for part in parts)
+    return '/'.join(part.strip('/') for part in parts)
 
 
 def extract_q_and_filters():
@@ -323,15 +320,15 @@ def extract_q_and_filters():
     :return: a 2-tuple of the q value (string, or None) and the filters value (dict, or None)
     '''
     # get the query if there is one
-    q = None if u'q' not in toolkit.request.params else urllib.unquote(toolkit.request.params[u'q'])
+    q = None if 'q' not in toolkit.request.params else urllib.unquote(toolkit.request.params['q'])
 
     # pull out the filters if there are any
     filters = defaultdict(list)
-    filter_param = toolkit.request.params.get(u'filters', None)
+    filter_param = toolkit.request.params.get('filters', None)
     if filter_param:
-        for field_and_value in urllib.unquote(filter_param).split(u'|'):
-            if u':' in field_and_value:
-                field, value = field_and_value.split(u':', 1)
+        for field_and_value in urllib.unquote(filter_param).split('|'):
+            if ':' in field_and_value:
+                field, value = field_and_value.split(':', 1)
                 filters[field].append(value)
 
     return q, filters
@@ -348,130 +345,130 @@ def get_base_map_info():
 
     :return: a dict of settings
     '''
-    png_url = build_url(config[u'versioned_tilemap.tile_server'], u'/{z}/{x}/{y}.png')
-    utf_grid_url = build_url(config[u'versioned_tilemap.tile_server'], u'/{z}/{x}/{y}.grid.json')
+    png_url = build_url(config['versioned_tilemap.tile_server'], '/{z}/{x}/{y}.png')
+    utf_grid_url = build_url(config['versioned_tilemap.tile_server'], '/{z}/{x}/{y}.grid.json')
 
     return {
-        u'geospatial': True,
-        u'zoom_bounds': {
-            u'min': int(config[u'versioned_tilemap.zoom_bounds.min']),
-            u'max': int(config[u'versioned_tilemap.zoom_bounds.max']),
+        'geospatial': True,
+        'zoom_bounds': {
+            'min': int(config['versioned_tilemap.zoom_bounds.min']),
+            'max': int(config['versioned_tilemap.zoom_bounds.max']),
+        },
+        'initial_zoom': {
+            'min': int(config['versioned_tilemap.initial_zoom.min']),
+            'max': int(config['versioned_tilemap.initial_zoom.max']),
+        },
+        'tile_layer': {
+            'url': config['versioned_tilemap.tile_layer.url'],
+            'opacity': float(config['versioned_tilemap.tile_layer.opacity'])
+        },
+        'control_options': {
+            'fullScreen': {
+                'position': 'topright'
             },
-        u'initial_zoom': {
-            u'min': int(config[u'versioned_tilemap.initial_zoom.min']),
-            u'max': int(config[u'versioned_tilemap.initial_zoom.max']),
-            },
-        u'tile_layer': {
-            u'url': config[u'versioned_tilemap.tile_layer.url'],
-            u'opacity': float(config[u'versioned_tilemap.tile_layer.opacity'])
-            },
-        u'control_options': {
-            u'fullScreen': {
-                u'position': u'topright'
-                },
-            u'drawShape': {
-                u'draw': {
-                    u'polyline': False,
-                    u'marker': False,
-                    u'circle': False,
-                    u'country': True,
-                    u'polygon': {
-                        u'allowIntersection': False,
-                        u'shapeOptions': {
-                            u'stroke': True,
-                            u'colour': u'#FF4444',
-                            u'weight': 5,
-                            u'opacity': 0.5,
-                            u'fill': True,
-                            u'fillcolour': u'#FF4444',
-                            u'fillOpacity': 0.1
-                            }
-                        }
-                    },
-                u'position': u'topleft'
-                },
-            u'selectCountry': {
-                u'draw': {
-                    u'fill': u'#FF4444',
-                    u'fill-opacity': 0.1,
-                    u'stroke': u'#FF4444',
-                    u'stroke-opacity': 0.5
-                    }
-                },
-            u'mapType': {
-                u'position': u'bottomleft'
-                },
-            u'miniMap': {
-                u'position': u'bottomright',
-                u'tile_layer': {
-                    u'url': config[u'versioned_tilemap.tile_layer.url']
-                    },
-                u'zoomLevelFixed': 1,
-                u'toggleDisplay': True,
-                u'viewport': {
-                    u'marker_zoom': 8,
-                    u'rect': {
-                        u'weight': 1,
-                        u'colour': u'#0000FF',
-                        u'opacity': 1,
-                        u'fill': False
-                        },
-                    u'marker': {
-                        u'weight': 1,
-                        u'colour': u'#0000FF',
-                        u'opacity': 1,
-                        u'radius': 3,
-                        u'fillcolour': u'#0000FF',
-                        u'fillOpacity': 0.2
+            'drawShape': {
+                'draw': {
+                    'polyline': False,
+                    'marker': False,
+                    'circle': False,
+                    'country': True,
+                    'polygon': {
+                        'allowIntersection': False,
+                        'shapeOptions': {
+                            'stroke': True,
+                            'colour': '#FF4444',
+                            'weight': 5,
+                            'opacity': 0.5,
+                            'fill': True,
+                            'fillcolour': '#FF4444',
+                            'fillOpacity': 0.1
                         }
                     }
+                },
+                'position': 'topleft'
+            },
+            'selectCountry': {
+                'draw': {
+                    'fill': '#FF4444',
+                    'fill-opacity': 0.1,
+                    'stroke': '#FF4444',
+                    'stroke-opacity': 0.5
                 }
             },
-        u'plugin_options': {
-            u'tooltipCount': {
-                u'count_field': u'count'
+            'mapType': {
+                'position': 'bottomleft'
+            },
+            'miniMap': {
+                'position': 'bottomright',
+                'tile_layer': {
+                    'url': config['versioned_tilemap.tile_layer.url']
+                },
+                'zoomLevelFixed': 1,
+                'toggleDisplay': True,
+                'viewport': {
+                    'marker_zoom': 8,
+                    'rect': {
+                        'weight': 1,
+                        'colour': '#0000FF',
+                        'opacity': 1,
+                        'fill': False
+                    },
+                    'marker': {
+                        'weight': 1,
+                        'colour': '#0000FF',
+                        'opacity': 1,
+                        'radius': 3,
+                        'fillcolour': '#0000FF',
+                        'fillOpacity': 0.2
+                    }
+                }
+            }
+        },
+        'plugin_options': {
+            'tooltipCount': {
+                'count_field': 'count'
+            },
+        },
+        'map_styles': {
+            'heatmap': {
+                'name': toolkit._('Heat Map'),
+                'icon': '<i class="fa fa-fire"></i>',
+                'controls': ['drawShape', 'mapType', 'fullScreen', 'miniMap'],
+                'has_grid': False,
+                'tile_source': {
+                    'url': png_url,
+                    'params': {},
                 },
             },
-        u'map_styles': {
-            u'heatmap': {
-                u'name': toolkit._(u'Heat Map'),
-                u'icon': u'<i class="fa fa-fire"></i>',
-                u'controls': [u'drawShape', u'mapType', u'fullScreen', u'miniMap'],
-                u'has_grid': False,
-                u'tile_source': {
-                    u'url': png_url,
-                    u'params': {},
-                    },
+            'gridded': {
+                'name': toolkit._('Grid Map'),
+                'icon': '<i class="fa fa-th"></i>',
+                'controls': ['drawShape', 'mapType', 'fullScreen', 'miniMap'],
+                'plugins': ['tooltipCount'],
+                'grid_resolution': int(config['versioned_tilemap.style.gridded.grid_resolution']),
+                'tile_source': {
+                    'url': png_url,
+                    'params': {},
                 },
-            u'gridded': {
-                u'name': toolkit._(u'Grid Map'),
-                u'icon': u'<i class="fa fa-th"></i>',
-                u'controls': [u'drawShape', u'mapType', u'fullScreen', u'miniMap'],
-                u'plugins': [u'tooltipCount'],
-                u'grid_resolution': int(config[u'versioned_tilemap.style.gridded.grid_resolution']),
-                u'tile_source': {
-                    u'url': png_url,
-                    u'params': {},
-                    },
-                u'grid_source': {
-                    u'url': utf_grid_url,
-                    u'params': {},
-                    },
-                },
-            u'plot': {
-                u'name': toolkit._(u'Plot Map'),
-                u'icon': u'<i class="fa fa-dot-circle-o"></i>',
-                u'controls': [u'drawShape', u'mapType', u'fullScreen', u'miniMap'],
-                u'plugins': [u'tooltipInfo', u'pointInfo'],
-                u'grid_resolution': int(config[u'versioned_tilemap.style.plot.grid_resolution']),
-                u'tile_source': {
-                    u'url': png_url,
-                    u'params': {},
-                    },
-                u'grid_source': {
-                    u'url': utf_grid_url,
-                    u'params': {},
-                    },
+                'grid_source': {
+                    'url': utf_grid_url,
+                    'params': {},
                 },
             },
-        }
+            'plot': {
+                'name': toolkit._('Plot Map'),
+                'icon': '<i class="fa fa-dot-circle-o"></i>',
+                'controls': ['drawShape', 'mapType', 'fullScreen', 'miniMap'],
+                'plugins': ['tooltipInfo', 'pointInfo'],
+                'grid_resolution': int(config['versioned_tilemap.style.plot.grid_resolution']),
+                'tile_source': {
+                    'url': png_url,
+                    'params': {},
+                },
+                'grid_source': {
+                    'url': utf_grid_url,
+                    'params': {},
+                },
+            },
+        },
+    }
