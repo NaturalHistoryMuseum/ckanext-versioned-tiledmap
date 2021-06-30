@@ -321,13 +321,15 @@ def extract_q_and_filters():
     q = None if 'q' not in toolkit.request.params else unquote(toolkit.request.params['q'])
 
     # pull out the filters if there are any
-    filters = defaultdict(list)
     filter_param = toolkit.request.params.get('filters', None)
     if filter_param:
+        filters = defaultdict(list)
         for field_and_value in unquote(filter_param).split('|'):
             if ':' in field_and_value:
                 field, value = field_and_value.split(':', 1)
                 filters[field].append(value)
+    else:
+        filters = None
 
     return q, filters
 
