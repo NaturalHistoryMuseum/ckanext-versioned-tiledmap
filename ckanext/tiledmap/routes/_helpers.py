@@ -4,15 +4,13 @@
 # This file is part of ckanext-versioned-tiledmap
 # Created by the Natural History Museum in London, UK
 
-import gzip
-from collections import defaultdict
-from pathlib import Path
-
 import base64
+import gzip
 import json
-import urllib
+from collections import defaultdict
+from urllib.parse import unquote
+
 from ckan.common import json
-from ckan.lib.render import find_template
 from ckan.plugins import toolkit
 from ckanext.tiledmap.config import config
 
@@ -320,16 +318,18 @@ def extract_q_and_filters():
     :return: a 2-tuple of the q value (string, or None) and the filters value (dict, or None)
     '''
     # get the query if there is one
-    q = None if 'q' not in toolkit.request.params else urllib.unquote(toolkit.request.params['q'])
+    q = None if 'q' not in toolkit.request.params else unquote(toolkit.request.params['q'])
 
     # pull out the filters if there are any
-    filters = defaultdict(list)
     filter_param = toolkit.request.params.get('filters', None)
     if filter_param:
-        for field_and_value in urllib.unquote(filter_param).split('|'):
+        filters = defaultdict(list)
+        for field_and_value in unquote(filter_param).split('|'):
             if ':' in field_and_value:
                 field, value = field_and_value.split(':', 1)
                 filters[field].append(value)
+    else:
+        filters = None
 
     return q, filters
 
