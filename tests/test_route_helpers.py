@@ -20,11 +20,11 @@ def mock_params(q=None, filters=None):
                 return f(*args, **kwargs)
 
         return wrapper
+
     return decorator
 
 
 class TestExtractQAndFilters:
-
     @mock_params()
     def test_missing_both(self):
         q, filters = extract_q_and_filters()
@@ -49,7 +49,9 @@ class TestExtractQAndFilters:
         assert q is None
         assert filters == {'colour': ['green', 'red', 'orange'], 'food': ['banana']}
 
-    @mock_params(q='beans and cake', filters='colour:green|colour:red|food:banana|colour:orange')
+    @mock_params(
+        q='beans and cake', filters='colour:green|colour:red|food:banana|colour:orange'
+    )
     def test_both(self):
         q, filters = extract_q_and_filters()
         assert q == 'beans and cake'

@@ -16,9 +16,9 @@ from ckanext.tiledmap.config import config
 
 
 class MapViewSettings:
-    '''
+    """
     Class that holds settings and functions used to build the map-info response.
-    '''
+    """
 
     def __init__(self, fetch_id, view, resource):
         '''
@@ -69,24 +69,24 @@ class MapViewSettings:
         return bool(self.view.get('enable_heat_map', False))
 
     def is_enabled(self):
-        '''
-        Returns True if at least one of the map styles (plot, grid, heat) is enabled. If none of
-        them are, returns False.
+        """
+        Returns True if at least one of the map styles (plot, grid, heat) is enabled. If
+        none of them are, returns False.
 
         :return: True if one map style is enabled, False if none are
-        '''
+        """
         return self.plot_map_enabled or self.grid_map_enabled or self.heat_map_enabled
 
     def _render_template(self, name, extra_vars):
-        '''
-        Render the given mustache template using the given variables. If the resource this view is
-        attached to has a format then this function will attempt to find a format appropriate
-        function.
+        """
+        Render the given mustache template using the given variables. If the resource
+        this view is attached to has a format then this function will attempt to find a
+        format appropriate function.
 
         :param name: the name of the template
         :param extra_vars: a dict of variables to pass to the template renderer
         :return: a rendered template
-        '''
+        """
         # this is the base name of the template, if there's no format version available then we'll
         # just return this
         template_name = f'{name}.mustache'
@@ -102,39 +102,45 @@ class MapViewSettings:
         return toolkit.render(template_name, extra_vars)
 
     def render_info_template(self):
-        '''
+        """
         Renders the point info template and returns the result.
 
         :return: the rendered point info template
-        '''
-        return self._render_template(config['versioned_tilemap.info_template'], {
-            'title': self.title,
-            'fields': self.fields,
-            'overlapping_records_view': self.overlapping_records_view,
-        })
+        """
+        return self._render_template(
+            config['versioned_tilemap.info_template'],
+            {
+                'title': self.title,
+                'fields': self.fields,
+                'overlapping_records_view': self.overlapping_records_view,
+            },
+        )
 
     def render_quick_info_template(self):
-        '''
+        """
         Renders the point hover info template and returns the result.
 
         :return: the rendered point hover info template
-        '''
-        return self._render_template(config['versioned_tilemap.quick_info_template'], {
-            'title': self.title,
-            'fields': self.fields,
-        })
+        """
+        return self._render_template(
+            config['versioned_tilemap.quick_info_template'],
+            {
+                'title': self.title,
+                'fields': self.fields,
+            },
+        )
 
     def get_style_params(self, style, names):
-        '''
-        Returns a dict of style params for the given style. The parameters are retrieved from the
-        user defined settings on the view and if they're missing then they're retrieved from the
-        config object.
+        """
+        Returns a dict of style params for the given style. The parameters are retrieved
+        from the user defined settings on the view and if they're missing then they're
+        retrieved from the config object.
 
         :param style: the name of the style (plot, gridded or heatmap)
         :param names: the names of the parameters to retrieve, these are also used as the names in
                       the dict that the parameter values are stored under
         :return: a dict
-        '''
+        """
         params = {}
         for name in names:
             view_param_name = f'{style}_{name}'
@@ -143,9 +149,9 @@ class MapViewSettings:
         return params
 
     def get_extent_info(self):
-        '''
-        Retrieves the extent information about the datastore query provided by the parameters in the
-        request. The return value is a 3-tuple containing:
+        """
+        Retrieves the extent information about the datastore query provided by the
+        parameters in the request. The return value is a 3-tuple containing:
 
             - the total number of records in the query result
             - the total number of records in the query result that have geometric data (specifically
@@ -156,26 +162,33 @@ class MapViewSettings:
               action.
 
         :return: a 3-tuple - (int, int, list)
-        '''
+        """
         q, filters = extract_q_and_filters()
         # get query extent and counts
-        extent_info = toolkit.get_action('datastore_query_extent')({}, {
-            'resource_id': self.resource_id,
-            'q': q,
-            'filters': filters,
-        })
+        extent_info = toolkit.get_action('datastore_query_extent')(
+            {},
+            {
+                'resource_id': self.resource_id,
+                'q': q,
+                'filters': filters,
+            },
+        )
         # total_count and geom_count will definitely be present, bounds on the other hand is an
         # optional part of the response
-        return (extent_info['total_count'], extent_info['geom_count'],
-                extent_info.get('bounds', ((83, -170), (-83, 170))))
+        return (
+            extent_info['total_count'],
+            extent_info['geom_count'],
+            extent_info.get('bounds', ((83, -170), (-83, 170))),
+        )
 
     def get_query_body(self):
-        '''
-        Returns the actual elasticsearch query dict as a base64 encoded, gzipped, JSON string. This
-        will be passed to the map tile server. This may seem a bit weird to do this but it allows
-        all queries to come through the same code path (and therefore trigger any datastore-search
-        implementing plugins) without all map tile queries having to come through CKAN (which would
-        be a performance bottle neck). The flow is like so:
+        """
+        Returns the actual elasticsearch query dict as a base64 encoded, gzipped, JSON
+        string. This will be passed to the map tile server. This may seem a bit weird to
+        do this but it allows all queries to come through the same code path (and
+        therefore trigger any datastore-search implementing plugins) without all map
+        tile queries having to come through CKAN (which would be a performance bottle
+        neck). The flow is like so:
 
             - The query is changed by the user (or indeed they arrive at the map view for the first
               time
@@ -187,23 +200,28 @@ class MapViewSettings:
               decompresses it and uses it to search elasticsearch
 
         :return: a url safe base64 encoded, gzipped, JSON string
-        '''
+        """
         q, filters = extract_q_and_filters()
-        result = toolkit.get_action('datastore_search')({}, {
-            'resource_id': self.resource_id,
-            'q': q,
-            'filters': filters,
-            'run_query': False,
-        })
-        return base64.urlsafe_b64encode(gzip.compress(json.dumps(result).encode('utf-8')))
+        result = toolkit.get_action('datastore_search')(
+            {},
+            {
+                'resource_id': self.resource_id,
+                'q': q,
+                'filters': filters,
+                'run_query': False,
+            },
+        )
+        return base64.urlsafe_b64encode(
+            gzip.compress(json.dumps(result).encode('utf-8'))
+        )
 
     def create_map_info(self):
-        '''
-        Using the settings available on this object, create the /map-info response dict and return
-        it.
+        """
+        Using the settings available on this object, create the /map-info response dict
+        and return it.
 
         :return: a dict
-        '''
+        """
         # get the standard map info dict (this provides a fresh one each time it's called)
         map_info = get_base_map_info()
 
@@ -232,8 +250,9 @@ class MapViewSettings:
         if not self.heat_map_enabled:
             del map_info['map_styles']['heatmap']
         else:
-            params = self.get_style_params('heatmap', ['point_radius', 'cold_colour',
-                                                       'hot_colour', 'intensity'])
+            params = self.get_style_params(
+                'heatmap', ['point_radius', 'cold_colour', 'hot_colour', 'intensity']
+            )
             map_info['map_styles']['heatmap']['tile_source']['params'] = params
             map_info['map_style'] = 'heatmap'
 
@@ -242,8 +261,10 @@ class MapViewSettings:
             del map_info['map_styles']['gridded']
         else:
             map_info['map_styles']['gridded']['has_grid'] = self.enable_utf_grid
-            params = self.get_style_params('gridded', ['grid_resolution', 'hot_colour',
-                                                       'cold_colour', 'range_size'])
+            params = self.get_style_params(
+                'gridded',
+                ['grid_resolution', 'hot_colour', 'cold_colour', 'range_size'],
+            )
             map_info['map_styles']['gridded']['tile_source']['params'] = params
             map_info['map_style'] = 'gridded'
 
@@ -252,8 +273,10 @@ class MapViewSettings:
             del map_info['map_styles']['plot']
         else:
             map_info['map_styles']['plot']['has_grid'] = self.enable_utf_grid
-            params = self.get_style_params('plot', ['point_radius', 'point_colour',
-                                                    'border_width', 'border_colour'])
+            params = self.get_style_params(
+                'plot',
+                ['point_radius', 'point_colour', 'border_width', 'border_colour'],
+            )
             map_info['map_styles']['plot']['tile_source']['params'] = params
             map_info['map_style'] = 'plot'
 
@@ -261,10 +284,10 @@ class MapViewSettings:
 
     @classmethod
     def from_request(cls):
-        '''
-        Setup by creating a MapViewSettings object with all the information
-        needed to serve the request.
-        '''
+        """
+        Setup by creating a MapViewSettings object with all the information needed to
+        serve the request.
+        """
         # get the resource id from the request
         resource_id = toolkit.request.params.get('resource_id', None)
         view_id = toolkit.request.params.get('view_id', None)
@@ -278,17 +301,13 @@ class MapViewSettings:
 
         # attempt to retrieve the resource and the view
         try:
-            resource = toolkit.get_action('resource_show')({}, {
-                'id': resource_id
-            })
+            resource = toolkit.get_action('resource_show')({}, {'id': resource_id})
         except toolkit.ObjectNotFound:
             return toolkit.abort(404, toolkit._('Resource not found'))
         except toolkit.NotAuthorized:
             return toolkit.abort(401, toolkit._('Unauthorized to read resource'))
         try:
-            view = toolkit.get_action('resource_view_show')({}, {
-                'id': view_id
-            })
+            view = toolkit.get_action('resource_view_show')({}, {'id': view_id})
         except toolkit.ObjectNotFound:
             return toolkit.abort(404, toolkit._('Resource view not found'))
         except toolkit.NotAuthorized:
@@ -301,24 +320,28 @@ class MapViewSettings:
 
 
 def build_url(*parts):
-    '''
+    """
     Given a bunch of parts, build a URL by joining them together with a /.
 
     :param parts: the URL parts
     :return: a URL string
-    '''
+    """
     return '/'.join(part.strip('/') for part in parts)
 
 
 def extract_q_and_filters():
-    '''
-    Extract the q and filters query string parameters from the request. These are standard
-    parameters in the resource views and have a standardised format too.
+    """
+    Extract the q and filters query string parameters from the request. These are
+    standard parameters in the resource views and have a standardised format too.
 
     :return: a 2-tuple of the q value (string, or None) and the filters value (dict, or None)
-    '''
+    """
     # get the query if there is one
-    q = None if 'q' not in toolkit.request.params else unquote(toolkit.request.params['q'])
+    q = (
+        None
+        if 'q' not in toolkit.request.params
+        else unquote(toolkit.request.params['q'])
+    )
 
     # pull out the filters if there are any
     filter_param = toolkit.request.params.get('filters', None)
@@ -335,18 +358,21 @@ def extract_q_and_filters():
 
 
 def get_base_map_info():
-    '''
-    Creates the base map info dict of settings. All of the settings in this dict are static in that
-    they will be the same for all map views created on the currently running CKAN instance (they use
-    either always static values or ones that are pulled from the config which can are set on boot).
+    """
+    Creates the base map info dict of settings. All of the settings in this dict are
+    static in that they will be the same for all map views created on the currently
+    running CKAN instance (they use either always static values or ones that are pulled
+    from the config which can are set on boot).
 
     A few settings are missing, these are set in MapViewSettings.create_map_info as they require
     custom per-map settings that the user has control over or are dependant on the target resource.
 
     :return: a dict of settings
-    '''
+    """
     png_url = build_url(config['versioned_tilemap.tile_server'], '/{z}/{x}/{y}.png')
-    utf_grid_url = build_url(config['versioned_tilemap.tile_server'], '/{z}/{x}/{y}.grid.json')
+    utf_grid_url = build_url(
+        config['versioned_tilemap.tile_server'], '/{z}/{x}/{y}.grid.json'
+    )
 
     return {
         'geospatial': True,
@@ -360,12 +386,10 @@ def get_base_map_info():
         },
         'tile_layer': {
             'url': config['versioned_tilemap.tile_layer.url'],
-            'opacity': float(config['versioned_tilemap.tile_layer.opacity'])
+            'opacity': float(config['versioned_tilemap.tile_layer.opacity']),
         },
         'control_options': {
-            'fullScreen': {
-                'position': 'topright'
-            },
+            'fullScreen': {'position': 'topright'},
             'drawShape': {
                 'draw': {
                     'polyline': False,
@@ -381,28 +405,24 @@ def get_base_map_info():
                             'opacity': 0.5,
                             'fill': True,
                             'fillcolour': '#FF4444',
-                            'fillOpacity': 0.1
-                        }
-                    }
+                            'fillOpacity': 0.1,
+                        },
+                    },
                 },
-                'position': 'topleft'
+                'position': 'topleft',
             },
             'selectCountry': {
                 'draw': {
                     'fill': '#FF4444',
                     'fill-opacity': 0.1,
                     'stroke': '#FF4444',
-                    'stroke-opacity': 0.5
+                    'stroke-opacity': 0.5,
                 }
             },
-            'mapType': {
-                'position': 'bottomleft'
-            },
+            'mapType': {'position': 'bottomleft'},
             'miniMap': {
                 'position': 'bottomright',
-                'tile_layer': {
-                    'url': config['versioned_tilemap.tile_layer.url']
-                },
+                'tile_layer': {'url': config['versioned_tilemap.tile_layer.url']},
                 'zoomLevelFixed': 1,
                 'toggleDisplay': True,
                 'viewport': {
@@ -411,7 +431,7 @@ def get_base_map_info():
                         'weight': 1,
                         'colour': '#0000FF',
                         'opacity': 1,
-                        'fill': False
+                        'fill': False,
                     },
                     'marker': {
                         'weight': 1,
@@ -419,15 +439,13 @@ def get_base_map_info():
                         'opacity': 1,
                         'radius': 3,
                         'fillcolour': '#0000FF',
-                        'fillOpacity': 0.2
-                    }
-                }
-            }
+                        'fillOpacity': 0.2,
+                    },
+                },
+            },
         },
         'plugin_options': {
-            'tooltipCount': {
-                'count_field': 'count'
-            },
+            'tooltipCount': {'count_field': 'count'},
         },
         'map_styles': {
             'heatmap': {
@@ -445,7 +463,9 @@ def get_base_map_info():
                 'icon': '<i class="fa fa-th"></i>',
                 'controls': ['drawShape', 'mapType', 'fullScreen', 'miniMap'],
                 'plugins': ['tooltipCount'],
-                'grid_resolution': int(config['versioned_tilemap.style.gridded.grid_resolution']),
+                'grid_resolution': int(
+                    config['versioned_tilemap.style.gridded.grid_resolution']
+                ),
                 'tile_source': {
                     'url': png_url,
                     'params': {},
@@ -460,7 +480,9 @@ def get_base_map_info():
                 'icon': '<i class="fa fa-dot-circle-o"></i>',
                 'controls': ['drawShape', 'mapType', 'fullScreen', 'miniMap'],
                 'plugins': ['tooltipInfo', 'pointInfo'],
-                'grid_resolution': int(config['versioned_tilemap.style.plot.grid_resolution']),
+                'grid_resolution': int(
+                    config['versioned_tilemap.style.plot.grid_resolution']
+                ),
                 'tile_source': {
                     'url': png_url,
                     'params': {},
