@@ -2,10 +2,11 @@
 
 # ckanext-versioned-tiledmap
 
-[![Travis](https://img.shields.io/travis/NaturalHistoryMuseum/ckanext-versioned-tiledmap/master.svg?style=flat-square)](https://travis-ci.org/NaturalHistoryMuseum/ckanext-versioned-tiledmap)
-[![Coveralls](https://img.shields.io/coveralls/github/NaturalHistoryMuseum/ckanext-versioned-tiledmap/master.svg?style=flat-square)](https://coveralls.io/github/NaturalHistoryMuseum/ckanext-versioned-tiledmap)
+[![Tests](https://img.shields.io/github/workflow/status/NaturalHistoryMuseum/ckanext-versioned-tiledmap/Tests?style=flat-square)](https://github.com/NaturalHistoryMuseum/ckanext-versioned-tiledmap/actions/workflows/main.yml)
+[![Coveralls](https://img.shields.io/coveralls/github/NaturalHistoryMuseum/ckanext-versioned-tiledmap/main?style=flat-square)](https://coveralls.io/github/NaturalHistoryMuseum/ckanext-versioned-tiledmap)
 [![CKAN](https://img.shields.io/badge/ckan-2.9.1-orange.svg?style=flat-square)](https://github.com/ckan/ckan)
 [![Python](https://img.shields.io/badge/python-3.6%20%7C%203.7%20%7C%203.8-blue.svg?style=flat-square)](https://www.python.org/)
+[![Docs](https://img.shields.io/readthedocs/ckanext-versioned-tiledmap?style=flat-square)](https://ckanext-versioned-tiledmap.readthedocs.io)
 
 _A CKAN extension with a map view for versioned-datastore backed resources._
 
@@ -56,10 +57,10 @@ Path variables used below:
   python setup.py develop
   ```
 
-5. Add 'versioned-tiledmap' to the list of plugins in your `$CONFIG_FILE`:
+5. Add 'versioned_tiledmap' to the list of plugins in your `$CONFIG_FILE`:
 
   ```ini
-  ckan.plugins = ... versioned-tiledmap
+  ckan.plugins = ... versioned_tiledmap
   ```
 
 # Configuration
@@ -101,10 +102,8 @@ After enabling this extension in the list of plugins, the Map view should become
 
 
 # Testing
-_Test coverage is currently extremely limited._
 
-To run the tests in this extension, there is a Docker compose configuration available in this
-repository to make it easy.
+There is a Docker compose configuration available in this repository to make it easier to run tests.
 
 To run the tests against ckan 2.9.x on Python3:
 
@@ -121,4 +120,4 @@ docker-compose build
 docker-compose run ckan
 ```
 
-The ckan image uses the Dockerfile in the `docker/` folder which is based on `openknowledge/ckan-dev:2.9`.
+The ckan image uses the Dockerfile in the `docker/` folder.
