@@ -1,7 +1,11 @@
 import pytest
 from ckan.plugins import toolkit
-from ckanext.tiledmap.lib.validators import colour_validator, float_01_validator, \
-    is_datastore_field, is_view_id
+from ckanext.tiledmap.lib.validators import (
+    colour_validator,
+    float_01_validator,
+    is_datastore_field,
+    is_view_id,
+)
 from unittest.mock import MagicMock, patch
 
 
@@ -57,7 +61,9 @@ def test_is_datastore_field_valid():
 
     fields = {'beans', 'lemons'}
     mock_get_fields = MagicMock(return_value=fields)
-    with patch('ckanext.tiledmap.lib.validators.get_resource_datastore_fields', mock_get_fields):
+    with patch(
+        'ckanext.tiledmap.lib.validators.get_resource_datastore_fields', mock_get_fields
+    ):
         value = ['beans', 'lemons']
         assert is_datastore_field(value, MagicMock()) == value
 
@@ -70,7 +76,9 @@ def test_is_datastore_field_invalid():
 
     fields = {'beans', 'lemons'}
     mock_get_fields = MagicMock(return_value=fields)
-    with patch('ckanext.tiledmap.lib.validators.get_resource_datastore_fields', mock_get_fields):
+    with patch(
+        'ckanext.tiledmap.lib.validators.get_resource_datastore_fields', mock_get_fields
+    ):
         value = ['goats']
         with pytest.raises(toolkit.Invalid, match='Invalid parameters: goats'):
             is_datastore_field(value, MagicMock())
@@ -84,7 +92,9 @@ def test_is_datastore_field_mixed():
 
     fields = {'beans', 'lemons'}
     mock_get_fields = MagicMock(return_value=fields)
-    with patch('ckanext.tiledmap.lib.validators.get_resource_datastore_fields', mock_get_fields):
+    with patch(
+        'ckanext.tiledmap.lib.validators.get_resource_datastore_fields', mock_get_fields
+    ):
         value = ['beans', 'goats', 'lemons', 'armpits']
         with pytest.raises(toolkit.Invalid, match='Invalid parameters: goats,armpits'):
             is_datastore_field(value, MagicMock())
@@ -93,7 +103,9 @@ def test_is_datastore_field_mixed():
 def test_is_view_id_valid():
     mock_views = [dict(id='beans'), dict(id='lemons'), dict(id='goats')]
 
-    mock_toolkit = MagicMock(get_action=MagicMock(return_value=MagicMock(return_value=mock_views)))
+    mock_toolkit = MagicMock(
+        get_action=MagicMock(return_value=MagicMock(return_value=mock_views))
+    )
     with patch('ckanext.tiledmap.lib.validators.toolkit', mock_toolkit):
         view_id = 'lemons'
         assert is_view_id(view_id, MagicMock()) == view_id
