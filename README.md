@@ -1,3 +1,4 @@
+<!--header-start-->
 <img src=".github/nhm-logo.svg" align="left" width="150px" height="100px" hspace="40"/>
 
 # ckanext-versioned-tiledmap
@@ -10,18 +11,22 @@
 
 _A CKAN extension with a map view for versioned-datastore backed resources._
 
+<!--header-end-->
 
 # Overview
 
+<!--overview-start-->
 A CKAN plugin with a map view for versioned-datastore backed resources allowing for map visualizations of large resources with millions of data points.
 
 This repository is a fork* of [ckanext-map](https://github.com/NaturalHistoryMuseum/ckanext-map).
 
 _*you can't fork repositories within the same organisation, so this repository is a duplicate of ckanext-map._
 
+<!--overview-end-->
 
 # Installation
 
+<!--installation-start-->
 0. This extension depends on these projects, which must be installed first:
     - [ckanext-versioned-datastore extension](https://github.com/NaturalHistoryMuseum/ckanext-versioned-datastore)
     - [versioned-datastore-tile-server](https://github.com/NaturalHistoryMuseum/versioned-datastore-tile-server)
@@ -63,8 +68,13 @@ Path variables used below:
   ckan.plugins = ... versioned_tiledmap
   ```
 
+6. Add latitude and longitude values for the resources you want to use this view for.
+
+<!--installation-end-->
+
 # Configuration
 
+<!--configuration-start-->
 These are the options that can be specified in your .ini config file.
 
 | Name | Description | Default |
@@ -90,19 +100,18 @@ These are the options that can be specified in your .ini config file.
 | `versioned_tilemap.info_template` | The name of the template to use when a point is clicked | `point_detail` |
 | `versioned_tilemap.quick_info_template` | The name of the template to use when a point is hovered over | `point_detail_hover` |
 
-
-# Further Setup
-
-Add latitude and longitude values for the resources you want to use this view for.
-
+<!--configuration-end-->
 
 # Usage
 
+<!--usage-start-->
 After enabling this extension in the list of plugins, the Map view should become available for resources with latitude and longitude values.
 
+<!--usage-end-->
 
 # Testing
 
+<!--testing-start-->
 There is a Docker compose configuration available in this repository to make it easier to run tests.
 
 To run the tests against ckan 2.9.x on Python3:
@@ -121,3 +130,5 @@ docker-compose run ckan
 ```
 
 The ckan image uses the Dockerfile in the `docker/` folder.
+
+<!--testing-end-->
