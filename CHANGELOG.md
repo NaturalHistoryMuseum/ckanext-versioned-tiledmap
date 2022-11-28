@@ -1,1 +1,39 @@
 # Changelog
+
+## v2.1.0 (2022-11-28)
+
+### Fix
+
+- fix entrypoint/module short name
+
+### Docs
+
+- add section delimiters and include-markdown
+
+### Style
+
+- apply formatting
+
+### Build System(s)
+
+- set changelog generation to incremental
+
+### CI System(s)
+
+- pin ckantools minor version
+- add cz-nhm dependency
+
+### Chores/Misc
+
+- use cz_nhm commitizen config
+- standardise package files
+
+## v2.0.2 (2021-06-30)
+
+## v2.0.1 (2021-03-09)
+
+## v2.0.0 (2021-03-09)
+
+## v1.0.0-alpha (2019-07-23)
+
+## v0.0.1 (2019-03-06)
