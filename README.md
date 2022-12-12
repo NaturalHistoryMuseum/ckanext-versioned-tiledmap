@@ -71,7 +71,12 @@ Installing from a `pyproject.toml` in editable mode (i.e. `pip install -e`) requ
    ckan.plugins = ... versioned_tiledmap
    ```
 
-2. Add latitude and longitude fields for the resources you want to use this view for.
+2. Install `lessc` globally:
+   ```shell
+   npm install -g "less@~4.1"
+   ```
+
+3. Add latitude and longitude fields for the resources you want to use this view for.
 
 <!--installation-end-->
 
