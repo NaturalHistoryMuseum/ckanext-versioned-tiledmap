@@ -19,8 +19,8 @@ classifiers = [
     "Programming Language :: Python :: 3.8"
 ]
 dependencies = [
-    "ckantools>=0.3.0",
-    "ckanext-versioned-datastore>=3.7.0"
+    "ckanext-versioned-datastore>=3.7.0",
+    "ckantools>=0.3.0"
 ]
 
 [project.optional-dependencies]
@@ -52,7 +52,7 @@ zip-safe = false
 exclude = ["tests", "docs"]
 
 [tool.setuptools.package-data]
-"ckanext.versioned_tiledmap.theme" = ["**/*"]
+"ckanext.versioned_tiledmap.theme" = ["*", "**/*"]
 
 [tool.commitizen]
 name = "cz_nhm"
