@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.1.3 (2022-12-13)
+
+### Build System(s)
+
+- fix package-data path
+
 ## v2.1.2 (2022-12-12)
 
 ### Docs
