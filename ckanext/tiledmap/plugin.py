@@ -37,7 +37,7 @@ class VersionedTiledMapPlugin(SingletonPlugin):
         """
         toolkit.add_template_directory(config, 'theme/templates')
         toolkit.add_public_directory(config, 'theme/public')
-        toolkit.add_resource('theme/public', 'tiledmap')
+        toolkit.add_resource('theme/assets', 'tiledmap')
 
     ## IBlueprint
     def get_blueprint(self):
