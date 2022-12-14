@@ -1,0 +1,240 @@
+body {
+  margin: 0;
+}
+
+div.tiled-map {
+  font-size: 13px;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  line-height: 18px;
+  color: #333;
+
+  & a {
+    color: #363636;
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: none;
+    }
+
+    /* Extra icons */
+
+    &:after {
+      font-family: FontAwesome;
+      font-weight: lighter;
+      font-style: normal;
+      -webkit-font-smoothing: antialiased;
+      margin: 1px 0 0 1px;
+      display: inline-block;
+      font-size: 14px;
+      line-height: 16px;
+    }
+
+    &.leaflet-draw-edit-remove:after {
+      content: "\f0e2";
+    }
+
+    &.leaflet-draw-draw-country:after {
+      content: "\f0ac" /* Puzzle piece - fa-puzzle-piece */
+    }
+
+    &.leaflet-draw-edit-remove,
+    &.leaflet-draw-draw-country {
+      background-image: none !important;
+    }
+  }
+}
+
+
+div.tiled-map-info {
+  padding: 12px;
+}
+
+.info {
+  color: #555;
+  padding: 6px 8px;
+  font: 14px/16px Arial, Helvetica, sans-serif;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.7);
+  border-radius: 10px;
+  width: 300px;
+  min-height: 10em;
+}
+
+.small-info {
+  color: #555;
+  padding: 6px 8px;
+  font: 14px/16px Arial, Helvetica, sans-serif;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.7);
+  border-radius: 10px;
+  width: 300px;
+  min-height: 2em;
+}
+
+.leaflet-container {
+  background: #CBE6FE;
+}
+
+.leaflet-bar a {
+  &.active-selection {
+    font-weight: bold;
+    background: #f4f4f4;
+  }
+
+  &.leaflet-disabled {
+    color: #666;
+  }
+}
+
+.leaflet-draw-actions a {
+  background-color: #eee;
+}
+
+.panel.map {
+  height: 500px; /* Set to 90% of screen height when displayed */
+}
+
+.panel.map,
+.panel.sidebar {
+  min-height: 350px;
+}
+
+.panel.sidebar {
+  float: right;
+  width: 0px; /* Set to max-width when displayed */
+  max-width: 230px;
+  height: 500px; /* Set to 90% of screen height when displayed */
+  background: #EEE;
+  overflow-y: hidden; /* Set to 'auto' when displayed */
+  overflow-x: hidden;
+  position: relative;
+}
+
+div.tiled-map-point-detail,
+div.point-detail {
+  height: inherit;
+}
+
+div.point-detail {
+  box-sizing: border-box;
+  padding-bottom: 30px;
+
+  &.multiple-records {
+    padding-bottom: 115px;
+  }
+
+  & div.point-detail-title,
+  & div.point-detail-info,
+  & div.point-detail-tree {
+    padding: 8px;
+    min-width: 210px; /* Stop them compressing on slide */
+  }
+
+  & div.point-detail-title {
+    font-size: 1.5em;
+    font-weight: bold;
+    margin: 10px 0;
+    line-height: 1.1;
+  }
+
+  & table {
+    width: 100px;
+    overflow: hidden;
+    margin: 0 8px;
+
+    & tr {
+      margin-bottom: 5px;
+    }
+
+    & td {
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+
+    & td, & th {
+      text-align: left;
+      vertical-align: top;
+    }
+  }
+
+  & .point-detail-tree-label {
+    color: #666;
+    font-size: 0.9em;
+  }
+
+  & .point-detail-tree-detail:after {
+    content: '>';
+    font-weight: bold;
+    padding: 0 3px;
+  }
+
+  & .point-detail-tree-detail:last-child:after {
+    content: '';
+  }
+}
+
+div.point-detail-wrapper {
+  overflow-y: auto;
+  height: 100%;
+}
+
+div.point-detail-info {
+  font-size: 0.9em;
+  color: #666;
+  background: #E4E4E4;
+  text-align: center;
+  min-width: 210px;
+  padding: 10px;
+
+  & a:hover {
+    text-decoration: underline;
+  }
+}
+
+div.point-detail-tree,
+div.point-detail table {
+  font-size: 0.9em;
+  margin-bottom: 1em;
+}
+
+.panel.sidebar .close {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  color: #000000;
+  cursor: pointer;
+}
+
+/* Map tooltips */
+div.map-hover-tooltip {
+  color: #FFF;
+  background: #000;
+  font-size: 1em;
+  padding: 3px 5px;
+  border-radius: 2px;
+  opacity: 0.7;
+}
+
+/* Fullscreen mode */
+body.fullscreen {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+
+  & div.tiled-map {
+    width: 98%;
+    margin-left: 1%;
+  }
+
+  & .fa-expand:before {
+    content: "\f066";
+  }
+
+  & .panel.sidebar {
+    max-width: 400px;
+  }
+
+  & div.point-detail-info {
+    min-width: 400px;
+  }
+}
