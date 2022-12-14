@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.1.4 (2022-12-14)
+
+### Refactor
+
+- move assets into 'assets' folder
+
 ## v2.1.3 (2022-12-13)
 
 ### Build System(s)
