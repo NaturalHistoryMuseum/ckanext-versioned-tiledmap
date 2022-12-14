@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.1.5 (2022-12-14)
+
+### Fix
+
+- remove cssrewrite
+
+### Chores/Misc
+
+- remove old assets files
+
 ## v2.1.4 (2022-12-14)
 
 ### Refactor
