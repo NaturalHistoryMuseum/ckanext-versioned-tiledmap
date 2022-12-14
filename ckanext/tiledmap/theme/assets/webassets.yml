@@ -38,7 +38,6 @@ main-css:
 
 leaflet-css:
   output: ckanext-versioned-tiledmap/%(version)s_leaflet.css
-  filters: cssrewrite
   contents:
     - vendor/leaflet/leaflet.css
     - vendor/leaflet.draw/leaflet.draw.css
