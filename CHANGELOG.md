@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.1.7 (2023-01-31)
+
+### Docs
+
+- **readme**: direct link to logo in readme
+- **readme**: fix github actions badge
+
 ## v2.1.6 (2023-01-30)
 
 ### Build System(s)
