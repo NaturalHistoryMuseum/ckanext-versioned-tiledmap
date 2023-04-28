@@ -9,6 +9,7 @@ config = {
     # we don't want to let users define this per dataset, as we need to ensure we have the right to
     # use the tiles
     'versioned_tilemap.tile_layer.url': 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    'versioned_tilemap.tile_layer.attribution': 'Base tiles provided by OpenStreetMap. <a href="openstreetmap.org/copyright">View copyright information</a>',
     'versioned_tilemap.tile_layer.opacity': 0.8,
     # max/min zoom constraints
     'versioned_tilemap.zoom_bounds.min': 3,
