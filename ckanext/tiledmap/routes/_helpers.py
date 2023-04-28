@@ -386,6 +386,7 @@ def get_base_map_info():
         },
         'tile_layer': {
             'url': config['versioned_tilemap.tile_layer.url'],
+            'attribution': config.get('versioned_tilemap.tile_layer.attribution'),
             'opacity': float(config['versioned_tilemap.tile_layer.opacity']),
         },
         'control_options': {
