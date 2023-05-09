@@ -211,6 +211,7 @@ this.tiledmap = this.tiledmap || {};
         this.map.setView(center, this.map_info.initial_zoom.min);
       }
       L.tileLayer(this.map_info.tile_layer.url, {
+        attribution: this.map_info.tile_layer.attribution,
         opacity: this.map_info.tile_layer.opacity,
         noWrap: !this.map_info.repeat_map,
       }).addTo(this.map);
