@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.2.0 (2023-05-09)
+
+### Feature
+
+- show map tile attribution
+- pass the new attribution config option through to the UI
+- add new config setting to set attribution for tiled map base layer
+
 ## v2.1.10 (2023-04-11)
 
 ### Build System(s)
