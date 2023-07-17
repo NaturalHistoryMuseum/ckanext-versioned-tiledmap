@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.2.1 (2023-07-17)
+
+### Docs
+
+- update logos
+
 ## v2.2.0 (2023-05-09)
 
 ### Feature
