@@ -172,10 +172,10 @@ class VersionedTiledMapPlugin(SingletonPlugin):
             except Exception as e:
                 tileserver_response = ''
             if tileserver_response == 'OK':
-                tileserver_text = toolkit._('connected')
+                tileserver_text = toolkit._('available')
                 tileserver_state = 'good'
             else:
-                tileserver_text = toolkit._('disconnected')
+                tileserver_text = toolkit._('unavailable')
                 tileserver_state = 'bad'
 
         status_reports.append(
