@@ -12,6 +12,14 @@ from ckanext.tiledmap.config import config as plugin_config
 from ckanext.tiledmap.lib import validators
 from ckanext.tiledmap.lib.helpers import mustache_wrapper, dwc_field_title
 from ckanext.tiledmap.lib.utils import get_resource_datastore_fields
+import urllib.request
+
+try:
+    from ckanext.status.interfaces import IStatus
+
+    status_available = True
+except ImportError:
+    status_available = False
 
 boolean_validator = toolkit.get_validator('boolean_validator')
 ignore_empty = toolkit.get_validator('ignore_empty')
@@ -28,6 +36,8 @@ class VersionedTiledMapPlugin(SingletonPlugin):
     implements(interfaces.ITemplateHelpers)
     implements(interfaces.IResourceView, inherit=True)
     implements(interfaces.IConfigurable)
+    if status_available:
+        implements(IStatus)
 
     # from IConfigurer interface
     def update_config(self, config):
@@ -147,3 +157,36 @@ class VersionedTiledMapPlugin(SingletonPlugin):
             'defaults': plugin_config,
             'is_new': resource_view_id is None,
         }
+
+    ## IStatus
+    def modify_status_reports(self, status_reports):
+        tileserver_url = toolkit.config.get('versioned_tilemap.tile_server')
+
+        tileserver_text = toolkit._('unknown')
+        tileserver_state = 'neutral'
+
+        if tileserver_url:
+            try:
+                with urllib.request.urlopen(tileserver_url + '/status') as response:
+                    tileserver_response = response.read().decode()
+            except Exception as e:
+                tileserver_response = ''
+            if tileserver_response == 'OK':
+                tileserver_text = toolkit._('available')
+                tileserver_state = 'good'
+            else:
+                tileserver_text = toolkit._('unavailable')
+                tileserver_state = 'bad'
+
+        status_reports.append(
+            {
+                'label': toolkit._('Maps'),
+                'value': tileserver_text,
+                'help': toolkit._(
+                    'Connection to the server that plots data points on maps'
+                ),
+                'state': tileserver_state,
+            }
+        )
+
+        return status_reports
