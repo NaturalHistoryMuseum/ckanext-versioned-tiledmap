@@ -1,5 +1,25 @@
 # Changelog
 
+## v2.3.0 (2024-07-08)
+
+### Feature
+
+- add integration with ckanext-status
+
+### Fix
+
+- use (un)available instead of (dis)connected
+
+### Chores/Misc
+
+- add build section to read the docs config
+- add regex for version line in citation file
+- add citation.cff to list of files with version
+- add contributing guidelines
+- add code of conduct
+- add citation file
+- update support.md links
+
 ## v2.2.1 (2023-07-17)
 
 ### Docs
