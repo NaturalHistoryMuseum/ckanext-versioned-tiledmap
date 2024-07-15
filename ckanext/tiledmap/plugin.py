@@ -11,7 +11,7 @@ from ckanext.tiledmap import routes
 from ckanext.tiledmap.config import config as plugin_config
 from ckanext.tiledmap.lib import validators
 from ckanext.tiledmap.lib.helpers import mustache_wrapper, dwc_field_title
-from ckanext.tiledmap.lib.utils import get_resource_datastore_fields
+from ckanext.tiledmap.lib.utils import get_resource_datastore_fields, get_tileserver_status
 import urllib.request
 
 try:
@@ -160,28 +160,24 @@ class VersionedTiledMapPlugin(SingletonPlugin):
 
     ## IStatus
     def modify_status_reports(self, status_reports):
-        tileserver_url = toolkit.config.get('versioned_tilemap.tile_server')
+        tileserver_text = get_tileserver_status()
 
-        tileserver_text = toolkit._('unknown')
-        tileserver_state = 'neutral'
-
-        if tileserver_url:
-            try:
-                with urllib.request.urlopen(tileserver_url + '/status') as response:
-                    tileserver_response = response.read().decode()
-            except Exception as e:
-                tileserver_response = ''
-            if tileserver_response == 'OK':
-                tileserver_text = toolkit._('available')
-                tileserver_state = 'good'
-            else:
-                tileserver_text = toolkit._('unavailable')
-                tileserver_state = 'bad'
+        # report_value should be the same as toolkit._(tileserver_text) but is defined
+        # explicitly just in case it's returning something unexpected
+        if tileserver_text == 'unknown':
+            report_value = toolkit._('unknown')
+            tileserver_state = 'neutral'
+        elif tileserver_text == 'available':
+            report_value = toolkit._('available')
+            tileserver_state = 'good'
+        else:
+            report_value = toolkit._('unavailable')
+            tileserver_state = 'bad'
 
         status_reports.append(
             {
                 'label': toolkit._('Maps'),
-                'value': tileserver_text,
+                'value': report_value,
                 'help': toolkit._(
                     'Connection to the server that plots data points on maps'
                 ),
