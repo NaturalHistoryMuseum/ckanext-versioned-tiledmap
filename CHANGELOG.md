@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.3.1 (2024-07-15)
+
+### Fix
+
+- cache tileserver status response
+
 ## v2.3.0 (2024-07-08)
 
 ### Feature
