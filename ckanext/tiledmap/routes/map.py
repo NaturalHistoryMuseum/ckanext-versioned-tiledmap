@@ -16,7 +16,7 @@ def info():
     """
     Returns metadata about a given map in JSON form.
 
-    :return: A JSON encoded string representing the metadata
+    :returns: A JSON encoded string representing the metadata
     """
     view_settings = _helpers.MapViewSettings.from_request()
 
