@@ -7,6 +7,7 @@
 import re
 
 from ckan.plugins import toolkit
+
 from ckanext.tiledmap.lib.utils import get_resource_datastore_fields
 
 
@@ -16,7 +17,7 @@ def colour_validator(value, context):
 
     :param value: the value to validate
     :param context: the context within which this validation is taking place
-    :return: the validated value
+    :returns: the validated value
     """
     if re.match('^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$', value):
         if value[0] != '#':
@@ -38,7 +39,7 @@ def float_01_validator(value, context):
 
     :param value: the value
     :param context: the context within which this validation is taking place
-    :return: the validated value
+    :returns: the validated value
     """
     try:
         value = float(value)
@@ -55,7 +56,7 @@ def is_datastore_field(value, context):
 
     :param value: the value to validate
     :param context: the context within which this validation is taking place
-    :return: the value
+    :returns: the value
     """
     passed_fields = value if isinstance(value, list) else [value]
     fields = get_resource_datastore_fields(toolkit.g.resource['id'])
@@ -71,7 +72,7 @@ def is_view_id(value, context):
 
     :param value: the value to validate
     :param context: the context within which this validation is taking place
-    :return: the value
+    :returns: the value
     """
     if value:
         data = {'id': toolkit.g.resource['id']}

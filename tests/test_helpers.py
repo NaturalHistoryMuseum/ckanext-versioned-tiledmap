@@ -1,4 +1,4 @@
-from ckanext.tiledmap.lib.helpers import mustache_wrapper, dwc_field_title
+from ckanext.tiledmap.lib.helpers import dwc_field_title, mustache_wrapper
 
 
 def test_mustache_wrapper():
