@@ -4,9 +4,10 @@
 # This file is part of a project
 # Created by the Natural History Museum in London, UK
 
-from ckan.plugins import toolkit
 import urllib.request
-from cachetools import cached, TTLCache
+
+from cachetools import TTLCache, cached
+from ckan.plugins import toolkit
 
 
 def get_resource_datastore_fields(resource_id):

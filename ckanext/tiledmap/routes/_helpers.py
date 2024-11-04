@@ -12,6 +12,7 @@ from urllib.parse import unquote
 
 from ckan.common import json
 from ckan.plugins import toolkit
+
 from ckanext.tiledmap.config import config
 
 
@@ -21,12 +22,12 @@ class MapViewSettings:
     """
 
     def __init__(self, fetch_id, view, resource):
-        '''
+        """
         :param fetch_id: the id of the request, as provided by the javascript module. This is used
                          to keep track on the javascript side of the order map-info requests.
         :param view: the view dict
         :param resource: the resource dict
-        '''
+        """
         self.fetch_id = fetch_id
         self.view = view
         self.resource = resource
@@ -73,7 +74,7 @@ class MapViewSettings:
         Returns True if at least one of the map styles (plot, grid, heat) is enabled. If
         none of them are, returns False.
 
-        :return: True if one map style is enabled, False if none are
+        :returns: True if one map style is enabled, False if none are
         """
         return self.plot_map_enabled or self.grid_map_enabled or self.heat_map_enabled
 
@@ -85,7 +86,7 @@ class MapViewSettings:
 
         :param name: the name of the template
         :param extra_vars: a dict of variables to pass to the template renderer
-        :return: a rendered template
+        :returns: a rendered template
         """
         # this is the base name of the template, if there's no format version available then we'll
         # just return this
@@ -105,7 +106,7 @@ class MapViewSettings:
         """
         Renders the point info template and returns the result.
 
-        :return: the rendered point info template
+        :returns: the rendered point info template
         """
         return self._render_template(
             config['versioned_tilemap.info_template'],
@@ -120,7 +121,7 @@ class MapViewSettings:
         """
         Renders the point hover info template and returns the result.
 
-        :return: the rendered point hover info template
+        :returns: the rendered point hover info template
         """
         return self._render_template(
             config['versioned_tilemap.quick_info_template'],
@@ -137,9 +138,9 @@ class MapViewSettings:
         retrieved from the config object.
 
         :param style: the name of the style (plot, gridded or heatmap)
-        :param names: the names of the parameters to retrieve, these are also used as the names in
-                      the dict that the parameter values are stored under
-        :return: a dict
+        :param names: the names of the parameters to retrieve, these are also used as
+            the names in the dict that the parameter values are stored under
+        :returns: a dict
         """
         params = {}
         for name in names:
@@ -161,7 +162,7 @@ class MapViewSettings:
               (e.g. [[0, 4], [70, 71]]). This is how it is returned by the datastore_query_extent
               action.
 
-        :return: a 3-tuple - (int, int, list)
+        :returns: a 3-tuple - (int, int, list)
         """
         q, filters = extract_q_and_filters()
         # get query extent and counts
@@ -199,7 +200,7 @@ class MapViewSettings:
             - the query body is then sent along with all tile requests to the tile server, which
               decompresses it and uses it to search elasticsearch
 
-        :return: a url safe base64 encoded, gzipped, JSON string
+        :returns: a url safe base64 encoded, gzipped, JSON string
         """
         q, filters = extract_q_and_filters()
         result = toolkit.get_action('datastore_search')(
@@ -220,7 +221,7 @@ class MapViewSettings:
         Using the settings available on this object, create the /map-info response dict
         and return it.
 
-        :return: a dict
+        :returns: a dict
         """
         # get the standard map info dict (this provides a fresh one each time it's called)
         map_info = get_base_map_info()
@@ -324,7 +325,7 @@ def build_url(*parts):
     Given a bunch of parts, build a URL by joining them together with a /.
 
     :param parts: the URL parts
-    :return: a URL string
+    :returns: a URL string
     """
     return '/'.join(part.strip('/') for part in parts)
 
@@ -334,7 +335,8 @@ def extract_q_and_filters():
     Extract the q and filters query string parameters from the request. These are
     standard parameters in the resource views and have a standardised format too.
 
-    :return: a 2-tuple of the q value (string, or None) and the filters value (dict, or None)
+    :returns: a 2-tuple of the q value (string, or None) and the filters value (dict, or
+        None)
     """
     # get the query if there is one
     q = (
@@ -364,10 +366,11 @@ def get_base_map_info():
     running CKAN instance (they use either always static values or ones that are pulled
     from the config which can are set on boot).
 
-    A few settings are missing, these are set in MapViewSettings.create_map_info as they require
-    custom per-map settings that the user has control over or are dependant on the target resource.
+    A few settings are missing, these are set in MapViewSettings.create_map_info as they
+    require custom per-map settings that the user has control over or are dependant on
+    the target resource.
 
-    :return: a dict of settings
+    :returns: a dict of settings
     """
     png_url = build_url(config['versioned_tilemap.tile_server'], '/{z}/{x}/{y}.png')
     utf_grid_url = build_url(

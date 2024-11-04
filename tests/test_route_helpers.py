@@ -1,5 +1,5 @@
 from functools import wraps
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from ckanext.tiledmap.routes._helpers import extract_q_and_filters
 

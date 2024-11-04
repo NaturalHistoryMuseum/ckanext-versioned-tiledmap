@@ -4,15 +4,18 @@
 # This file is part of a project
 # Created by the Natural History Museum in London, UK
 
+
 from ckan.common import json
-from ckan.plugins import toolkit, implements, interfaces, SingletonPlugin
+from ckan.plugins import SingletonPlugin, implements, interfaces, toolkit
 
 from ckanext.tiledmap import routes
 from ckanext.tiledmap.config import config as plugin_config
 from ckanext.tiledmap.lib import validators
-from ckanext.tiledmap.lib.helpers import mustache_wrapper, dwc_field_title
-from ckanext.tiledmap.lib.utils import get_resource_datastore_fields, get_tileserver_status
-import urllib.request
+from ckanext.tiledmap.lib.helpers import dwc_field_title, mustache_wrapper
+from ckanext.tiledmap.lib.utils import (
+    get_resource_datastore_fields,
+    get_tileserver_status,
+)
 
 try:
     from ckanext.status.interfaces import IStatus
