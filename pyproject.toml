@@ -21,7 +21,7 @@ classifiers = [
 dependencies = [
     "ckanext-versioned-datastore>=3.7.0",
     "cachetools>=4.2.4",
-    "ckantools>=0.4.1"
+    "ckantools>=0.4.2"
 ]
 
 [project.optional-dependencies]
