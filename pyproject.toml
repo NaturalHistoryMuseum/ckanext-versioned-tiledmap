@@ -1,6 +1,6 @@
 [project]
 name = "ckanext-versioned-tiledmap"
-version = "2.3.3"
+version = "2.3.4"
 description = "A CKAN extension with a map view for versioned-datastore backed resources."
 readme = "README.md"
 requires-python = ">=3.6"
@@ -57,7 +57,7 @@ exclude = ["tests", "docs"]
 
 [tool.commitizen]
 name = "cz_nhm"
-version = "2.3.3"
+version = "2.3.4"
 tag_format = "v$version"
 update_changelog_on_bump = true
 changelog_incremental = true
