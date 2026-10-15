@@ -12,10 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Build images
         run: docker compose build
       - name: Run tests
         env:
           COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
-        run: docker compose run -e COVERALLS_REPO_TOKEN ckan bash /opt/scripts/run-tests.sh -c ckanext.tiledmap
+        run: docker compose run -e COVERALLS_REPO_TOKEN ckan bash /opt/scripts/run-tests.sh -c ckanext.versioned_tiledmap
