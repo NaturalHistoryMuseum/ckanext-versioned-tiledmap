@@ -71,8 +71,9 @@ class MapViewSettings:
 
     def is_enabled(self):
         """
-        Returns True if at least one of the map styles (plot, grid, heat) is enabled. If
-        none of them are, returns False.
+        Returns True if at least one of the map styles (plot, grid, heat) is enabled.
+
+        If none of them are, returns False.
 
         :returns: True if one map style is enabled, False if none are
         """
@@ -80,9 +81,10 @@ class MapViewSettings:
 
     def _render_template(self, name, extra_vars):
         """
-        Render the given mustache template using the given variables. If the resource
-        this view is attached to has a format then this function will attempt to find a
-        format appropriate function.
+        Render the given mustache template using the given variables.
+
+        If the resource this view is attached to has a format then this function will
+        attempt to find a format appropriate function.
 
         :param name: the name of the template
         :param extra_vars: a dict of variables to pass to the template renderer
@@ -133,8 +135,9 @@ class MapViewSettings:
 
     def get_style_params(self, style, names):
         """
-        Returns a dict of style params for the given style. The parameters are retrieved
-        from the user defined settings on the view and if they're missing then they're
+        Returns a dict of style params for the given style.
+
+        The parameters are retrieved from the user defined settings on the view and if they're missing then they're
         retrieved from the config object.
 
         :param style: the name of the style (plot, gridded or heatmap)
@@ -332,8 +335,10 @@ def build_url(*parts):
 
 def extract_q_and_filters():
     """
-    Extract the q and filters query string parameters from the request. These are
-    standard parameters in the resource views and have a standardised format too.
+    Extract the q and filters query string parameters from the request.
+
+    These are standard parameters in the resource views and have a standardised format
+    too.
 
     :returns: a 2-tuple of the q value (string, or None) and the filters value (dict, or
         None)
@@ -361,10 +366,11 @@ def extract_q_and_filters():
 
 def get_base_map_info():
     """
-    Creates the base map info dict of settings. All of the settings in this dict are
-    static in that they will be the same for all map views created on the currently
-    running CKAN instance (they use either always static values or ones that are pulled
-    from the config which can are set on boot).
+    Creates the base map info dict of settings.
+
+    All of the settings in this dict are static in that they will be the same for all
+    map views created on the currently running CKAN instance (they use either always
+    static values or ones that are pulled from the config which can are set on boot).
 
     A few settings are missing, these are set in MapViewSettings.create_map_info as they
     require custom per-map settings that the user has control over or are dependant on
