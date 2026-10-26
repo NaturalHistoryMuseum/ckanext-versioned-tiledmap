@@ -1,5 +1,21 @@
 # Changelog
 
+## v2.3.5 (2026-10-26)
+
+### Refactor
+
+- run pre-commit and refactor all files
+
+### CI System(s)
+
+- update pre-commit config
+- fix ckanext name from bulk update
+- update action versions update the actions to the latest versions
+
+### Chores/Misc
+
+- update team names
+
 ## v2.3.4 (2025-06-09)
 
 ### Build System(s)
